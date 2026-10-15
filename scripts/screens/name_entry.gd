@@ -115,7 +115,7 @@ func _success(forced: bool) -> void:
 		await say("I KNEW it! Hi, Chumbo! Happy birthday!")
 	host_talk = false
 	await wait(0.3)
-	Game.goto("intro")
+	Game.goto("hub" if Game.intro_done else "intro")
 
 
 func _punish() -> void:

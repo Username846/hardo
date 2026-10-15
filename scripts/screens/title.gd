@@ -47,10 +47,8 @@ func press(_p: Vector2) -> void:
 	started = true
 	Audio.sfx("tada")
 	Audio.play_music("title", 0.3)
-	if Game.player_name != "" and Game.intro_done:
-		Game.goto("hub")
-	else:
-		Game.goto("name")
+	# every launch starts by asking for the name (there is only one right answer)
+	Game.goto("name")
 
 
 func paint() -> void:
