@@ -1,0 +1,121 @@
+"""Narration: finds every say("...") line in the GDScript sources and renders a voice clip
+for it with espeak-ng. Clips are named by md5("<mood>|<text>")[:12] - the same key the game
+computes at runtime (Narrator.key_for)."""
+import glob
+import hashlib
+import os
+import re
+
+import numpy as np
+
+import synth as S
+
+MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5}
+
+STR = r'"((?:[^"\\]|\\.)*)"'
+SAY_RE = re.compile(r"\bsay(?:_bg)?\(\s*" + STR + r"\s*(?:,\s*Narrator\.(\w+))?")
+PAIR_RE = re.compile(r"\[\s*" + STR + r"\s*,\s*Narrator\.(\w+)\s*\]")
+
+# How the words should be pronounced (display text keeps the funny spellings).
+SAY_AS = [
+    (r"\bpokemans\b", "pokey mans"), (r"\bpokémans\b", "pokey mans"), (r"\broblocks\b", "row blocks"),
+    (r"\bchumbmon\b", "chumb mon"), (r"\bobby\b", "obbie"), (r"\bbaaa\b", "baaaa"), (r"\bshh\b", "shhh"),
+    (r"\bi'm chumbo\b", "I'm chumbo"),
+]
+
+
+def unescape(s):
+    return s.encode().decode("unicode_escape") if "\\" in s else s
+
+
+def find_lines(root):
+    found = {}
+    for path in glob.glob(os.path.join(root, "scripts", "**", "*.gd"), recursive=True):
+        src = open(path, encoding="utf-8").read()
+        for m in SAY_RE.finditer(src):
+            text, mood = unescape(m.group(1)), m.group(2) or "CUTE"
+            if "%" not in text:
+                found[(MOODS[mood], text)] = path
+        for m in PAIR_RE.finditer(src):
+            text, mood = unescape(m.group(1)), m.group(2)
+            if "%" not in text:
+                found[(MOODS[mood], text)] = path
+    return found
+
+
+def key_for(mood, text):
+    return hashlib.md5(f"{mood}|{text}".encode("utf-8")).hexdigest()[:12]
+
+
+def tts_text(text):
+    t = text.lower()
+    for pat, rep in SAY_AS:
+        t = re.sub(pat, rep, t)
+    t = re.sub(r"\bi\b", "I", t)
+    return t
+
+
+def render(mood, text):
+    t = tts_text(text)
+    if mood == 0:      # CUTE party host
+        x = S.speak(t, "lady", 178, 152, 120)
+        y = S.reverb(x, 0.12, 0.6)
+    elif mood == 1:    # DARK
+        x = S.speak(t, "deep", 64, 118, 28)
+        x = S.resample(x, 1.08)  # a touch slower + lower
+        x = S.lp(x, 4200)
+        y = S.reverb(x, 0.35, 1.3)
+    elif mood == 2:    # WHISPER
+        x = S.speak(t, "whisper", 95, 115, 20)
+        y = S.reverb(x, 0.4, 1.2)
+    elif mood == 3:    # CRITTER
+        x = S.speak(t, "kid", 320, 175, 220)
+        x = S.resample(x, 1 / 1.12)
+        y = S.reverb(x, 0.1, 0.5)
+    elif mood == 4:    # CREEPY (croak + whisper an octave apart)
+        a = S.speak(t, "croak", 62, 108, 8)
+        b = S.speak(t, "whisper", 120, 108, 8)
+        n = max(len(a), len(b))
+        a = np.pad(a, (0, n - len(a)))
+        b = np.pad(b, (0, n - len(b)))
+        x = a * 0.8 + b * 0.5
+        y = S.reverb(x, 0.4, 1.4)
+    else:              # HYPE announcer
+        x = S.speak(t, "guy", 128, 178, 130)
+        y = S.reverb(x, 0.15, 0.7)
+    y = np.asarray(y)
+    if y.ndim == 2:
+        y = y.mean(axis=0)
+    # trim the reverb tail a bit and fade
+    tail = int(0.35 * S.SR)
+    y = y[: len(x) + tail]
+    f = min(len(y), int(0.08 * S.SR))
+    y[-f:] *= np.linspace(1, 0, f)
+    return y
+
+
+def build(root):
+    out_dir = os.path.join(root, "assets", "voice")
+    os.makedirs(out_dir, exist_ok=True)
+    lines = find_lines(root)
+    keep = set()
+    made = 0
+    for (mood, text) in sorted(lines):
+        k = key_for(mood, text)
+        keep.add(k + ".ogg")
+        path = os.path.join(out_dir, k + ".ogg")
+        if os.path.exists(path):
+            continue
+        y = render(mood, text)
+        y = y / (np.max(np.abs(y)) + 1e-9) * 0.9
+        S.write_ogg_mono(path, y, quality=1)
+        made += 1
+    removed = 0
+    for f in os.listdir(out_dir):
+        if f.endswith(".ogg") and f not in keep:
+            os.remove(os.path.join(out_dir, f))
+            imp = os.path.join(out_dir, f + ".import")
+            if os.path.exists(imp):
+                os.remove(imp)
+            removed += 1
+    print(f"  voice: {len(lines)} lines ({made} new, {removed} removed)")

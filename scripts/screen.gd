@@ -224,8 +224,10 @@ func title_text(p: Vector2, s: String, size: int = 64, col: Color = Crayon.INK, 
 
 
 ## Draws the little scoreboard / progress label top-right.
-func hud(label: String, col: Color = Crayon.INK) -> void:
-	Crayon.text(self, Vector2(W - 24, 44), label, 34, col, 2, 4242)
+func hud(label: String, col: Color = Crayon.INK, y: float = 44.0) -> void:
+	if Narrator.top and Narrator.is_active():
+		y += 120.0
+	Crayon.text(self, Vector2(W - 24, y), label, 34, col, 2, 4242)
 
 
 func confetti_burst(at: Vector2, n: int = 40) -> void:

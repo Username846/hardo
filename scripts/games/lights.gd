@@ -1,4 +1,253 @@
 extends Screen
+## Present 9: LIGHTS OUT! (flashlight hide-and-seek). Find the eight guests hiding for a
+## surprise party. Then find the ninth. And the tenth. There's always one more.
+
+const IDX := 8
+const R_LIGHT := 125.0
+
+var light := Vector2(640, 380)
+var guests: Array = []
+var extras: Array = []
+var found := 0
+var total := 8
+var playing := false
+var phase := "hide"      # hide, extra, final, lit
+var lit := 0.0
+var idle_t := 0.0
+var final_fig := 0.0
+
+
+func enter() -> void:
+	Audio.play_music("lights")
+	var spots := [
+		["couch", Vector2(330, 392)], ["table", Vector2(760, 528)], ["curtain", Vector2(1080, 506)], ["closet", Vector2(128, 300)],
+		["plant", Vector2(596, 420)], ["shelf", Vector2(1222, 182)], ["rug", Vector2(420, 628)], ["gift", Vector2(1062, 600)],
+	]
+	for k in spots.size():
+		guests.append({"spot": spots[k][0], "pos": spots[k][1], "seen": 0.0, "found": false, "col": Crayon.RAINBOW[k % 7], "seed": 500 + k * 11})
+	_run()
+
+
+func _run() -> void:
+	locked = true
+	await wait(0.4)
+	Audio.sfx("switch")
+	await say("Present number nine! Uh oh, the lights went out! Your friends are hiding for a surprise. Drag your flashlight around to find all eight of them!")
+	playing = true
+	locked = false
+
+
+func press(p: Vector2) -> void:
+	light = p
+	if not playing:
+		return
+	Audio.sfx("switch", -12, 1.4)
+
+
+func drag(p: Vector2) -> void:
+	light = p
+
+
+func tick(dt: float) -> void:
+	if not DisplayServer.is_touchscreen_available():
+		light = mouse
+	if not playing:
+		return
+	idle_t += dt
+	if phase == "hide":
+		for g in guests:
+			if g.found:
+				continue
+			if light.distance_to(g.pos) < R_LIGHT * 0.6:
+				g.seen += dt
+				if g.seen > 0.5:
+					_found(g)
+			else:
+				g.seen = maxf(0.0, g.seen - dt)
+		if idle_t > 18.0:
+			idle_t = 0.0
+			say_bg("Listen! Somebody's giggling over there.")
+			Audio.sfx("giggle", -2)
+	elif phase == "extra":
+		for e in extras:
+			if e.gone:
+				continue
+			if light.distance_to(e.pos) < R_LIGHT * 0.55:
+				e.gone = true
+				found += 1
+				Audio.sfx("giggle_low", -2, randf_range(0.8, 1.0))
+				Audio.sfx("heartbeat", -4)
+		if extras.all(func(e): return e.gone):
+			_final()
+
+
+func _found(g: Dictionary) -> void:
+	g.found = true
+	found += 1
+	idle_t = 0.0
+	Audio.sfx("surprise", -2)
+	Audio.sfx("pop", -6)
+	confetti_burst(g.pos, 30)
+	if found == 4:
+		say_bg("Four more! Where could they be?")
+	if found == total:
+		_twist()
+
+
+func _twist() -> void:
+	playing = false
+	locked = true
+	Audio.sfx("cheer", -6)
+	await say("You found everybody! Okay, lights back on!")
+	Audio.sfx("switch")
+	await wait(0.6)
+	Audio.sfx("switch")
+	await wait(0.6)
+	Audio.play_music("lights_dark", 2.0)
+	await say("The lights won't turn on. And somebody is still hiding.", Narrator.DARK)
+	for p in [Vector2(250, 190), Vector2(720, 150), Vector2(880, 640), Vector2(1170, 650)]:
+		extras.append({"pos": p, "gone": false})
+	phase = "extra"
+	playing = true
+	locked = false
+
+
+func _final() -> void:
+	playing = false
+	phase = "final"
+	locked = true
+	await wait(0.8)
+	Audio.sfx("found_you", 2)
+	var tw := create_tween()
+	tw.tween_property(self, "final_fig", 1.0, 0.8)
+	await wait(1.0)
+	await say("Found you.", Narrator.WHISPER)
+	Audio.sfx("switch")
+	phase = "lit"
+	var tw2 := create_tween()
+	tw2.tween_property(self, "lit", 1.0, 0.4)
+	Audio.play_music("lights", 0.5)
+	Audio.sfx("surprise")
+	confetti_burst(Vector2(640, 300), 90)
+	await wait(0.8)
+	await say("SURPRISE! Everyone is here! Even the ones who weren't invited.")
+	await say("Present number nine, done! Great finding!")
+	finish_game(IDX, "FOUND 'EM ALL!")
+
 
 func paint() -> void:
-	title_text(Vector2(W * 0.5, H * 0.5), "TODO GAME", 80)
+	bg = Color(0.95, 0.88, 0.75)
+	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	draw_rect(Rect2(-2000, 560, W + 4000, 2000), Color(0.75, 0.55, 0.4))
+	Crayon.line(self, Vector2(-40, 560), Vector2(W + 40, 560), Crayon.INK, 5, 1)
+	_room()
+	for g in guests:
+		_guest(g)
+	if phase == "lit":
+		# everyone (and some extra party hats on the table)
+		for k in 4:
+			Crayon.person(self, Vector2(300 + k * 230, 560), 150, Crayon.INK.lerp(Color(0.3, 0.2, 0.4), 0.5), "wide", Color(0, 0, 0, 0), "wave", t * 2.0, 700 + k)
+	# darkness with a flashlight hole
+	if lit < 1.0:
+		var a := 0.975 * (1.0 - lit)
+		_dark_ring(R_LIGHT + 50.0, 3000.0, a)
+		for k in 5:
+			var r0 := R_LIGHT + k * 10.0
+			_dark_ring(r0, r0 + 10.0, a * (k + 0.5) / 5.0)
+		Crayon.circle(self, light, R_LIGHT + 4, Color(1, 0.95, 0.6, 0.35 * (1.0 - lit)), 4, Color(0, 0, 0, 0), 2)
+	# found markers + glowing eyes stay visible
+	if lit < 1.0:
+		for g in guests:
+			if g.found:
+				Crayon.star(self, g.pos + Vector2(0, -60), 16, Crayon.INK, Crayon.YELLOW, 600 + int(g.seed))
+		for e in extras:
+			if not e.gone and fmod(t + e.pos.x, 3.0) > 0.15:
+				draw_circle(e.pos + Vector2(-12, 0), 7, Color(1, 0.95, 0.4))
+				draw_circle(e.pos + Vector2(12, 0), 7, Color(1, 0.95, 0.4))
+	if final_fig > 0.0 and phase == "final":
+		var fp := Vector2(640, 600)
+		Crayon.person(self, fp, 300 * final_fig, Color(0.9, 0.9, 0.95), "wide", Crayon.GREEN, "stand", 0.0, 800, Color(0.15, 0.1, 0.15))
+
+
+func paint_top() -> void:
+	var col := Crayon.WHITE if lit < 0.5 else Crayon.INK
+	if found > 0 or playing:
+		hud("FOUND: %d / %d" % [found, total], col if found <= total else Crayon.RED)
+	if playing and found == 0 and t < 25.0:
+		Crayon.text(self, Vector2(640, 120), "DRAG THE FLASHLIGHT!", 44, Crayon.YELLOW, 1, 20, Crayon.title_font())
+
+
+func _dark_ring(r0: float, r1: float, a: float) -> void:
+	var col := Color(0.02, 0.01, 0.05, a)
+	var n := 36
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var d0 := Vector2(cos(a0), sin(a0))
+		var d1 := Vector2(cos(a1), sin(a1))
+		draw_colored_polygon(PackedVector2Array([light + d0 * r0, light + d0 * r1, light + d1 * r1, light + d1 * r0]), col)
+
+
+func _room() -> void:
+	# window + curtains
+	Crayon.rect(self, Rect2(990, 110, 180, 200), Crayon.INK, 5, Color(0.1, 0.1, 0.25), 10)
+	Crayon.circle(self, Vector2(1100, 170), 18, Crayon.INK, 2, Color(1, 1, 0.85), 11)
+	for k in 2:
+		var cx := 960.0 + k * 220.0
+		var pts := PackedVector2Array()
+		for j in 9:
+			pts.append(Vector2(cx + sin(j * 1.3 + k) * 14, 100 + j * 52))
+		pts.append(Vector2(cx + 60 - k * 120, 520))
+		pts.append(Vector2(cx + 60 - k * 120, 100))
+		Crayon.poly(self, pts, Crayon.INK, 4, Color(0.75, 0.25, 0.3), 12 + k)
+	# closet
+	Crayon.rect(self, Rect2(50, 140, 130, 420), Crayon.INK, 5, Crayon.BROWN, 20)
+	Crayon.circle(self, Vector2(160, 360), 7, Crayon.INK, 2, Crayon.YELLOW, 21)
+	# couch
+	Crayon.rect(self, Rect2(200, 420, 320, 140), Crayon.INK, 5, Crayon.BLUE, 30)
+	Crayon.rect(self, Rect2(180, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 31)
+	Crayon.rect(self, Rect2(490, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 32)
+	# plant
+	Crayon.rect(self, Rect2(570, 480, 60, 80), Crayon.INK, 4, Crayon.ORANGE, 40)
+	for k in 5:
+		var a := -PI * 0.5 + (k - 2) * 0.4
+		Crayon.ellipse(self, Vector2(600, 470) + Vector2(cos(a), sin(a)) * 50, Vector2(14, 34), Crayon.INK, 3, Crayon.GREEN, 41 + k)
+	# table
+	Crayon.rect(self, Rect2(640, 440, 260, 24), Crayon.INK, 5, Crayon.BROWN, 50)
+	Crayon.line(self, Vector2(660, 464), Vector2(660, 560), Crayon.INK, 6, 51)
+	Crayon.line(self, Vector2(880, 464), Vector2(880, 560), Crayon.INK, 6, 52)
+	Crayon.cake(self, Vector2(770, 440), 110, 50, Crayon.PINK, 3, lit > 0.5, 53)
+	# shelf
+	Crayon.rect(self, Rect2(1190, 200, 80, 360), Crayon.INK, 5, Crayon.BROWN.lightened(0.1), 60)
+	for k in 4:
+		Crayon.line(self, Vector2(1190, 280 + k * 70), Vector2(1270, 280 + k * 70), Crayon.INK, 4, 61 + k)
+	# rug
+	Crayon.ellipse(self, Vector2(420, 640), Vector2(170, 40), Crayon.INK, 4, Crayon.PURPLE.lightened(0.2), 70)
+	# gift box
+	Crayon.present(self, Rect2(1000, 600, 130, 100), Crayon.GREEN, Crayon.YELLOW, 80, 18.0)
+
+
+func _guest(g: Dictionary) -> void:
+	var p: Vector2 = g.pos
+	var sd: int = g.seed
+	var col: Color = g.col
+	if g.found:
+		Crayon.person(self, p + Vector2(0, 70), 120, Crayon.INK, "happy", col, "up", t * 3.0, sd)
+		return
+	match String(g.spot):
+		"couch", "plant", "shelf":
+			Crayon.circle(self, p, 22, Crayon.INK, 4, Color(1, 0.9, 0.78), sd)
+			Crayon.face(self, p + Vector2(0, -2), 18, "happy", Vector2.ZERO, sd + 1)
+			Crayon.party_hat(self, p + Vector2(0, -18), 16, col, sd + 2)
+		"table", "gift", "closet":
+			draw_circle(p + Vector2(-9, 0), 5, Crayon.WHITE)
+			draw_circle(p + Vector2(9, 0), 5, Crayon.WHITE)
+			draw_circle(p + Vector2(-8, 1), 2.5, Crayon.INK)
+			draw_circle(p + Vector2(10, 1), 2.5, Crayon.INK)
+			Crayon.party_hat(self, p + Vector2(0, -12), 14, col, sd + 2)
+		"curtain":
+			Crayon.ellipse(self, p + Vector2(-14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd)
+			Crayon.ellipse(self, p + Vector2(14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd + 1)
+		"rug":
+			Crayon.ellipse(self, p, Vector2(50, 22), Crayon.INK, 3, Crayon.PURPLE.lightened(0.1), sd)
+			Crayon.party_hat(self, p + Vector2(0, -18), 14, col, sd + 2)

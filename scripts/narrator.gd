@@ -5,7 +5,7 @@ extends CanvasLayer
 
 enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE }
 
-const BOX_W := 940.0
+const BOX_W := 900.0
 
 var _panel: Control
 var _text := ""

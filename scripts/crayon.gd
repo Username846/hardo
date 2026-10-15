@@ -479,12 +479,13 @@ static func icing(r: Rect2, s: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	pts.append(r.position + Vector2(-3, -2))
 	pts.append(Vector2(r.end.x + 3, r.position.y - 2))
-	var n := maxi(4, int(r.size.x / 9.0))
-	var depth := minf(r.size.y * 0.55, 22.0)
+	var n := maxi(6, int(r.size.x / 7.0))
+	var depth := minf(r.size.y * 0.6, 24.0)
+	var ph := float(s % 17)
 	for k in range(n, -1, -1):
 		var x := r.position.x + r.size.x * k / n
-		var d := maxf(0.0, sin(k * 1.9 + s * 0.7)) * depth + 5.0
-		pts.append(Vector2(x, r.position.y + d))
+		var drip := pow(maxf(0.0, sin(x * 0.075 + ph)), 3.0)
+		pts.append(Vector2(x, r.position.y + 5.0 + drip * depth))
 	return pts
 
 

@@ -151,8 +151,9 @@ func _ending() -> void:
 
 
 func tick(dt: float) -> void:
-	phase += dt * speed
-	cur_x = 640.0 + sin(phase) * (440.0 - cur_w * 0.25)
+	if not falling:
+		phase += dt * speed
+		cur_x = 640.0 + sin(phase) * (440.0 - cur_w * 0.25)
 	var want := maxf(0.0, (layers.size() - 1) * LH - 180.0)
 	if ended:
 		want = maxf(0.0, (layers.size() - 1) * LH - 120.0)

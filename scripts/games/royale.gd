@@ -1,4 +1,341 @@
 extends Screen
+## Present 6: FORTNIGHT - BIRTHDAY ROYALE (battle-royale build defence).
+## Jump off the party bus, build walls against water balloons, throw cake at the others.
+## Be the last one standing. One player left. Just you. ...two players left?
+
+const IDX := 5
+const ME := Vector2(640, 410)
+const SPOTS := ["Cake Castle", "Balloon Park", "Pinata Peaks", "Sprinkle Springs"]
+const NAMES := ["xX_CakeLord_Xx", "BalloonBoi99", "sprinkle_queen", "PinataSlayer", "DefaultDancer", "LlamaLover",
+	"Frosting_Fiend", "GiftWrapGamer", "CandleCrusher", "PartyHat_Pro", "NoScopeNapkin", "ConfettiKid"]
+
+var phase := "intro"     # intro, bus, drop, fight, final, win
+var bus_x := -300.0
+var drop_t := 0.0
+var spot := ""
+var hp := 100
+var left := 99
+var storm_r := 720.0
+var foes: Array = []
+var shots: Array = []
+var cakes: Array = []
+var walls: Array = []
+var feed: Array = []
+var spawn_t := 1.0
+var tick_t := 0.0
+var fight_t := 0.0
+var twisted := false
+var eyes := 0.0
+var dance := false
+var hurt := 0.0
+
+
+func enter() -> void:
+	Narrator.top = true
+	Audio.play_music("royale")
+	_run()
+
+
+func _run() -> void:
+	locked = true
+	await wait(0.4)
+	await say("Present number six! It's FORTNIGHT! Jump off the party bus, build walls to block the water balloons, and throw cake at everyone else!")
+	phase = "bus"
+	locked = false
+	Audio.sfx("horn")
+
+
+func press(p: Vector2) -> void:
+	match phase:
+		"bus":
+			_jump()
+		"fight":
+			for f in foes:
+				if p.distance_to(f.pos) < 48.0 and not f.hit:
+					cakes.append({"pos": ME, "target": f})
+					Audio.sfx("throw", -4)
+					return
+			_build(p)
+
+
+func _jump() -> void:
+	phase = "drop"
+	drop_t = 0.0
+	spot = SPOTS[clampi(int((bus_x + 100.0) / 380.0), 0, 3)]
+	Audio.sfx("whoosh")
+	await wait(1.6)
+	Audio.sfx("thud")
+	phase = "fight"
+	say_bg("You landed at %s! Tap to build walls. Tap a player to throw cake!" % spot)
+
+
+func _build(p: Vector2) -> void:
+	var ang := (p - ME).angle()
+	for w in walls:
+		if absf(wrapf(ang - w.ang, -PI, PI)) < 0.35:
+			w.hp = 3
+			Audio.sfx("build", -2, 1.2)
+			return
+	if walls.size() >= 8:
+		walls.pop_front()
+	walls.append({"ang": ang, "hp": 3})
+	Audio.sfx("build")
+
+
+func _feed(msg: String) -> void:
+	feed.push_front({"m": msg, "t": 4.0})
+	if feed.size() > 4:
+		feed.pop_back()
+
+
+func tick(dt: float) -> void:
+	hurt = maxf(0.0, hurt - dt * 2.0)
+	for f in feed:
+		f.t -= dt
+	feed = feed.filter(func(f): return f.t > 0.0)
+	match phase:
+		"bus":
+			bus_x += 230.0 * dt
+			if bus_x > 1500.0:
+				_jump()
+		"drop":
+			drop_t += dt
+		"fight":
+			_fight(dt)
+		"final":
+			eyes = minf(1.0, eyes + dt * 0.5)
+	if phase in ["fight", "final"]:
+		_move_projectiles(dt)
+
+
+func _fight(dt: float) -> void:
+	fight_t += dt
+	storm_r = maxf(170.0, storm_r - dt * 9.0)
+	tick_t -= dt
+	if tick_t <= 0.0 and left > 2:
+		tick_t = randf_range(0.35, 0.7) if not twisted else randf_range(2.0, 3.0)
+		left -= 1
+		var who: String = NAMES[randi() % NAMES.size()] + str(randi() % 90 + 10)
+		_feed(who + (" got caught in the storm" if not twisted else " is still in the storm"))
+	if left <= 12 and not twisted:
+		_twist()
+	spawn_t -= dt
+	var alive := foes.filter(func(f): return not f.hit).size()
+	if spawn_t <= 0.0 and alive < (4 if not twisted else 3) and left > alive + 1:
+		spawn_t = randf_range(1.6, 2.6)
+		var a := randf() * TAU
+		var r := randf_range(260.0, minf(storm_r - 40.0, 560.0))
+		var pos := ME + Vector2(cos(a), sin(a)) * Vector2(r, r * 0.6)
+		pos = pos.clamp(Vector2(60, 150), Vector2(W - 60, H - 60))
+		foes.append({"pos": pos, "throw": randf_range(1.2, 2.5), "hit": false, "gone": 0.0, "col": Crayon.RAINBOW[randi() % 7], "seed": randi() % 1000, "name": NAMES[randi() % NAMES.size()]})
+	for f in foes:
+		if f.hit:
+			f.gone += dt
+			continue
+		f.throw -= dt
+		if f.throw <= 0.0:
+			f.throw = randf_range(2.0, 3.4)
+			shots.append({"pos": f.pos, "vel": (ME - f.pos).normalized() * 260.0})
+			Audio.sfx("throw", -10, 1.3)
+		# the storm eats people who wander outside it
+		if f.pos.distance_to(ME) > storm_r + 20.0:
+			f.hit = true
+			left = maxi(2, left - 1)
+	foes = foes.filter(func(f): return f.gone < 0.8)
+	# end of the match
+	if twisted and left <= 2 and foes.filter(func(f): return not f.hit).is_empty():
+		_final()
+
+
+func _move_projectiles(dt: float) -> void:
+	for s in shots:
+		s.pos += s.vel * dt
+		for w in walls:
+			if w.hp > 0 and s.pos.distance_to(_wall_pos(w)) < 36.0:
+				w.hp -= 1
+				s.dead = true
+				Audio.sfx("splash", -6)
+		if not s.get("dead", false) and s.pos.distance_to(ME) < 30.0:
+			s.dead = true
+			hp -= 10
+			hurt = 1.0
+			Audio.sfx("splash", -2)
+			Audio.sfx("ow", -8)
+			if hp <= 0:
+				hp = 50
+				say_bg("You got back up! The party never stops!")
+	shots = shots.filter(func(s): return not s.get("dead", false) and s.pos.x > -100 and s.pos.x < W + 100)
+	walls = walls.filter(func(w): return w.hp > 0)
+	for c in cakes:
+		var f: Dictionary = c.target
+		var d: Vector2 = f.pos - c.pos
+		if d.length() < 20.0:
+			c.dead = true
+			if not f.hit:
+				f.hit = true
+				left = maxi(2, left - 1)
+				Audio.sfx("splat", -2)
+				_feed("You caked " + String(f.name) + "!")
+		else:
+			c.pos += d.normalized() * minf(d.length(), 760.0 * dt)
+	cakes = cakes.filter(func(c): return not c.get("dead", false))
+
+
+func _twist() -> void:
+	twisted = true
+	Audio.play_music("royale_dark", 2.0)
+	say_bg("The storm is getting darker. Where are all the other players going?", Narrator.DARK)
+
+
+func _final() -> void:
+	phase = "final"
+	locked = true
+	shots.clear()
+	left = 1
+	Audio.sfx("levelup")
+	await wait(1.5)
+	await say("One player left. Just you.", Narrator.DARK)
+	await wait(0.6)
+	Audio.sfx("glitch")
+	left = 2
+	_feed("??? joined the party")
+	await wait(1.0)
+	await say("Wait. Two players left.", Narrator.DARK)
+	Audio.sfx("giggle_low")
+	await wait(1.5)
+	phase = "win"
+	dance = true
+	Audio.play_music("royale", 1.0)
+	Audio.sfx("cheer")
+	confetti_burst(ME + Vector2(0, -80), 80)
+	await wait(1.5)
+	await say("You won, Chumbo! Everyone else went home. Well... almost everyone.", Narrator.DARK)
+	await say("Present number six, done! Birthday Royale!")
+	finish_game(IDX, "#1 ...OF 2")
+
+
+func _wall_pos(w: Dictionary) -> Vector2:
+	return ME + Vector2(cos(w.ang), sin(w.ang)) * 95.0
+
 
 func paint() -> void:
-	title_text(Vector2(W * 0.5, H * 0.5), "TODO GAME", 80)
+	if phase == "bus" or phase == "drop" or phase == "intro":
+		_map()
+		return
+	var grass := Color(0.5, 0.82, 0.42).lerp(Color(0.2, 0.3, 0.22), 0.6 if twisted else 0.0)
+	bg = grass
+	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), grass)
+	for k in 14:
+		var tp := Vector2(fmod(k * 263.0, W), 140 + fmod(k * 131.0, 560))
+		if tp.distance_to(ME) > 140:
+			Crayon.circle(self, tp, 26, Crayon.INK, 3, Crayon.GREEN.darkened(0.25), 20 + k)
+	# the storm: everything outside storm_r
+	var storm := Color(0.55, 0.25, 0.85, 0.55).lerp(Color(0.1, 0.0, 0.15, 0.85), 1.0 if twisted else 0.0)
+	_storm(storm)
+	for w in walls:
+		var p := _wall_pos(w)
+		draw_set_transform(p, w.ang + PI / 2, Vector2.ONE)
+		Crayon.rect(self, Rect2(-44, -12, 88, 24), Crayon.INK, 4, Crayon.BROWN.lightened(0.15 * w.hp), 40)
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	for f in foes:
+		var a := 1.0 - clampf(f.gone / 0.8, 0, 1)
+		var col := Color(Crayon.INK, a) if not twisted else Color(0.05, 0.02, 0.08, a)
+		var mood := "happy" if not twisted else "blank"
+		if f.hit:
+			mood = "x"
+		Crayon.person(self, f.pos + Vector2(0, 50), 100, col, mood, f.col if not twisted else Color(0, 0, 0, 0), "wave", t * 3.0, f.seed)
+		if f.hit:
+			Crayon.circle(self, f.pos + Vector2(0, -26), 30 * a + 4, Crayon.INK, 3, Color(Crayon.PINK, a), f.seed + 5)
+	_me()
+	for s in shots:
+		Crayon.circle(self, s.pos, 13, Crayon.INK, 3, Crayon.SKY, 60)
+	for c in cakes:
+		Crayon.poly(self, PackedVector2Array([c.pos + Vector2(-16, 10), c.pos + Vector2(16, 10), c.pos + Vector2(0, -16)]), Crayon.INK, 3, Crayon.PINK, 61)
+	if phase == "final" or (phase == "win" and eyes > 0):
+		var e := Vector2(1090, 210)
+		var a := eyes
+		draw_circle(e, 10, Color(1, 0.95, 0.4, a))
+		draw_circle(e + Vector2(36, 0), 10, Color(1, 0.95, 0.4, a))
+		Crayon.face(self, e + Vector2(18, 26), 34, "wide", Vector2.ZERO, 62, Color(1, 1, 1, a))
+	if hurt > 0.0:
+		draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.3, 0.6, 1.0, hurt * 0.25))
+
+
+func _storm(col: Color) -> void:
+	# draw a big ring polygon from storm_r out to far away
+	var inner := PackedVector2Array()
+	var n := 48
+	for i in n + 1:
+		var a := TAU * i / n
+		inner.append(ME + Vector2(cos(a), sin(a)) * storm_r)
+	for i in n:
+		var a := TAU * i / n
+		var a2 := TAU * (i + 1) / n
+		var quad := PackedVector2Array([ME + Vector2(cos(a), sin(a)) * storm_r, ME + Vector2(cos(a), sin(a)) * 2600.0,
+			ME + Vector2(cos(a2), sin(a2)) * 2600.0, ME + Vector2(cos(a2), sin(a2)) * storm_r])
+		draw_colored_polygon(quad, col)
+	Crayon.path(self, inner, Color(0.85, 0.6, 1.0), 6, 30)
+
+
+func _me() -> void:
+	var pose := "stand"
+	if dance:
+		pose = "up" if int(t * 4.0) % 2 == 0 else "wave"
+	var feet := ME + Vector2(0, 55)
+	if dance:
+		# floss-ish dance
+		var sw := sin(t * 10.0) * 30.0
+		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(-20, 0), Crayon.INK, 5, 70)
+		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(20, 0), Crayon.INK, 5, 71)
+		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(0, -112), Crayon.INK, 5, 72)
+		Crayon.line(self, feet + Vector2(0, -105), feet + Vector2(-35 + sw, -70), Crayon.INK, 5, 73)
+		Crayon.line(self, feet + Vector2(0, -105), feet + Vector2(35 + sw, -80), Crayon.INK, 5, 74)
+		Crayon.circle(self, feet + Vector2(0, -130), 18, Crayon.INK, 4, Color(1, 0.9, 0.78), 75)
+		Crayon.face(self, feet + Vector2(0, -128), 16, "happy", Vector2.ZERO, 76)
+		Crayon.party_hat(self, feet + Vector2(0, -148), 15, Crayon.GREEN, 77)
+	else:
+		Crayon.person(self, feet, 120, Crayon.INK, "o" if hurt > 0.3 else "happy", Crayon.GREEN, pose, t * 2.0, 78)
+	Crayon.text(self, ME + Vector2(0, 86), "YOU", 24, Crayon.WHITE, 1, 79)
+
+
+func _map() -> void:
+	bg = Color(0.4, 0.7, 1.0)
+	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	var island := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		var r := 330.0 + sin(a * 3.0) * 40.0 + cos(a * 5.0) * 25.0
+		island.append(Vector2(640, 420) + Vector2(cos(a) * r * 1.6, sin(a) * r * 0.8))
+	Crayon.poly(self, island, Crayon.INK, 6, Color(0.5, 0.82, 0.42), 1)
+	var marks := [Vector2(240, 400), Vector2(500, 320), Vector2(800, 480), Vector2(1060, 380)]
+	for k in 4:
+		Crayon.circle(self, marks[k], 30, Crayon.INK, 4, Crayon.RAINBOW[k * 2], 2 + k)
+		Crayon.text(self, marks[k] + Vector2(0, 52), SPOTS[k], 28, Crayon.INK, 1, 10 + k)
+	# party bus
+	var bp := Vector2(bus_x, 160 + sin(t * 2.0) * 8.0)
+	if phase == "bus" or phase == "intro":
+		Crayon.balloon(self, bp + Vector2(-40, -70), 22, Crayon.RED, 40, 20)
+		Crayon.balloon(self, bp + Vector2(30, -76), 22, Crayon.YELLOW, 46, 21)
+		Crayon.rect(self, Rect2(bp + Vector2(-110, -30), Vector2(220, 70)), Crayon.INK, 5, Crayon.BLUE, 22)
+		for k in 4:
+			Crayon.rect(self, Rect2(bp + Vector2(-95 + k * 50, -20), Vector2(36, 26)), Crayon.INK, 3, Crayon.SKY, 23 + k)
+		Crayon.text(self, bp + Vector2(0, 26), "PARTY BUS", 22, Crayon.WHITE, 1, 30)
+	if phase == "bus":
+		Crayon.text(self, Vector2(640, 640), "TAP TO JUMP!", 60, Crayon.RED, 1, 31, Crayon.title_font())
+	if phase == "drop":
+		var f := clampf(drop_t / 1.6, 0, 1)
+		var p := Vector2(bus_x - 230.0 * drop_t, lerpf(180, 420, f))
+		Crayon._arc(self, p + Vector2(0, -40), 50, PI, TAU, Crayon.INK, 4, 40)
+		Crayon.line(self, p + Vector2(-50, -40), p + Vector2(0, 0), Crayon.INK, 2, 41)
+		Crayon.line(self, p + Vector2(50, -40), p + Vector2(0, 0), Crayon.INK, 2, 42)
+		Crayon.person(self, p + Vector2(0, 70), 70, Crayon.INK, "o", Crayon.GREEN, "up", t, 43)
+
+
+func paint_top() -> void:
+	if phase in ["fight", "final", "win"]:
+		hud("PLAYERS LEFT: %d" % left, Crayon.WHITE)
+		Crayon.text(self, Vector2(W - 24, 88), "HP: %d" % hp, 30, Crayon.WHITE, 2, 4250)
+		for k in feed.size():
+			Crayon.text(self, Vector2(110, 110 + k * 32), String(feed[k].m), 22, Color(1, 1, 1, clampf(feed[k].t, 0, 1)), 0, 4260 + k, null, 0.5, false)
+		if fight_t < 5.0 and phase == "fight":
+			Crayon.text(self, Vector2(640, 250), "TAP = BUILD   TAP A PLAYER = CAKE", 34, Crayon.YELLOW, 1, 4270)

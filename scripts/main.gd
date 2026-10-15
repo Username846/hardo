@@ -25,6 +25,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--autotest") and ResourceLoader.exists("res://tests/autotest.gd"):
 			add_child(load("res://tests/autotest.gd").new())
+		elif a.begins_with("--bot") and ResourceLoader.exists("res://tests/bot.gd"):
+			add_child(load("res://tests/bot.gd").new())
 
 
 func switch_to(screen: String, arg: Variant = null) -> void:
