@@ -681,7 +681,7 @@ func _paint_room() -> void:
 		# eyes glow through the dark
 		var head := cat_feet + Vector2(8 * cat_face, -78) * grow
 		for sx in [-1.0, 1.0]:
-			Crayon.disc(pen, head + Vector2(sx * 9.0, -4) * grow, 7 * grow * demon, Color(1, 0.85, 0.1, 0.6 * demon))
+			Crayon.disc(pen, head + Vector2(sx * 9.0, -4) * grow, 7 * grow * demon, Color(1, 0.45, 0.1, 0.6 * demon))
 	if phase == "phone" or phase == "closing" or phone_k > 0.0:
 		_phone()
 
@@ -950,87 +950,117 @@ func _hud() -> void:
 		Crayon.text(pen, a + Vector2(70, 150), "TAP BELOW", 28, Crayon.YELLOW, 0, 806)
 
 
-## Rocko the cat (also used by the party room once the secret is found).
-## feet = between the paws, sc = size, f = facing (1 right, -1 left),
+## Rocko the cat: black, with long fluffy fur (also used by the party room once the secret
+## is found). feet = between the paws, sc = size, f = facing (1 right, -1 left),
 ## pose = walk | run | sit | pet, dem = 0 (cute) .. 1 (demon), tm = time for animation.
 static func draw_cat(ci: CanvasItem, feet: Vector2, sc: float, f: float, pose: String, dem: float, tm: float, base: Vector2 = Vector2.ZERO) -> void:
-	var fur := Color(0.96, 0.6, 0.22).lerp(Color(0.3, 0.03, 0.05), dem)
-	var stripe := fur.darkened(0.4)
-	var belly := Color(1, 0.93, 0.82).lerp(Color(0.12, 0.02, 0.03), dem)
+	var fur := Color(0.13, 0.12, 0.15).lerp(Color(0.1, 0.02, 0.03), dem)
+	# grey edges and fur strokes so a black cat still shows up in the dark; red when he turns
+	var edge := Color(0.46, 0.44, 0.53).lerp(Color(0.9, 0.16, 0.1), dem)
+	var hi := Color(0.34, 0.33, 0.4).lerp(Color(0.55, 0.08, 0.08), dem)
 	var w := 4.5 / sqrt(sc)
+	var tuft := 7.0 + dem * 7.0
 	ci.draw_set_transform(base + feet, 0.0, Vector2(sc * f, sc))
 	var head := Vector2(8, -80)
+	if dem > 0.05:
+		# a red glow around him
+		Crayon.oval(ci, Vector2(0, -50), Vector2(70, 62), Color(0.9, 0.1, 0.08, 0.22 * dem))
 	if pose == "sit" or pose == "pet":
 		var curl := sin(tm * 2.0) * 4.0
-		Crayon.path(ci, PackedVector2Array([Vector2(-22, -4), Vector2(-40, -6), Vector2(-46 + curl, -22), Vector2(-36, -32)]), Crayon.INK, w * 2.6, 900)
-		Crayon.path(ci, PackedVector2Array([Vector2(-22, -4), Vector2(-40, -6), Vector2(-46 + curl, -22), Vector2(-36, -32)]), fur, w * 1.6, 901)
-		Crayon.ellipse(ci, Vector2(0, -34), Vector2(28, 34), Crayon.INK, w, fur, 902)
-		Crayon.ellipse(ci, Vector2(8, -34), Vector2(14, 22), Color(0, 0, 0, 0), 0, belly, 903)
-		Crayon.line(ci, Vector2(-14, -52), Vector2(-8, -40), stripe, w, 904)
-		Crayon.line(ci, Vector2(-20, -36), Vector2(-12, -26), stripe, w, 905)
-		Crayon.line(ci, Vector2(2, -12), Vector2(2, 0), Crayon.INK, w, 906)
-		Crayon.line(ci, Vector2(14, -12), Vector2(14, 0), Crayon.INK, w, 907)
+		_tail(ci, PackedVector2Array([Vector2(-20, -4), Vector2(-42, -6), Vector2(-50 + curl, -24), Vector2(-38, -36)]), edge, fur, hi, w, 900)
+		_fluffy(ci, Vector2(0, -34), Vector2(29, 35), 18, tuft, edge, fur, w, 902)
+		for k in 4:
+			Crayon.line(ci, Vector2(-14 + k * 7, -50 + (k % 2) * 6), Vector2(-10 + k * 7, -34 + (k % 2) * 6), hi, w * 0.8, 904 + k)
+		Crayon.line(ci, Vector2(2, -14), Vector2(2, 0), edge, w * 2.6, 908)
+		Crayon.line(ci, Vector2(14, -14), Vector2(14, 0), edge, w * 2.6, 909)
+		Crayon.line(ci, Vector2(2, -14), Vector2(2, -1), fur, w * 1.6, 910)
+		Crayon.line(ci, Vector2(14, -14), Vector2(14, -1), fur, w * 1.6, 911)
 		if pose == "pet":
 			head.y += 4.0
 	else:
 		var sp := 16.0 if pose == "run" else 9.0
 		var amp := 14.0 if pose == "run" else 7.0
 		var sw := sin(tm * sp) * amp
-		var tail_k := sin(tm * 3.0) * 6.0
-		Crayon.path(ci, PackedVector2Array([Vector2(-40, -36), Vector2(-58, -50), Vector2(-62 + tail_k, -74), Vector2(-52 + tail_k, -92)]), Crayon.INK, w * 2.6, 910)
-		Crayon.path(ci, PackedVector2Array([Vector2(-40, -36), Vector2(-58, -50), Vector2(-62 + tail_k, -74), Vector2(-52 + tail_k, -92)]), fur, w * 1.6, 911)
-		Crayon.line(ci, Vector2(-26, -20), Vector2(-30 + sw, 0), Crayon.INK, w * 1.2, 912)
-		Crayon.line(ci, Vector2(-14, -18), Vector2(-12 - sw, 0), Crayon.INK, w * 1.2, 913)
-		Crayon.ellipse(ci, Vector2(0, -34), Vector2(44, 22), Crayon.INK, w, fur, 914)
-		for k in 3:
-			Crayon.line(ci, Vector2(-20 + k * 15, -54), Vector2(-15 + k * 15, -40), stripe, w, 915 + k)
-		Crayon.line(ci, Vector2(18, -18), Vector2(16 - sw, 0), Crayon.INK, w * 1.2, 918)
-		Crayon.line(ci, Vector2(30, -20), Vector2(32 + sw, 0), Crayon.INK, w * 1.2, 919)
+		var tk := sin(tm * 3.0) * 6.0
+		_tail(ci, PackedVector2Array([Vector2(-40, -36), Vector2(-60, -50), Vector2(-64 + tk, -76), Vector2(-52 + tk, -96)]), edge, fur, hi, w, 912)
+		var legs := [[Vector2(-26, -20), Vector2(-30 + sw, 0)], [Vector2(-14, -18), Vector2(-12 - sw, 0)],
+			[Vector2(18, -18), Vector2(16 - sw, 0)], [Vector2(30, -20), Vector2(32 + sw, 0)]]
+		for k in 4:
+			Crayon.line(ci, legs[k][0], legs[k][1], edge, w * 2.6, 914 + k)
+			Crayon.line(ci, legs[k][0], legs[k][1] - Vector2(0, 1), fur, w * 1.6, 918 + k)
+		_fluffy(ci, Vector2(0, -34), Vector2(45, 23), 22, tuft, edge, fur, w, 922)
+		for k in 5:
+			Crayon.line(ci, Vector2(-26 + k * 12, -48 + (k % 2) * 4), Vector2(-18 + k * 12, -36 + (k % 2) * 4), hi, w * 0.8, 924 + k)
 		head = Vector2(42, -56)
-		if dem > 0.3:
-			# spikes along the back
-			var spikes := PackedVector2Array()
-			for k in 7:
-				spikes.append(Vector2(-34 + k * 10, -52 - (12.0 * dem if k % 2 == 1 else 0.0)))
-			Crayon.path(ci, spikes, Crayon.INK, w, 920)
-	# head
+	# head: ears (with tufts), a fluffy ruff, then the face
 	if dem > 0.05:
-		# horns
-		Crayon.poly(ci, PackedVector2Array([head + Vector2(-16, -14), head + Vector2(-28, -14 - 30 * dem), head + Vector2(-6, -20)]), Crayon.INK, w, Color(0.25, 0.0, 0.02), 930)
-		Crayon.poly(ci, PackedVector2Array([head + Vector2(8, -20), head + Vector2(26, -16 - 30 * dem), head + Vector2(16, -12)]), Crayon.INK, w, Color(0.25, 0.0, 0.02), 931)
-	Crayon.poly(ci, PackedVector2Array([head + Vector2(-20, -8), head + Vector2(-16, -32), head + Vector2(-4, -18)]), Crayon.INK, w, fur, 932)
-	Crayon.poly(ci, PackedVector2Array([head + Vector2(4, -18), head + Vector2(16, -32), head + Vector2(20, -8)]), Crayon.INK, w, fur, 933)
+		Crayon.poly(ci, PackedVector2Array([head + Vector2(-16, -14), head + Vector2(-28, -14 - 30 * dem), head + Vector2(-6, -20)]), Crayon.INK, w, Color(0.3, 0.0, 0.02), 930)
+		Crayon.poly(ci, PackedVector2Array([head + Vector2(8, -20), head + Vector2(26, -16 - 30 * dem), head + Vector2(16, -12)]), Crayon.INK, w, Color(0.3, 0.0, 0.02), 931)
+	Crayon.poly(ci, PackedVector2Array([head + Vector2(-21, -8), head + Vector2(-17, -34), head + Vector2(-4, -18)]), edge, w, fur, 932)
+	Crayon.poly(ci, PackedVector2Array([head + Vector2(4, -18), head + Vector2(17, -34), head + Vector2(21, -8)]), edge, w, fur, 933)
+	Crayon.line(ci, head + Vector2(-17, -34), head + Vector2(-19, -42), hi, w * 0.7, 934)
+	Crayon.line(ci, head + Vector2(17, -34), head + Vector2(19, -42), hi, w * 0.7, 935)
+	Crayon.disc(ci, head + Vector2(-13, -16), 3.5, Color(0.45, 0.25, 0.3, 1.0 - dem))
+	Crayon.disc(ci, head + Vector2(13, -16), 3.5, Color(0.45, 0.25, 0.3, 1.0 - dem))
+	_fluffy(ci, head, Vector2(23, 22), 16, tuft * 0.8, edge, fur, w, 936)
+	var light := Color(0.85, 0.85, 0.9)
 	if dem < 0.5:
-		Crayon.disc(ci, head + Vector2(-13, -16), 4, Color(1, 0.6, 0.7, 1.0 - dem * 2.0))
-		Crayon.disc(ci, head + Vector2(13, -16), 4, Color(1, 0.6, 0.7, 1.0 - dem * 2.0))
-	Crayon.circle(ci, head, 22, Crayon.INK, w, fur, 934)
-	var happy := pose == "pet"
-	if dem < 0.5:
-		if happy:
-			Crayon._arc(ci, head + Vector2(-8, -4), 4, PI, TAU, Crayon.INK, w * 0.8, 935)
-			Crayon._arc(ci, head + Vector2(8, -4), 4, PI, TAU, Crayon.INK, w * 0.8, 936)
+		if pose == "pet":
+			# happy closed eyes
+			Crayon._arc(ci, head + Vector2(-8, -4), 4, PI, TAU, light, w * 0.8, 937)
+			Crayon._arc(ci, head + Vector2(8, -4), 4, PI, TAU, light, w * 0.8, 938)
 		else:
-			Crayon.disc(ci, head + Vector2(-8, -4), 4, Crayon.INK)
-			Crayon.disc(ci, head + Vector2(8, -4), 4, Crayon.INK)
-			Crayon.disc(ci, head + Vector2(-7, -6), 1.5, Crayon.WHITE)
-			Crayon.disc(ci, head + Vector2(9, -6), 1.5, Crayon.WHITE)
-		Crayon.poly(ci, PackedVector2Array([head + Vector2(-3, 3), head + Vector2(3, 3), head + Vector2(0, 6)]), Color(0.9, 0.4, 0.5), 2, Color(0.9, 0.4, 0.5), 937)
-		Crayon._arc(ci, head + Vector2(-3, 7), 3, 0, PI, Crayon.INK, w * 0.6, 938)
-		Crayon._arc(ci, head + Vector2(3, 7), 3, 0, PI, Crayon.INK, w * 0.6, 939)
+			for sx in [-1.0, 1.0]:
+				var e: Vector2 = head + Vector2(sx * 8.0, -4)
+				Crayon.oval(ci, e, Vector2(5.5, 6), Color(0.98, 0.82, 0.22))
+				Crayon.oval(ci, e, Vector2(1.8, 4.6), Crayon.BLACK)
+				Crayon.disc(ci, e + Vector2(1.5, -2.5), 1.4, Crayon.WHITE)
+		Crayon.poly(ci, PackedVector2Array([head + Vector2(-3, 3), head + Vector2(3, 3), head + Vector2(0, 6)]), Color(0.6, 0.38, 0.45), 2, Color(0.6, 0.38, 0.45), 939)
+		Crayon._arc(ci, head + Vector2(-3, 7), 3, 0, PI, light, w * 0.6, 940)
+		Crayon._arc(ci, head + Vector2(3, 7), 3, 0, PI, light, w * 0.6, 941)
 	else:
 		# glowing eyes and far too many teeth
-		Crayon.oval(ci, head + Vector2(-9, -5), Vector2(6, 5), Color(1, 0.85, 0.1))
-		Crayon.oval(ci, head + Vector2(9, -5), Vector2(6, 5), Color(1, 0.85, 0.1))
-		Crayon.oval(ci, head + Vector2(-9, -5), Vector2(1.5, 4.5), Crayon.BLACK)
-		Crayon.oval(ci, head + Vector2(9, -5), Vector2(1.5, 4.5), Crayon.BLACK)
+		for sx in [-1.0, 1.0]:
+			var e: Vector2 = head + Vector2(sx * 9.0, -5)
+			Crayon.oval(ci, e, Vector2(6.5, 5.5), Color(1, 0.45, 0.1))
+			Crayon.oval(ci, e, Vector2(1.5, 4.5), Crayon.BLACK)
 		var teeth := PackedVector2Array()
 		for k in 9:
 			teeth.append(head + Vector2(-14 + k * 3.5, 8 + (4.0 if k % 2 == 1 else 0.0)))
-		Crayon.poly(ci, PackedVector2Array([head + Vector2(-16, 6), head + Vector2(16, 6), head + Vector2(10, 16), head + Vector2(-10, 16)]), Crayon.INK, w * 0.6, Color(0.15, 0.0, 0.02), 940)
-		Crayon.path(ci, teeth, Crayon.WHITE, w * 0.7, 941)
+		Crayon.poly(ci, PackedVector2Array([head + Vector2(-16, 6), head + Vector2(16, 6), head + Vector2(10, 16), head + Vector2(-10, 16)]), edge, w * 0.6, Color(0.15, 0.0, 0.02), 942)
+		Crayon.path(ci, teeth, Crayon.WHITE, w * 0.7, 943)
 	for sy in [-1.0, 1.0]:
-		Crayon.line(ci, head + Vector2(12, 4 + sy * 2), head + Vector2(30, 2 + sy * 6), Crayon.INK.lerp(Crayon.WHITE, dem), 1.5, 942 + int(sy))
-		Crayon.line(ci, head + Vector2(-12, 4 + sy * 2), head + Vector2(-30, 2 + sy * 6), Crayon.INK.lerp(Crayon.WHITE, dem), 1.5, 944 + int(sy))
+		Crayon.line(ci, head + Vector2(12, 4 + sy * 2), head + Vector2(32, 2 + sy * 6), light, 1.5, 944 + int(sy))
+		Crayon.line(ci, head + Vector2(-12, 4 + sy * 2), head + Vector2(-32, 2 + sy * 6), light, 1.5, 946 + int(sy))
 	if dem > 0.5:
-		Crayon.party_hat(ci, head + Vector2(0, -20), 12, Crayon.PINK, 950, 0.25)
+		Crayon.party_hat(ci, head + Vector2(0, -22), 12, Crayon.PINK, 950, 0.25)
 	ci.draw_set_transform(base)
+
+
+## A big bushy tail: overlapping fluff balls along the curve, getting fluffier at the tip.
+static func _tail(ci: CanvasItem, pts: PackedVector2Array, edge: Color, fur: Color, hi: Color, w: float, s: int) -> void:
+	var balls := PackedVector2Array()
+	for i in pts.size() - 1:
+		for k in 3:
+			balls.append(pts[i].lerp(pts[i + 1], k / 3.0))
+	balls.append(pts[pts.size() - 1])
+	var n := balls.size()
+	for i in n:
+		var r := lerpf(7.0, 11.5, float(i) / (n - 1))
+		Crayon.disc(ci, balls[i] + Crayon.jit(s + i, 1.5), r + 2.6, edge)
+	for i in n:
+		var r := lerpf(7.0, 11.5, float(i) / (n - 1))
+		Crayon.disc(ci, balls[i] + Crayon.jit(s + i, 1.5), r, fur)
+	for i in range(2, n - 1, 3):
+		var d := (balls[i + 1] - balls[i - 1]).normalized()
+		Crayon.line(ci, balls[i] - d * 5.0, balls[i] + d * 5.0 + d.orthogonal() * 3.0, hi, w * 0.7, s + 40 + i)
+
+
+## Long fur: an outline with tufts sticking out all the way round.
+static func _fluffy(ci: CanvasItem, c: Vector2, rad: Vector2, n: int, tuft: float, edge: Color, fur: Color, w: float, s: int) -> void:
+	var pts := PackedVector2Array()
+	for i in n * 2:
+		var a := TAU * (i + Crayon.rnd(s + i) * 0.25) / (n * 2)
+		var out := tuft * (0.7 + 0.3 * Crayon.rnd(s + i * 3 + 1)) if i % 2 == 1 else 0.0
+		pts.append(c + Vector2(cos(a) * (rad.x + out), sin(a) * (rad.y + out)))
+	Crayon.poly(ci, pts, edge, w, fur, s)

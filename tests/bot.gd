@@ -196,6 +196,19 @@ func _rocko_shots() -> void:
 	await get_tree().create_timer(0.5).timeout
 	await _snap("rs_phone")
 	g.phone_k = 0.0
+	g.phase = "cat"
+	g.cat_pos = Vector2(930, 560)
+	g.cat_pose = "walk"
+	g.bubble = "Meow!"
+	g.bubble_t = 5.0
+	await get_tree().create_timer(0.4).timeout
+	await _snap("rs_walk")
+	g.phase = "pets"
+	g.cat_pos = g.CAT_SEAT
+	g.cat_pose = "sit"
+	g.bubble_t = 0.0
+	await get_tree().create_timer(0.4).timeout
+	await _snap("rs_pets")
 	g.phase = "turn"
 	g.cat_pos = g.CAT_SEAT
 	g.cat_pose = "sit"
