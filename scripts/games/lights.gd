@@ -190,8 +190,8 @@ func paint() -> void:
 				Crayon.star(pen, g.pos + Vector2(0, -60), 16, Crayon.INK, Crayon.YELLOW, 600 + int(g.seed))
 		for e in extras:
 			if not e.gone and fmod(t + e.pos.x, 3.0) > 0.15:
-				pen.draw_circle(e.pos + Vector2(-12, 0), 7, Color(1, 0.95, 0.4))
-				pen.draw_circle(e.pos + Vector2(12, 0), 7, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, e.pos + Vector2(-12, 0), 7, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, e.pos + Vector2(12, 0), 7, Color(1, 0.95, 0.4))
 	if final_fig > 0.0 and phase == "final":
 		var fp := Vector2(640, 600)
 		Crayon.person(pen, fp, 300 * final_fig, Color(0.9, 0.9, 0.95), "wide", Crayon.GREEN, "stand", 0.0, 800, Color(0.15, 0.1, 0.15))
@@ -273,10 +273,10 @@ func _guest(g: Dictionary) -> void:
 			Crayon.face(pen, p + Vector2(0, -2), 18, "happy", Vector2.ZERO, sd + 1)
 			Crayon.party_hat(pen, p + Vector2(0, -18), 16, col, sd + 2)
 		"table", "gift", "closet":
-			pen.draw_circle(p + Vector2(-9, 0), 5, Crayon.WHITE)
-			pen.draw_circle(p + Vector2(9, 0), 5, Crayon.WHITE)
-			pen.draw_circle(p + Vector2(-8, 1), 2.5, Crayon.INK)
-			pen.draw_circle(p + Vector2(10, 1), 2.5, Crayon.INK)
+			Crayon.disc(pen, p + Vector2(-9, 0), 5, Crayon.WHITE)
+			Crayon.disc(pen, p + Vector2(9, 0), 5, Crayon.WHITE)
+			Crayon.disc(pen, p + Vector2(-8, 1), 2.5, Crayon.INK)
+			Crayon.disc(pen, p + Vector2(10, 1), 2.5, Crayon.INK)
 			Crayon.party_hat(pen, p + Vector2(0, -12), 14, col, sd + 2)
 		"curtain":
 			Crayon.ellipse(pen, p + Vector2(-14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd)

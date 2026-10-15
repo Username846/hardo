@@ -206,7 +206,7 @@ func paint() -> void:
 	for k in 6:
 		var a := t * 1.5 + k
 		var sp := db + Vector2(cos(a) * 300, 220 + sin(a * 1.3) * 120)
-		pen.draw_circle(sp, 10, Color(Crayon.RAINBOW[k], 0.35) if not dark else Color(1, 0.1, 0.1, 0.3))
+		Crayon.disc(pen, sp, 10, Color(Crayon.RAINBOW[k], 0.35) if not dark else Color(1, 0.1, 0.1, 0.3))
 	# host as the MC
 	Host.draw(pen, Vector2(1000, 240), 70, 0.0 if not dark else 0.7, Narrator.is_active(), Vector2(-1, 0.4), 33)
 	# you, singing

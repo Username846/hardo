@@ -56,7 +56,7 @@ def crowd(text, n=6, spread=0.12):
     return out
 
 
-def build(out_dir):
+def build(out_dir, only=None):
     os.makedirs(out_dir, exist_ok=True)
     fx = {}
     rng = np.random.default_rng(7)
@@ -188,7 +188,44 @@ def build(out_dir):
     fx["gulp"] = sweep(400, 150, 0.2, "sine", 0.5) * env_exp(int(0.2 * SR), 0.12)
     fx["music_wrong"] = tone_seq([72, 71, 70, 69, 68], "music_box", 0.18, 0.3)
 
+    # Rocko the cat: "mee-ow" = a harmonic tone whose pitch rises and falls while the vowel
+    # slides from a bright "ee" to a dark "ow"
+    def meow(sec, f_lo, f_hi, seed):
+        t = t_(sec)
+        k = t / sec
+        f0 = f_lo + (f_hi - f_lo) * np.sin(np.pi * np.minimum(k * 1.25, 1.0)) ** 1.3
+        f0 = f0 * (1 + 0.012 * np.sin(2 * np.pi * 6.5 * t))
+        ph = np.cumsum(f0) / SR
+        tone = S.saw_wave(ph) * 0.6 + S.square_wave(ph, 0.3) * 0.25
+        bright = bp(tone, 1700, 3600)
+        dark = bp(tone, 450, 1300)
+        mix = np.clip((k - 0.2) / 0.55, 0, 1)
+        x = bright * (1 - mix) * 1.3 + dark * mix + lp(noise(len(t)), 4000) * 0.03
+        env = np.minimum(1, t / 0.04) * np.minimum(1, (sec - t) / 0.18)
+        return x * env
+
+    fx["meow"] = meow(0.62, 520, 820, 1)
+    fx["meow_small"] = meow(0.38, 640, 900, 2)
+    t = t_(1.6)
+    rumble = lp(noise(len(t)), 260) * (0.5 + 0.5 * np.sin(2 * np.pi * 26 * t)) ** 2
+    breath = 0.35 + 0.65 * np.sin(np.pi * (t % 0.8) / 0.8) ** 2
+    fx["purr"] = rumble * breath * np.minimum(1, np.minimum(t, 1.6 - t) * 4)
+    t = t_(0.9)
+    fx["hiss"] = hp(noise(len(t)), 2600) * np.minimum(1, t / 0.05) * np.exp(-np.maximum(t - 0.35, 0) * 5)
+    # demon Rocko: the same meow two octaves down, growling and distorted
+    dm = meow(1.5, 120, 210, 3)
+    t = t_(1.5)
+    growl = 0.6 + 0.4 * np.sin(2 * np.pi * 31 * t)
+    dm = np.tanh(dm * growl * 6.0) + lp(noise(len(t)), 900) * 0.25 * np.minimum(1, np.minimum(t, 1.5 - t) * 3)
+    dm = np.asarray(S.reverb(dm, 0.35, 1.2))
+    if dm.ndim == 2:
+        dm = dm.mean(axis=0)
+    dm = dm[: int(2.1 * SR)]
+    fx["meow_demon"] = dm * np.minimum(1, (len(dm) - np.arange(len(dm))) / (0.3 * SR))
+
     for name, x in fx.items():
+        if only and name not in only:
+            continue
         x = np.asarray(x, dtype=np.float64)
         if len(x) == 0:
             continue

@@ -239,7 +239,7 @@ func paint() -> void:
 	bg = SKIES[stage]
 	if stage == 3:
 		for k in 40:
-			pen.draw_circle(Vector2(fmod(k * 197.0 - cam * 0.1, W + 40), fmod(k * 113.0, H)), 2, Color(1, 1, 1, 0.5))
+			Crayon.disc(pen, Vector2(fmod(k * 197.0 - cam * 0.1, W + 40), fmod(k * 113.0, H)), 2, Color(1, 1, 1, 0.5))
 	# distant blocky hills (parallax)
 	if stage < 3:
 		for k in 8:

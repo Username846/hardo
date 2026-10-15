@@ -2,6 +2,7 @@ extends Node
 ## Music (with cross-fades and lyric tracking), sound effects and narration voice.
 
 const SongData := preload("res://scripts/gen/song_data.gd")
+const VoiceIndex := preload("res://scripts/gen/voice_index.gd")
 const MUSIC_DB := -5.0
 const DUCK_DB := -11.0
 
@@ -15,6 +16,7 @@ var song := ""
 var song_pos := 0.0
 var _ducked := false
 var _cache := {}
+var _clock_us := 0
 
 
 func _ready() -> void:
@@ -84,6 +86,15 @@ func preload_sfx() -> void:
 			prepare(_load("res://assets/sfx/" + f))
 
 
+## Called by main once a new screen has been created. Decodes the narration a game will use
+## now, while the page-turn covers the screen; on the web a line is otherwise decoded when it
+## first plays, which is a small freeze in the middle of the game on slower phones.
+func end_screen_setup(script_path: String) -> void:
+	if script_path.begins_with("res://scripts/games/") and VoiceIndex.BY_SCRIPT.has(script_path):
+		for k: String in VoiceIndex.BY_SCRIPT[script_path]:
+			prepare(_load("res://assets/voice/%s.ogg" % k))
+
+
 func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool = true) -> void:
 	if name == song and _cur.playing:
 		return
@@ -102,12 +113,13 @@ func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool =
 	nxt.pitch_scale = 1.0
 	nxt.volume_db = -40.0 if fade > 0.0 else _target_db()
 	nxt.play(from)
-	var tw := create_tween().set_parallel(true)
-	if fade > 0.0:
-		tw.tween_property(nxt, "volume_db", _target_db(), fade)
-	if old.playing:
-		tw.tween_property(old, "volume_db", -60.0, maxf(fade, 0.05))
-		tw.chain().tween_callback(old.stop)
+	if fade > 0.0 or old.playing:
+		var tw := create_tween().set_parallel(true)
+		if fade > 0.0:
+			tw.tween_property(nxt, "volume_db", _target_db(), fade)
+		if old.playing:
+			tw.tween_property(old, "volume_db", -60.0, maxf(fade, 0.05))
+			tw.chain().tween_callback(old.stop)
 	_cur = nxt
 	song = name
 	song_pos = from
@@ -150,13 +162,40 @@ func duck(on: bool) -> void:
 		tw.tween_property(_cur, "volume_db", _target_db(), 0.25)
 
 
+var _pb_last := -1.0
+var _pb_at_us := 0
+
+
+## Where the music really is, in seconds. Accumulating frame times drifts: Godot caps the
+## frame time after a long hitch, so every stutter used to push the lyrics further behind.
+## The reported position only moves in steps (and in the browser it arrives a frame late
+## after a freeze), so it is carried forward by the time since it last changed.
+func _audio_pos() -> float:
+	var p := _cur.get_playback_position()
+	var now := Time.get_ticks_usec()
+	if p != _pb_last:
+		_pb_last = p
+		_pb_at_us = now
+	p += minf((now - _pb_at_us) * 0.000001, 1.0) * _cur.pitch_scale
+	return p - clampf(AudioServer.get_output_latency(), 0.0, 0.15)
+
+
 func _process(delta: float) -> void:
-	if _cur.playing and song != "":
-		song_pos += delta * _cur.pitch_scale
-		var l := song_length()
-		if l > 0.0 and song_pos >= l:
-			if (_cur.stream as AudioStreamOggVorbis).loop:
-				song_pos = fmod(song_pos, l)
+	var now := Time.get_ticks_usec()
+	var step := (now - _clock_us) * 0.000001 if _clock_us > 0 else delta
+	_clock_us = now
+	if not (_cur.playing and song != ""):
+		return
+	# move smoothly with the clock, then lean towards the real playback position
+	song_pos += clampf(step, 0.0, 0.25) * _cur.pitch_scale
+	var err := _audio_pos() - song_pos
+	if absf(err) > 0.12:
+		song_pos += err
+	else:
+		song_pos += err * minf(1.0, delta * 8.0)
+	var l := song_length()
+	if l > 0.0 and song_pos >= l and (_cur.stream as AudioStreamOggVorbis).loop:
+		song_pos = fmod(song_pos, l)
 
 
 var _lyric_lines := {}

@@ -159,8 +159,20 @@ func tick(dt: float) -> void:
 				if l < 60.0 and l > 0.01:
 					acc += away / l * (60.0 - l) * 6.0
 		acc += Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 60.0
+		var gate_mid := (GATE_Y0 + GATE_Y1) * 0.5
 		if sleepy:
-			acc += (Vector2(PEN.position.x + 60, (GATE_Y0 + GATE_Y1) * 0.5) - pos).normalized() * 220.0
+			# walk to the gate first, then in (not straight at the fence)
+			var goal := Vector2(PEN.position.x + 60, gate_mid)
+			if pos.x < PEN.position.x and (pos.y < GATE_Y0 + 15 or pos.y > GATE_Y1 - 15):
+				goal = Vector2(PEN.position.x - 50, gate_mid)
+			acc += (goal - pos).normalized() * 220.0
+		# sheep that end up beside the pen (above or below it) hop in instead of getting stuck
+		# in the corners
+		if pos.x > PEN.position.x - 10.0 and (pos.y < PEN.position.y or pos.y > PEN.end.y):
+			acc.y += signf(PEN.get_center().y - pos.y) * 260.0
+		# near the pen, sheep pushed towards it drift to the gate (like herding along a fence)
+		if pos.x < PEN.position.x and pos.x > PEN.position.x - 170 and pos.y > PEN.position.y - 70 and pos.y < PEN.end.y + 70 and vel.x > 15.0:
+			acc.y += clampf(gate_mid - pos.y, -70.0, 70.0) * 5.0
 		# soft field walls
 		if pos.x < FIELD.position.x + 40: acc.x += 400
 		if pos.x > FIELD.end.x - 40: acc.x -= 400
@@ -170,6 +182,14 @@ func tick(dt: float) -> void:
 		if vel.length() > 210.0:
 			vel = vel.normalized() * 210.0
 		var np := pos + vel * dt
+		# a sheep pushed into the fence slides along it towards the gate instead of getting stuck
+		if pos.x <= PEN.position.x and np.x > PEN.position.x - 8.0 and np.y > PEN.position.y - 14.0 and np.y < PEN.end.y + 14.0 \
+				and (np.y < GATE_Y0 + 8.0 or np.y > GATE_Y1 - 8.0):
+			var push := maxf(vel.x, 0.0)
+			np.x = minf(pos.x, PEN.position.x - 8.0)
+			vel.x = minf(vel.x, 0.0)
+			vel.y = signf(gate_mid - np.y) * maxf(absf(vel.y), maxf(push, 90.0))
+			np.y = pos.y + vel.y * dt
 		# pen walls (only the gate is open)
 		var inside_x := np.x > PEN.position.x and np.x < PEN.end.x
 		if inside_x and np.y > PEN.position.y and np.y < PEN.end.y:
@@ -266,8 +286,8 @@ func paint_top() -> void:
 
 
 func _glow_eyes(c: Vector2) -> void:
-	pen.draw_circle(c + Vector2(-9, 0), 5, Color(1, 0.9, 0.3))
-	pen.draw_circle(c + Vector2(9, 0), 5, Color(1, 0.9, 0.3))
+	Crayon.disc(pen, c + Vector2(-9, 0), 5, Color(1, 0.9, 0.3))
+	Crayon.disc(pen, c + Vector2(9, 0), 5, Color(1, 0.9, 0.3))
 
 
 func _pen() -> void:
@@ -304,7 +324,7 @@ func _sheep(p: Vector2, sd: int, hat: Color, vx: float) -> void:
 		Crayon.circle(pen, p + o + Vector2(0, -6), 18, Crayon.INK.lerp(Crayon.GREY, 0.3), 3, Crayon.WHITE, sd + 10 + k)
 	var head := p + Vector2(f * 34, -14)
 	Crayon.ellipse(pen, head, Vector2(14, 12), Crayon.INK, 3, Color(0.2, 0.18, 0.2), sd + 20)
-	pen.draw_circle(head + Vector2(f * 5, -3), 3, Crayon.WHITE)
+	Crayon.disc(pen, head + Vector2(f * 5, -3), 3, Crayon.WHITE)
 	Crayon.party_hat(pen, head + Vector2(0, -10), 12, hat, sd + 30, f * 0.3)
 
 

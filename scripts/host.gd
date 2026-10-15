@@ -16,8 +16,8 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, creep: float = 0.0, talki
 	Crayon.circle(ci, c + Vector2(r * 1.5, r * 0.1), r * 0.12, Crayon.INK, 3, Crayon.WHITE, s + 4)
 	Crayon.circle(ci, c, r, Crayon.INK, maxf(3.0, r * 0.06), body_col, s)
 	# rosy cheeks
-	ci.draw_circle(c + Vector2(-r * 0.55, r * 0.15), r * 0.13, Color(1, 0.4, 0.5, 0.45))
-	ci.draw_circle(c + Vector2(r * 0.55, r * 0.15), r * 0.13, Color(1, 0.4, 0.5, 0.45))
+	Crayon.disc(ci, c + Vector2(-r * 0.55, r * 0.15), r * 0.13, Color(1, 0.4, 0.5, 0.45))
+	Crayon.disc(ci, c + Vector2(r * 0.55, r * 0.15), r * 0.13, Color(1, 0.4, 0.5, 0.45))
 	# eyes (extra ones appear as creep rises)
 	var eye_r := r * 0.11
 	var blink := fmod(tm + s, 4.0) < 0.12

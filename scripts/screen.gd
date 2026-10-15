@@ -257,11 +257,13 @@ var _finish_t := 0.0
 var _finish_msg := ""
 
 
-## Marks this present as opened and shows the "back to the party" button.
+## Marks this present as opened and shows the "back to the party" button
+## (idx -1 = not one of the ten presents).
 func finish_game(idx: int, msg: String = "PRESENT DONE!") -> void:
 	if finished:
 		return
-	Game.complete(idx)
+	if idx >= 0:
+		Game.complete(idx)
 	finished = true
 	_finish_msg = msg
 	_finish_t = Time.get_ticks_msec() * 0.001

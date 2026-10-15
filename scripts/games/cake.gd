@@ -320,6 +320,6 @@ func _raisins(i: int, l: Dictionary, y: float) -> void:
 		if blink:
 			Crayon.line(pen, e - Vector2(8, 0), e + Vector2(8, 0), Crayon.BLACK, 3, sd + 60 + k, 0.3)
 		else:
-			pen.draw_circle(e, 9, Color(0.95, 0.92, 0.85))
+			Crayon.disc(pen, e, 9, Color(0.95, 0.92, 0.85))
 			var look := (Vector2(cur_x, HOVER_Y) - e).normalized()
-			pen.draw_circle(e + look * 4.0, 4.5, Crayon.BLACK)
+			Crayon.disc(pen, e + look * 4.0, 4.5, Crayon.BLACK)

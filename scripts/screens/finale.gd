@@ -57,8 +57,8 @@ func paint() -> void:
 		for i in 14:
 			var e := Vector2(80 + i * 85, 260 + sin(i * 2.3) * 120)
 			if fmod(t + i * 0.7, 3.5) > 0.2:
-				pen.draw_circle(e, 6, Color(1, 0.95, 0.5))
-				pen.draw_circle(e + Vector2(18, 0), 6, Color(1, 0.95, 0.5))
+				Crayon.disc(pen, e, 6, Color(1, 0.95, 0.5))
+				Crayon.disc(pen, e + Vector2(18, 0), 6, Color(1, 0.95, 0.5))
 		return
 	var a := clampf(light, 0, 1)
 	var floor_y := 560.0

@@ -3,7 +3,8 @@ extends CanvasLayer
 ## voice clip (tools/voices.py renders one clip per say() line found in the scripts).
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
-enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE }
+## CHUMBO and ROCKO are characters talking (the box shows their name).
+enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO }
 
 const BOX_W := 900.0
 
@@ -59,7 +60,7 @@ func show_line(text: String, mood: int, blocking: bool, ticket: Object) -> void:
 	_voice_len = Audio.play_voice("res://assets/voice/%s.ogg" % key_for(text, mood))
 	var n := maxf(1.0, text.length())
 	_cps = clampf(n / maxf(_voice_len * 0.85, 0.01), 18.0, 60.0) if _voice_len > 0.0 else 32.0
-	if _mood == DARK or _mood == WHISPER or _mood == CREEPY:
+	if _mood == DARK or _mood == WHISPER or _mood == CREEPY or _mood == ROCKO:
 		_cps = minf(_cps, 24.0) if _voice_len <= 0.0 else _cps
 	Audio.duck(true)
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP if blocking else Control.MOUSE_FILTER_IGNORE
@@ -115,7 +116,7 @@ func _process(delta: float) -> void:
 	if _voice_len <= 0.0 and int(_shown) != before:
 		_blip_acc += 1
 		if _blip_acc % 3 == 0 and _text.substr(int(_shown) - 1, 1) != " ":
-			var pitch: float = {CUTE: 1.0, DARK: 0.55, WHISPER: 0.7, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2}[_mood]
+			var pitch: float = {CUTE: 1.0, DARK: 0.55, WHISPER: 0.7, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45}[_mood]
 			Audio.sfx("blip" if _blip_acc % 2 == 0 else "blip2", -16.0, pitch * randf_range(0.9, 1.1))
 	if _shown >= _text.length() and _done_typing_at < 0.0:
 		_done_typing_at = _elapsed
@@ -161,6 +162,10 @@ func _style() -> Dictionary:
 			return {"bg": Color(0.18, 0.08, 0.22, 0.96), "ink": Color(0.95, 0.9, 1.0), "edge": Color(0.55, 0.2, 0.6), "wob": 1.9}
 		HYPE:
 			return {"bg": Color(0.2, 0.85, 1.0, 0.97), "ink": Color(0.1, 0.05, 0.3), "edge": Color(0.95, 0.2, 0.6), "wob": 1.0}
+		CHUMBO:
+			return {"bg": Color(0.82, 0.96, 0.78, 0.97), "ink": Crayon.INK, "edge": Color(0.2, 0.6, 0.25), "wob": 1.0, "name": "CHUMBO"}
+		ROCKO:
+			return {"bg": Color(0.12, 0.02, 0.03, 0.96), "ink": Color(1.0, 0.62, 0.15), "edge": Color(0.7, 0.08, 0.05), "wob": 2.0, "name": "ROCKO"}
 	return {"bg": Color(1.0, 0.95, 0.62, 0.97), "ink": Crayon.INK, "edge": Color(0.95, 0.55, 0.15), "wob": 1.0}
 
 
@@ -177,6 +182,11 @@ func _draw_panel() -> void:
 		var appear := clampf(_elapsed * 6.0, 0.0, 1.0)
 		r.position.y += (1.0 - appear) * (-40.0 if top else 40.0)
 		Crayon.rect(_panel, r, st.edge, 6, st.bg, 901)
+		if st.has("name"):
+			# name tag for characters who talk
+			var tag := Rect2(Vector2(r.position.x + 26, r.end.y - 16 if top else r.position.y - 24), Vector2(150, 40))
+			Crayon.rect(_panel, tag, st.edge, 4, st.edge.lightened(0.15), 905)
+			Crayon.text(_panel, tag.get_center(), st.name, 26, Crayon.WHITE, 1, 906, Crayon.title_font(), 0.3, false)
 		var left := int(_shown)
 		var shake := Crayon.shake
 		Crayon.shake = st.wob
@@ -260,6 +270,6 @@ func _draw_lyrics(vs: Vector2) -> void:
 
 
 func _note(p: Vector2, col: Color) -> void:
-	_panel.draw_circle(p + Vector2(-5, 8), 7, col)
+	Crayon.disc(_panel, p + Vector2(-5, 8), 7, col)
 	_panel.draw_line(p + Vector2(1, 8), p + Vector2(1, -14), col, 3.0)
 	_panel.draw_line(p + Vector2(1, -14), p + Vector2(10, -8), col, 3.0)

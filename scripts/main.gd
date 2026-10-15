@@ -65,6 +65,7 @@ func _open(screen: String, arg: Variant) -> void:
 	add_child(s)
 	move_child(s, 0)
 	_layout()
+	Audio.end_screen_setup(path)
 
 
 func _layout() -> void:

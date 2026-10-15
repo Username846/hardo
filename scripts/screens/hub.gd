@@ -2,6 +2,8 @@ extends Screen
 ## The party room. Ten presents, one per game. The room gets... a little different
 ## every time you come back.
 
+const Rocko := preload("res://scripts/games/rocko.gd")
+
 var LINES := [
 	["Everyone brought you a present! Ten presents, all for you! Start with number one!", Narrator.CUTE],
 	["Wow, you're so good at birthdays! Open the next one!", Narrator.CUTE],
@@ -73,6 +75,8 @@ func _talk() -> void:
 			Game.hub_lines_heard = 11
 			Game.save_game()
 			await say("Happy birthday, Chumbo. See you tomorrow. It's your birthday tomorrow, too.", Narrator.DARK)
+		if not Game.secret_done:
+			say_bg("Psst. Chumbo. Tap the cake.", Narrator.WHISPER)
 		else:
 			say_bg("Pick any present you like. They're all yours. Forever.")
 		return
@@ -109,6 +113,10 @@ func press(pos: Vector2) -> void:
 		if _present_rect(i).grow(12).has_point(pos):
 			_open_present(i)
 			return
+	# after the credits the cake hides a secret
+	if Game.finale_seen and Rect2(515, 100, 250, 310).has_point(pos):
+		_open_secret()
+		return
 	# poking guests is allowed
 	for g in guests:
 		if absf(pos.x - g.x) < 30 and pos.y > g.y - g.h and pos.y < g.y:
@@ -133,6 +141,16 @@ func _open_present(i: int) -> void:
 	confetti_burst(_present_rect(i).get_center(), 50)
 	await wait(0.9)
 	Game.play_game(i)
+
+
+func _open_secret() -> void:
+	opening = 99
+	locked = true
+	Audio.sfx("giggle_low", -2)
+	Audio.sfx("pop")
+	confetti_burst(Vector2(640, 300), 40)
+	await wait(0.8)
+	Game.goto("rocko")
 
 
 func tick(dt: float) -> void:
@@ -162,7 +180,7 @@ func paint_back() -> void:
 	# wallpaper dots
 	for i in 24:
 		var dp := Vector2(fmod(i * 197.0, W), 150 + fmod(i * 71.0, 330))
-		pen.draw_circle(dp, 4, wall.darkened(0.12))
+		Crayon.disc(pen, dp, 4, wall.darkened(0.12))
 	_window()
 	_banner()
 	_calendar()
@@ -213,8 +231,8 @@ func paint() -> void:
 			var hr: float = g.h * 0.13
 			for sx in [-1, 1]:
 				var e: Vector2 = head + Vector2(sx * hr * 0.32, -hr * 0.12)
-				pen.draw_circle(e, hr * 0.17, Crayon.WHITE)
-				pen.draw_circle(e + look * hr * 0.07, hr * 0.09, Crayon.INK)
+				Crayon.disc(pen, e, hr * 0.17, Crayon.WHITE)
+				Crayon.disc(pen, e + look * hr * 0.07, hr * 0.09, Crayon.INK)
 	if p < 6:
 		if p < 3:
 			Crayon.cake(pen, Vector2(640, 400), 230, 110 + p * 4, Crayon.PINK, 5 + p, false, 23)
@@ -225,6 +243,13 @@ func paint() -> void:
 		Crayon.cake(pen, Vector2(0, 0), 230, 110 + p * 4, Crayon.PINK.lerp(Color(0.55, 0.25, 0.3), dark * 0.6), 5 + p, true, 23)
 		pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		Crayon.face(pen, Vector2(640, 340), 34, "wide" if p >= 8 else "blank", (mouse - Vector2(640, 340)).normalized(), 24)
+	if Game.finale_seen:
+		var bob := absf(sin(t * 3.0)) * 10.0
+		Crayon.text(pen, Vector2(640, 138 - bob), "???", 60, Crayon.YELLOW if not Game.secret_done else Crayon.GREEN, 1, 4447, Crayon.title_font())
+		if Game.secret_done:
+			# Rocko came to the party too
+			Rocko.draw_cat(pen, Vector2(830, 400), 0.8, -1.0, "sit", 0.0, t)
+			Crayon.party_hat(pen, Vector2(823, 320), 12, Crayon.GREEN, 4448, -0.2)
 	# balloons tied to the table
 	var cols := [Crayon.RED, Crayon.BLUE, Crayon.YELLOW, Crayon.GREEN]
 	for i in 4:
@@ -238,8 +263,8 @@ func paint() -> void:
 		for i in mini(p - 6, 4):
 			var e := r.position + Vector2(40 + i * 45, 150 - i * 20)
 			if fmod(t + i * 1.7, 3.0) >= 0.15:
-				pen.draw_circle(e, 5, Color(1, 0.95, 0.4))
-				pen.draw_circle(e + Vector2(14, 0), 5, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, e, 5, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, e + Vector2(14, 0), 5, Color(1, 0.95, 0.4))
 	for i in Game.GAMES.size():
 		if _animated_present(i):
 			_present(i)

@@ -97,7 +97,7 @@ def main():
         build_music(only)
     if what in ("all", "sfx"):
         import sfx
-        sfx.build(os.path.join(ROOT, "assets", "sfx"))
+        sfx.build(os.path.join(ROOT, "assets", "sfx"), set(sys.argv[2:]) or None)
     if what in ("all", "voice"):
         import voices
         voices.build(ROOT)

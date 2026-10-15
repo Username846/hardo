@@ -503,6 +503,47 @@ SONGS.append(dict(
               fx=dict(wow=0.007, lowpass=3500, crackle=0.03, reverb=0.55)),
 ))
 
+# ---------------------------------------------------------------- SECRET: Rocko (cozy couch -> chase)
+SONGS.append(dict(
+    id="rocko", title="Oh Hi Rocko", bpm=96, key=62, beats=4, scale="major",
+    voice="lady", voice2="guy", vocal_oct=0,
+    sections=dict(
+        verse=dict(
+            melody="3 3 4 5 | 5 4 3:2 | 2 2 3 4 | 4 3 2:2 | 3 3 4 5 | 1' 7 6:2 | 5 4 3 2 | 3 2 1:2",
+            chords="I | I | V | V | I | IV | V | I",
+            lyrics="Couch is com-fy, phone is off, / par-ty's{teez} o-ver, time to doze. / "
+                   "Here comes Rock-o, soft and fluff, / pur-ring right up to my nose.",
+            dark="Couch is emp-ty, phone is on. / Par-ty's{teez} call-ing, Chum-bo, dear. / "
+                 "Here comes Rock-o, teeth and claws. / Rock-o wants you back in here.",
+        ),
+        chorus=dict(
+            melody="5 3 5 3 | 6 5 4 3 | 2 3 4 2 | 3 2 1:2 | 5 3 5 3 | 1' 7 6 5 | 4 4 3 2 | 2 3 1:2",
+            chords="I | IV | ii | V:2 I:2 | I | IV | ii | V:2 I:2",
+            lyrics="Oh hi, Rock-o, oh hi, Rock-o, / fuz-zy lit-tle friend of mine! / "
+                   "Oh hi, Rock-o, pur-ry Rock-o, / ev-ery-thing is feel-ing fine!",
+            dark="Oh no, Rock-o! Oh no, Rock-o! / Big-ger teeth than yes-ter-day. / "
+                 "Run, run, Chum-bo! Run, run, Chum-bo! / Back to par-ty, back to stay.",
+        ),
+    ),
+    form=STD_FORM,
+    parts=[
+        P("lead", "kalimba", "melody", sections=["intro", "break"], vol=-14, oct=1),
+        P("bells", "celesta", "melody", sections=["chorus"], vol=-25, oct=2, pan=0.3),
+        P("guitar", "nylon", "strum", pattern="x..x..x.x..x..x.", oct=0, vol=-20, pan=-0.25),
+        P("bass", "upright", "bass", pattern="R...5...", oct=-2, vol=-17),
+        P("drums", None, "drums", kit=dict(kick="x.......x.......", brush="x.x.x.x.x.x.x.x.",
+                                            rim="....x.......x..."), vol=-21),
+    ],
+    dark=dict(scale="phrygian", bpm_mul=1.4, voice="croak", voice2="deep", detune=20,
+              drop=["lead", "bells", "guitar", "drums"],
+              add=[P("ther", "theremin", "melody", sections=["intro", "break"], vol=-15, oct=1),
+                   P("clav", "clav", "strum", pattern="x.x.x.x.x.x.x.x.", oct=0, vol=-22, pan=-0.3),
+                   P("organ", "organ", "pad", oct=0, vol=-26, pan=0.3),
+                   P("drums", None, "drums", kit=dict(kick="x...x...x...x...", timpani="x.......x.......",
+                                                       hat="xxxxxxxxxxxxxxxx", heart="..x.......x....."), vol=-18)],
+              fx=dict(wow=0.003, lowpass=5200, reverb=0.35)),
+))
+
 # Phonetic spellings for syllable fragments espeak would otherwise misread.
 PHONETIC = {
     "chum": "chum", "bo": "boh", "bo!": "boh", "py": "pee", "dy": "dee", "ry": "ree", "ty": "tee",

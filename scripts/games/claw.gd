@@ -243,8 +243,8 @@ func paint() -> void:
 	for k in 14:
 		var lp := Vector2(80 + k * 90, 40)
 		var on := int(t * 4.0 + k) % 3 == 0
-		pen.draw_circle(lp, 11, Crayon.INK)
-		pen.draw_circle(lp, 8, Crayon.RAINBOW[k % 7] if on else Crayon.GREY)
+		Crayon.disc(pen, lp, 11, Crayon.INK)
+		Crayon.disc(pen, lp, 8, Crayon.RAINBOW[k % 7] if on else Crayon.GREY)
 	# prizes
 	for pr in prizes:
 		if not held.has(pr):

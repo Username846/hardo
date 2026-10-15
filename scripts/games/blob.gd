@@ -324,7 +324,7 @@ func _blob() -> void:
 		var wob := 1.0 + sin(a * 3.0 + t * 3.0) * 0.04 + sin(a * 5.0 - t * 2.0) * 0.03
 		pts.append(c + Vector2(cos(a) * r * (1.0 + sq) * wob, sin(a) * r * (0.85 - sq) * wob))
 	Crayon.poly(pen, pts, Crayon.INK, maxf(5.0, r * 0.03), col, 100)
-	pen.draw_circle(c + Vector2(-r * 0.4, -r * 0.45), r * 0.12, Color(1, 1, 1, 0.35))
+	Crayon.disc(pen, c + Vector2(-r * 0.4, -r * 0.45), r * 0.12, Color(1, 1, 1, 0.35))
 	var look := (mouse - c).normalized()
 	var mood := "happy"
 	if stage == 3:
@@ -338,8 +338,8 @@ func _blob() -> void:
 			var e := c + Vector2(-r * 0.55 + i * r * 0.22, -r * 0.6 + (i % 2) * r * 0.1)
 			if stage == 3:
 				e = c + Vector2(-r * 0.6 + i * r * 1.2, -r * 0.55)
-			pen.draw_circle(e, r * 0.07, Crayon.WHITE)
-			pen.draw_circle(e + look * r * 0.025, r * 0.035, Crayon.BLACK)
+			Crayon.disc(pen, e, r * 0.07, Crayon.WHITE)
+			Crayon.disc(pen, e + look * r * 0.025, r * 0.035, Crayon.BLACK)
 	if stage >= 1 and stage <= 2:
 		Crayon.party_hat(pen, c + Vector2(r * 0.1, -r * 0.8), r * 0.4, Crayon.YELLOW, 102, 0.2)
 	if stage == 1:
@@ -347,5 +347,5 @@ func _blob() -> void:
 
 
 func ci_blush(c: Vector2, r: float) -> void:
-	pen.draw_circle(c + Vector2(-r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
-	pen.draw_circle(c + Vector2(r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
+	Crayon.disc(pen, c + Vector2(-r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
+	Crayon.disc(pen, c + Vector2(r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))

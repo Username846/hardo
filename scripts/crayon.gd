@@ -83,20 +83,64 @@ static func _seed(s: int) -> int:
 	return s * 131 + _b * 977
 
 
+## Polyline -> separate segments for draw_multiline. Godot batches multiline segments into a
+## handful of draw calls, while every draw_polyline/draw_circle makes (and frees) its own GPU
+## buffer each frame, which is what made busy screens stutter in the browser.
+## Opaque segments overlap a little so the joints don't show notches.
+static func _segs(pts: PackedVector2Array, ext: float) -> PackedVector2Array:
+	var n := pts.size()
+	var out := PackedVector2Array()
+	out.resize((n - 1) * 2)
+	for i in n - 1:
+		var a := pts[i]
+		var b := pts[i + 1]
+		if ext > 0.0:
+			var d := b - a
+			var l := d.length()
+			if l > 0.001:
+				d *= ext / l
+				if i > 0:
+					a -= d
+				if i < n - 2:
+					b += d
+		out[i * 2] = a
+		out[i * 2 + 1] = b
+	return out
+
+
 static func _stroke(ci: CanvasItem, pts: PackedVector2Array, col: Color, w: float, s: int) -> void:
-	ci.draw_polyline(pts, col, w, true)
-	if w < 3.5:
+	if pts.size() < 2:
 		return
+	var segs: PackedVector2Array
+	if _frozen:
+		# drawn once into a static layer: smooth antialiased line, cost doesn't matter
+		ci.draw_polyline(pts, col, w, true)
+		if w < 3.5:
+			return
+		segs = _segs(pts, 0.0)
+	else:
+		# drawn every frame: batched flat segments with a faint wider edge to soften them
+		# (Godot's antialiased lines are slow to draw in the browser)
+		segs = _segs(pts, w * 0.3 if col.a > 0.99 else 0.0)
+		var soft := col
+		soft.a *= 0.4
+		ci.draw_multiline(segs, soft, w + 1.6, false)
+		ci.draw_multiline(segs, col, w, false)
+		if w < 3.5:
+			return
 	# waxy second pass slightly off the first one
 	var c2 := col.lightened(0.25)
 	c2.a *= 0.45
 	var off := Vector2(_tab[(s + 3) & TAB_MASK], _tab[(s + 7922) & TAB_MASK]) * (w * 0.35)
-	var n := pts.size()
-	var pts2 := PackedVector2Array()
-	pts2.resize(n)
-	for i in n:
-		pts2[i] = pts[i] + off
-	ci.draw_polyline(pts2, c2, w * 0.45, false)
+	for i in segs.size():
+		segs[i] += off
+	ci.draw_multiline(segs, c2, w * 0.45, false)
+
+
+## Thin, flat (not antialiased) zig-zag used for colouring-in.
+static func _hatch(ci: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
+	if pts.size() >= 2:
+		ci.draw_multiline(_segs(pts, 0.0), col, 3.0, false)
 
 
 static func line(ci: CanvasItem, a: Vector2, b: Vector2, col: Color = INK, w: float = 5.0, s: int = 0, wob: float = 1.0) -> void:
@@ -161,15 +205,19 @@ static func poly(ci: CanvasItem, pts: PackedVector2Array, col: Color = INK, w: f
 					_fill_cache.clear()
 				_fill_cache[key] = entry
 			if entry[0]:
-				ci.draw_colored_polygon(fp, fill)
+				if n <= 8 and _is_convex(fp):
+					_fan(ci, fp, fill)
+				else:
+					ci.draw_colored_polygon(fp, fill)
 				var hc := fill.darkened(0.18)
-				hc.a *= 0.5
-				for seg: PackedVector2Array in entry[1]:
+				hc.a *= 0.32
+				var hs: PackedVector2Array = entry[1]
+				if hs.size() >= 2:
 					var moved := PackedVector2Array()
-					moved.resize(seg.size())
-					for j in seg.size():
-						moved[j] = seg[j] + lo
-					ci.draw_polyline(moved, hc, 3.0, false)
+					moved.resize(hs.size())
+					for j in hs.size():
+						moved[j] = hs[j] + lo
+					ci.draw_multiline(moved, hc, 3.0, false)
 	if col.a <= 0.0:
 		return
 	if n > 8:
@@ -184,14 +232,43 @@ static func poly(ci: CanvasItem, pts: PackedVector2Array, col: Color = INK, w: f
 		line(ci, pts[i], pts[(i + 1) % n], col, w, s + i * 13)
 
 
-## [valid, hatch segments relative to the bounding box corner]
+static func _is_convex(fp: PackedVector2Array) -> bool:
+	var n := fp.size()
+	var sgn := 0.0
+	for i in n:
+		var a := fp[i]
+		var b := fp[(i + 1) % n]
+		var c := fp[(i + 2) % n]
+		var cr := (b - a).cross(c - b)
+		if absf(cr) < 0.0001:
+			continue
+		if sgn == 0.0:
+			sgn = signf(cr)
+		elif signf(cr) != sgn:
+			return false
+	return true
+
+
+## Convex polygon fill as batched quads/triangles (a fan from the first point).
+static func _fan(ci: CanvasItem, fp: PackedVector2Array, col: Color) -> void:
+	var n := fp.size()
+	var no_uv := PackedVector2Array()
+	var i := 1
+	while i + 2 < n:
+		ci.draw_primitive(PackedVector2Array([fp[0], fp[i], fp[i + 1], fp[i + 2]]), PackedColorArray([col, col, col, col]), no_uv)
+		i += 2
+	if i + 1 < n:
+		ci.draw_primitive(PackedVector2Array([fp[0], fp[i], fp[i + 1]]), PackedColorArray([col, col, col]), no_uv)
+
+
+## [valid, hatch segment pairs (for draw_multiline) relative to the bounding box corner]
 static func _make_fill_entry(fp: PackedVector2Array, lo: Vector2, s: int) -> Array:
 	if Geometry2D.triangulate_polygon(fp).is_empty():
 		return [false, []]
 	var r := Rect2(lo, Vector2.ZERO)
 	for p in fp:
 		r = r.expand(p)
-	var segs: Array = []
+	var segs := PackedVector2Array()
 	if r.size.x >= 12 and r.size.y >= 12:
 		var zig := PackedVector2Array()
 		var step := clampf(r.size.y / 7.0, 9.0, 22.0)
@@ -206,11 +283,10 @@ static func _make_fill_entry(fp: PackedVector2Array, lo: Vector2, s: int) -> Arr
 			flip = not flip
 			y += step
 			sd += 2
-		for seg in Geometry2D.intersect_polyline_with_polygon(zig, fp):
-			var rel := PackedVector2Array()
-			for p in seg:
-				rel.append(p - lo)
-			segs.append(rel)
+		for seg: PackedVector2Array in Geometry2D.intersect_polyline_with_polygon(zig, fp):
+			for j in seg.size() - 1:
+				segs.append(seg[j] - lo)
+				segs.append(seg[j + 1] - lo)
 	return [true, segs]
 
 
@@ -234,9 +310,8 @@ static func rect(ci: CanvasItem, r: Rect2, col: Color = INK, w: float = 5.0, fil
 				y += step
 				sd += 1
 			var c := fill.darkened(0.15)
-			c.a *= 0.45
-			if zig.size() >= 2:
-				ci.draw_polyline(zig, c, 3.0, false)
+			c.a *= 0.28
+			_hatch(ci, zig, c)
 	var a := r.position
 	var b := Vector2(r.end.x, r.position.y)
 	var c2 := r.end
@@ -255,15 +330,7 @@ static func ellipse(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color = INK, 
 	var n := clampi(int((rad.x + rad.y) * 0.2), 10, 32)
 	if fill.a > 0.0:
 		var off := jit(s * 7 + 5, minf(rad.x, rad.y) * 0.06 + 1.5)
-		if is_equal_approx(rad.x, rad.y):
-			ci.draw_circle(c + off, rad.x, fill)
-		else:
-			var fp := PackedVector2Array()
-			fp.resize(n)
-			for i in n:
-				var a := TAU * i / n
-				fp[i] = c + off + Vector2(cos(a) * rad.x, sin(a) * rad.y)
-			ci.draw_colored_polygon(fp, fill)
+		oval(ci, c + off, rad, fill)
 		if rad.x >= 8 and rad.y >= 8:
 			_hatch_ellipse(ci, c + off, rad, fill.darkened(0.18), s)
 	if col.a <= 0.0 or w <= 0.0:
@@ -295,12 +362,52 @@ static func _hatch_ellipse(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color,
 		zig[i * 2] = Vector2(c.x - half * sgn, y + _tab[(s + i) & TAB_MASK] * 2)
 		zig[i * 2 + 1] = Vector2(c.x + half * sgn, y + _tab[(s + i + 50) & TAB_MASK] * 2)
 	var cc := col
-	cc.a *= 0.45
-	ci.draw_polyline(zig, cc, 3.0, false)
+	cc.a *= 0.28
+	_hatch(ci, zig, cc)
 
 
 static func dot(ci: CanvasItem, c: Vector2, r: float, col: Color = INK) -> void:
-	ci.draw_circle(c + jit(_seed(int(c.x * 3 + c.y)), 0.8), r, col)
+	disc(ci, c + jit(_seed(int(c.x * 3 + c.y)), 0.8), r, col)
+
+
+static var _discs: Array[Texture2D] = []
+const DISC_SIZES := [16, 48, 128, 384]
+
+
+## Smooth white circle textures. A circle drawn as a texture is batched with its neighbours;
+## draw_circle() costs a draw call and a fresh GPU buffer every time.
+static func _disc_tex(r: float) -> Texture2D:
+	if _discs.is_empty():
+		for sz: int in DISC_SIZES:
+			# radial gradient: solid white, fading out over the last ~1.5 pixels
+			var edge := clampf(3.0 / sz, 0.0, 0.5)
+			var g := Gradient.new()
+			g.offsets = PackedFloat32Array([0.0, 1.0 - edge, 1.0])
+			g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+			var tex := GradientTexture2D.new()
+			tex.gradient = g
+			tex.width = sz
+			tex.height = sz
+			tex.fill = GradientTexture2D.FILL_RADIAL
+			tex.fill_from = Vector2(0.5, 0.5)
+			tex.fill_to = Vector2(1.0, 0.5)
+			tex.get_image()  # builds it now instead of next frame
+			_discs.append(tex)
+	for i in DISC_SIZES.size():
+		if DISC_SIZES[i] * 0.5 >= r * 0.8:
+			return _discs[i]
+	return _discs[_discs.size() - 1]
+
+
+## Filled circle (cheap; use instead of draw_circle).
+static func disc(ci: CanvasItem, c: Vector2, r: float, col: Color) -> void:
+	if r > 0.0:
+		ci.draw_texture_rect(_disc_tex(r), Rect2(c.x - r, c.y - r, r * 2.0, r * 2.0), false, col)
+
+
+## Filled ellipse (cheap).
+static func oval(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color) -> void:
+	ci.draw_texture_rect(_disc_tex(maxf(rad.x, rad.y)), Rect2(c - rad, rad * 2.0), false, col)
 
 
 static func _adv(font: Font, ch: int, size: int) -> float:
@@ -525,7 +632,7 @@ static func balloon(ci: CanvasItem, c: Vector2, r: float, col: Color, string_len
 		pts.append(bottom + Vector2(sin(f * 9.0 + Time.get_ticks_msec() * 0.002) * 6, f * string_len))
 	path(ci, pts, INK, 2.5, s + 2)
 	ellipse(ci, c, rad, INK, 4, col, s)
-	ci.draw_circle(c + Vector2(-rad.x * 0.35, -rad.y * 0.4), r * 0.15, Color(1, 1, 1, 0.6))
+	disc(ci, c + Vector2(-rad.x * 0.35, -rad.y * 0.4), r * 0.15, Color(1, 1, 1, 0.6))
 	poly(ci, PackedVector2Array([bottom + Vector2(-6, 8), bottom + Vector2(0, -2), bottom + Vector2(6, 8)]), INK, 2, col, s + 4)
 
 

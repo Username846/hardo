@@ -26,6 +26,8 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | 9 | Lights Out! | flashlight hide-and-seek | pizzicato lullaby |
 | 10 | Karaoke! | sing-along rhythm | disco |
 
+**Secret (spoilers):** after the credits, the cake on the party table shows **???**. Tap it. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
+
 Every game has its own song with sung lyrics, plus a darker version of the song for when things get weird. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
 
 Progress is saved in the browser, so he can stop and come back later.
@@ -56,10 +58,11 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   python3 tools/build_audio.py          # everything
   python3 tools/build_audio.py music    # just the songs (tools/songs.py has melodies + lyrics)
   python3 tools/build_audio.py voice    # narration: re-run after changing any say("...") line
+  python3 tools/build_audio.py sfx meow # just some sound effects (tools/sfx.py)
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
-- **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate and drawing time every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed):
+- **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=rocko` plays the secret game, `--bot=sheepfence` checks that sheep pushed against the fence find the gate, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes):
   ```sh
   godot --headless --path . -- --bot=all
   ```

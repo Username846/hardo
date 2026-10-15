@@ -324,8 +324,8 @@ func _overworld() -> void:
 			var gp := _tuft(k)
 			var h := 26.0 + fmod(k * 13.0, 40.0)
 			if fmod(t + k, 5.0) > 4.4:
-				pen.draw_circle(gp + Vector2(-6, -h * 0.6), 4, Color(1, 0.95, 0.4))
-				pen.draw_circle(gp + Vector2(6, -h * 0.6), 4, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, gp + Vector2(-6, -h * 0.6), 4, Color(1, 0.95, 0.4))
+				Crayon.disc(pen, gp + Vector2(6, -h * 0.6), 4, Color(1, 0.95, 0.4))
 	# trainer
 	var p := me
 	var bob := absf(sin(t * 10.0)) * 4.0 if me.distance_to(me_target) > 4.0 else 0.0
@@ -428,6 +428,6 @@ func _creature(kind: String, p: Vector2, s: float) -> void:
 			Crayon.face(pen, p + Vector2(0, 10), 70, "wide", Vector2(-1, 0.2), 105, Color(0.95, 0.95, 0.9))
 			for k in 4:
 				var e := p + Vector2(-50 + k * 33, -50 - (k % 2) * 14)
-				pen.draw_circle(e, 8, Color(0.95, 0.95, 0.9))
-				pen.draw_circle(e + Vector2(-2, 1), 4, Crayon.BLACK)
+				Crayon.disc(pen, e, 8, Color(0.95, 0.95, 0.9))
+				Crayon.disc(pen, e + Vector2(-2, 1), 4, Crayon.BLACK)
 			Crayon.party_hat(pen, p + Vector2(10, -80), 26, Crayon.BLACK, 106, 0.3)

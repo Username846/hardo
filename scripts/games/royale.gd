@@ -271,8 +271,8 @@ func paint() -> void:
 	if phase == "final" or (phase == "win" and eyes > 0):
 		var e := Vector2(1090, 210)
 		var a := eyes
-		pen.draw_circle(e, 10, Color(1, 0.95, 0.4, a))
-		pen.draw_circle(e + Vector2(36, 0), 10, Color(1, 0.95, 0.4, a))
+		Crayon.disc(pen, e, 10, Color(1, 0.95, 0.4, a))
+		Crayon.disc(pen, e + Vector2(36, 0), 10, Color(1, 0.95, 0.4, a))
 		Crayon.face(pen, e + Vector2(18, 26), 34, "wide", Vector2.ZERO, 62, Color(1, 1, 1, a))
 	if hurt > 0.0:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.3, 0.6, 1.0, hurt * 0.25))

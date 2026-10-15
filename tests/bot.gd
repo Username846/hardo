@@ -12,6 +12,7 @@ var results := {}
 var profile := false
 var shot_dir := ""
 var shot_every := 0
+var realtime := false
 
 
 func _ready() -> void:
@@ -23,9 +24,12 @@ func _ready() -> void:
 			DirAccess.make_dir_recursive_absolute(shot_dir)
 		elif a == "--profile" or a == "--profile=":
 			profile = true
+		elif a == "--realtime" or a == "--realtime=":
+			realtime = true
+			Perf.enabled = true
 		elif a.begins_with("--every="):
 			shot_every = int(a.substr(8))
-	Engine.time_scale = 1.0 if profile else 4.0
+	Engine.time_scale = 1.0 if profile or realtime else 4.0
 	await get_tree().create_timer(0.5).timeout
 	if profile:
 		Perf.enabled = true
@@ -48,6 +52,23 @@ func _ready() -> void:
 		idxs = range(10)
 	elif which != "name":
 		idxs = [int(which)]
+	if which == "syncprobe":
+		await _sync_probe()
+		get_tree().quit()
+		return
+	if which == "rockoshots":
+		await _rocko_shots()
+		get_tree().quit()
+		return
+	if which == "rocko":
+		await _rocko()
+		print("BOT RESULTS ", results)
+		get_tree().quit()
+		return
+	if which == "sheepfence":
+		await _sheep_fence()
+		get_tree().quit()
+		return
 	if which == "name" or which == "all":
 		await _name_flow()
 	if which != "name":
@@ -65,7 +86,7 @@ func _play(i: int) -> void:
 	tmr = 0.0
 	stuck = 0.0
 	var t0 := Time.get_ticks_msec()
-	var limit := 12500 if profile else 150000
+	var limit := 12500 if profile else (400000 if realtime else 150000)
 	while Time.get_ticks_msec() - t0 < limit:
 		await get_tree().process_frame
 		if Narrator.is_active() and Narrator._blocking and Narrator._elapsed > 0.4:
@@ -87,6 +108,190 @@ func _play(i: int) -> void:
 	results[Game.GAMES[i].id] = ok
 	print("BOT GAME ", i, " ", Game.GAMES[i].id, " done=", ok, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
 	await get_tree().create_timer(1.0).timeout
+
+
+## The secret game: close the phone, pet Rocko, survive the chase, knock on the door.
+func _rocko() -> void:
+	Game.finale_seen = true
+	Game.secret_done = false
+	Game.main._open("rocko", null)
+	g = Game.main.current
+	var t0 := Time.get_ticks_msec()
+	var last_gap := 3
+	var hits := 0
+	var shots := {}
+	tmr = 0.0
+	while is_instance_valid(g) and not g.finished and Time.get_ticks_msec() - t0 < 400000:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		tmr += dt
+		_skip_narration()
+		var ph: String = g.phase
+		var key := ph
+		if ph == "chase":
+			key = "chase%d" % int(g.dist / 12.0)
+		elif ph == "turn" and g.demon > 0.9:
+			key = "turn_demon"
+		if not shots.has(key):
+			shots[key] = Time.get_ticks_msec()
+		elif shots[key] > 0 and Time.get_ticks_msec() - shots[key] > 900:
+			shots[key] = -1
+			await _snap("rocko_" + key)
+		if shot_dir != "" and shots.get(key, 0) != -1 and not ph.begins_with("chase"):
+			continue
+		match ph:
+			"phone":
+				if not g.locked:
+					g.press(g._x_rect().get_center())
+			"pets":
+				if not g.locked and tmr > 0.35:
+					tmr = 0.0
+					g.press(g._cat_rect().get_center())
+			"chase", "chase_intro":
+				_dodge()
+			"knock":
+				if not g.locked:
+					g.press(g._house_door().get_center())
+		if g.gap < last_gap:
+			hits += 1
+		last_gap = g.gap
+		if Engine.get_process_frames() % 300 == 0:
+			print("  dbg rocko phase=", ph, " dist=", snappedf(g.dist, 0.1), " gap=", g.gap, " lane=", g.lane, " obstacles=", g.obstacles.size())
+	results["rocko"] = Game.secret_done
+	print("ROCKO hits=", hits, " secret_done=", Game.secret_done, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
+	if is_instance_valid(g):
+		await get_tree().create_timer(1.0).timeout
+		await _snap("rocko_done")
+
+
+## Party room music with a forced 450 ms freeze every 3 seconds: the lyric clock must stay
+## on the real playback position.
+func _sync_probe() -> void:
+	Game.done.fill(false)
+	Game.hub_lines_heard = 99
+	Game.main._open("hub", null)
+	var t0 := Time.get_ticks_msec()
+	var worst := 0.0
+	while Time.get_ticks_msec() - t0 < 30000:
+		await get_tree().create_timer(3.0).timeout
+		OS.delay_msec(450)
+		# compare within the same frame, after Audio has updated its clock
+		await get_tree().process_frame
+		await RenderingServer.frame_pre_draw
+		var real: float = Audio._audio_pos()
+		var err: float = Audio.song_pos - real
+		worst = maxf(worst, absf(err))
+		print("SYNC song_pos=%.3f audio=%.3f diff=%.3f" % [Audio.song_pos, real, err])
+	print("SYNC worst diff=%.3f" % worst)
+
+
+## Still pictures of the secret game's big moments (for checking the drawings).
+func _rocko_shots() -> void:
+	Game.main._open("rocko", null)
+	g = Game.main.current
+	await get_tree().create_timer(1.0).timeout
+	Narrator.cancel()
+	g.phase = "phone"
+	g.phone_k = 1.0
+	await get_tree().create_timer(0.5).timeout
+	await _snap("rs_phone")
+	g.phone_k = 0.0
+	g.phase = "turn"
+	g.cat_pos = g.CAT_SEAT
+	g.cat_pose = "sit"
+	g.demon = 1.0
+	g.grow = 2.1
+	g.lamp = 0.2
+	g.me_mood = "o"
+	await get_tree().create_timer(0.5).timeout
+	await _snap("rs_demon")
+	g.bubble = ""
+	g._start_chase()
+	g.phase = "chase"
+	g.dist = 30.0
+	g.party_tile = 0
+	g.gap = 1
+	await get_tree().create_timer(2.0).timeout
+	await _snap("rs_chase_close")
+	Game.done.fill(true)
+	Game.finale_seen = true
+	Game.hub_lines_heard = 11
+	for sd in [false, true]:
+		Game.secret_done = sd
+		Game.main._open("hub", null)
+		await get_tree().create_timer(1.5).timeout
+		await _snap("rs_hub_secret%d" % int(sd))
+
+
+func _dodge() -> void:
+	var danger := [false, false, false]
+	for o in g.obstacles:
+		if o.hit:
+			continue
+		var dx: float = float(o.x) - g.ME_X
+		if dx > -55.0 and dx < 240.0:
+			danger[int(o.lane)] = true
+	for th in g.throws:
+		danger[int(th.lane)] = true
+	if not danger[g.lane]:
+		return
+	for d in [-1, 1]:
+		var nl: int = g.lane + d
+		if nl >= 0 and nl <= 2 and not danger[nl]:
+			g._move(d)
+			return
+	for d in [-2, 2]:
+		var nl: int = g.lane + d
+		if nl >= 0 and nl <= 2 and not danger[nl]:
+			g._move(signi(d))
+			return
+
+
+## Sheep pinned against the pen fence (above and below the gate) with the puppy pushing
+## them straight at it: they should still find the gate.
+func _sheep_fence() -> void:
+	Game.main._open("game", 1)
+	var sg: Node = Game.main.current
+	await get_tree().process_frame
+	for k in 4:
+		var t0 := Time.get_ticks_msec()
+		while sg.sheep.size() == 0 or not sg.playing:
+			_skip_narration()
+			await get_tree().process_frame
+		var spots := [Vector2(970, 250), Vector2(970, 290), Vector2(970, 480), Vector2(970, 520), Vector2(965, 300)]
+		for j in sg.sheep.size():
+			var sh: Dictionary = sg.sheep[j]
+			sh.pos = spots[j % spots.size()]
+			sh.vel = Vector2.ZERO
+		var stuck_t := 0.0
+		var start_home: int = sg.penned
+		while stuck_t < 20.0 and sg.penned < sg.sheep.size():
+			await get_tree().process_frame
+			stuck_t += get_process_delta_time()
+			_skip_narration()
+			# puppy pushes the nearest free sheep straight east (at the fence)
+			var tgt: Dictionary = {}
+			for sh in sg.sheep:
+				if not sh.home:
+					tgt = sh
+					break
+			if tgt.is_empty():
+				break
+			sg.dog_moving = true
+			sg.dog_target = tgt.pos + Vector2(-70, 0)
+		var left: Array = []
+		for sh in sg.sheep:
+			if not sh.home:
+				left.append(Vector2i(sh.pos))
+		print("SHEEPFENCE round ", k, " home=", sg.penned, "/", sg.sheep.size(), " in ", snappedf(stuck_t, 0.1), "s game time; still out at ", left)
+		if sg.penned < sg.sheep.size():
+			for sh in sg.sheep:
+				if not sh.home:
+					sh.pos = Vector2(sg.PEN.position.x - 6, (sg.GATE_Y0 + sg.GATE_Y1) * 0.5)
+					sh.vel = Vector2(400, 0)
+		await get_tree().create_timer(1.0).timeout
+		if not is_instance_valid(sg) or sg.round_i >= 3 and not sg.playing:
+			break
 
 
 func _skip_narration() -> void:
@@ -157,6 +362,8 @@ func _dbg(i: int) -> String:
 			return "stage=%d locked=%s busy=%s meters=%s choice=%s btns=%s" % [g.stage, g.locked, g.busy, g.meters, g.choice, g.buttons.map(func(b): return [b.id, b.visible])]
 		8:
 			return "phase=%s playing=%s found=%d light=%s locked=%s" % [g.phase, g.playing, g.found, g.light, g.locked]
+		9:
+			return "phase=%s song_pos=%.3f audio=%.3f score=%d" % [g.phase, Audio.song_pos, Audio._audio_pos(), g.score]
 	return ""
 
 
