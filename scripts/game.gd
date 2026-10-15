@@ -1,0 +1,142 @@
+extends Node
+## Global state: the player's (only possible) name, which presents were opened, saving.
+
+const CONFIG := preload("res://scripts/config.gd")
+const SAVE_PATH := "user://chumbo_birthday.cfg"
+const CANON_NAME := "I'm Chumbo"
+
+const GAMES := [
+	{"id": "cake", "title": "Cake Tower", "script": "res://scripts/games/cake.gd", "col": Color(0.98, 0.5, 0.7)},
+	{"id": "sheep", "title": "Sheepy Shepherd", "script": "res://scripts/games/sheep.gd", "col": Color(0.3, 0.72, 0.3)},
+	{"id": "blob", "title": "Baby Blob", "script": "res://scripts/games/blob.gd", "col": Color(0.58, 0.32, 0.78)},
+	{"id": "cards", "title": "Card Checkpoint", "script": "res://scripts/games/cards.gd", "col": Color(0.22, 0.48, 0.9)},
+	{"id": "claw", "title": "Claw Machine", "script": "res://scripts/games/claw.gd", "col": Color(0.98, 0.55, 0.16)},
+	{"id": "royale", "title": "FORTNIGHT", "script": "res://scripts/games/royale.gd", "col": Color(0.4, 0.3, 0.9)},
+	{"id": "obby", "title": "ROBLOCKS", "script": "res://scripts/games/obby.gd", "col": Color(0.89, 0.2, 0.22)},
+	{"id": "poke", "title": "POKeMANS", "script": "res://scripts/games/poke.gd", "col": Color(1.0, 0.85, 0.2)},
+	{"id": "lights", "title": "Lights Out!", "script": "res://scripts/games/lights.gd", "col": Color(0.2, 0.2, 0.35)},
+	{"id": "karaoke", "title": "Karaoke!", "script": "res://scripts/games/karaoke.gd", "col": Color(0.95, 0.3, 0.6)},
+]
+
+const SCREENS := {
+	"title": "res://scripts/screens/title.gd",
+	"name": "res://scripts/screens/name_entry.gd",
+	"intro": "res://scripts/screens/intro.gd",
+	"hub": "res://scripts/screens/hub.gd",
+	"finale": "res://scripts/screens/finale.gd",
+}
+
+var player_name := ""
+var done: Array = []
+var intro_done := false
+var finale_seen := false
+var hub_lines_heard := -1
+var muted := false
+var main: Node = null
+
+
+func _ready() -> void:
+	done.resize(GAMES.size())
+	done.fill(false)
+	load_game()
+
+
+func progress() -> int:
+	var n := 0
+	for d in done:
+		if d:
+			n += 1
+	return n
+
+
+func is_unlocked(i: int) -> bool:
+	return i == 0 or done[i - 1] or done[i]
+
+
+func complete(i: int) -> void:
+	done[i] = true
+	save_game()
+
+
+func goto(screen: String, arg: Variant = null) -> void:
+	if main:
+		main.switch_to(screen, arg)
+
+
+func play_game(i: int) -> void:
+	goto("game", i)
+
+
+func back_to_party() -> void:
+	goto("hub")
+
+
+func save_game() -> void:
+	var cf := ConfigFile.new()
+	cf.set_value("p", "name", player_name)
+	cf.set_value("p", "done", done)
+	cf.set_value("p", "intro", intro_done)
+	cf.set_value("p", "finale", finale_seen)
+	cf.set_value("p", "heard", hub_lines_heard)
+	cf.set_value("p", "muted", muted)
+	cf.save(SAVE_PATH)
+
+
+func load_game() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(SAVE_PATH) != OK:
+		return
+	player_name = cf.get_value("p", "name", "")
+	var d: Array = cf.get_value("p", "done", [])
+	for i in mini(d.size(), done.size()):
+		done[i] = bool(d[i])
+	intro_done = cf.get_value("p", "intro", false)
+	finale_seen = cf.get_value("p", "finale", false)
+	hub_lines_heard = cf.get_value("p", "heard", -1)
+	muted = cf.get_value("p", "muted", false)
+
+
+func reset() -> void:
+	player_name = ""
+	done.fill(false)
+	intro_done = false
+	finale_seen = false
+	hub_lines_heard = -1
+	save_game()
+
+
+const MONTHS := ["January", "February", "March", "April", "May", "June", "July", "August",
+	"September", "October", "November", "December"]
+
+
+func today() -> Dictionary:
+	return Time.get_date_dict_from_system()
+
+
+func ordinal(n: int) -> String:
+	if n % 100 >= 11 and n % 100 <= 13:
+		return str(n) + "th"
+	match n % 10:
+		1: return str(n) + "st"
+		2: return str(n) + "nd"
+		3: return str(n) + "rd"
+	return str(n) + "th"
+
+
+## "October 15th" - which is, of course, Chumbo's birthday. Every year. Today.
+func today_text() -> String:
+	var d := today()
+	return "%s %s" % [MONTHS[d.month - 1], ordinal(d.day)]
+
+
+func date_text(offset_days: int) -> String:
+	var unix := Time.get_unix_time_from_system() + offset_days * 86400
+	var d := Time.get_date_dict_from_unix_time(int(unix))
+	return "%s %s" % [MONTHS[d.month - 1], ordinal(d.day)]
+
+
+func is_correct_name(typed: String) -> bool:
+	var s := typed.strip_edges().to_lower().replace("’", "'").replace("`", "'")
+	while s.contains("  "):
+		s = s.replace("  ", " ")
+	return s == "i'm chumbo"
