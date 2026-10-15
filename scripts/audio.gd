@@ -56,13 +56,46 @@ func toggle_mute() -> void:
 	Game.save_game()
 
 
+## On the web, sounds are decoded the first time they play, which can freeze the game for a
+## moment. Decoding ahead of time (while a screen transition covers the screen) avoids that.
+func prepare(st: AudioStream) -> void:
+	if st and OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st):
+		AudioServer.register_stream_as_sample(st)
+
+
+func preload_music(name: String, loop: bool = true) -> void:
+	var st := _load("res://assets/music/%s.ogg" % name) as AudioStreamOggVorbis
+	if st:
+		if not AudioServer.is_stream_registered_as_sample(st):
+			st.loop = loop
+		prepare(st)
+
+
+var _sfx_ready := false
+
+
+## Decodes every sound effect once (called on the first tap of the game).
+func preload_sfx() -> void:
+	if _sfx_ready:
+		return
+	_sfx_ready = true
+	for f in ResourceLoader.list_directory("res://assets/sfx/"):
+		if f.ends_with(".ogg"):
+			prepare(_load("res://assets/sfx/" + f))
+
+
 func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool = true) -> void:
 	if name == song and _cur.playing:
 		return
 	var st := _load("res://assets/music/%s.ogg" % name) as AudioStreamOggVorbis
 	if st == null:
 		return
-	st.loop = loop
+	if not AudioServer.is_stream_registered_as_sample(st):
+		st.loop = loop
+	prepare(st)
+	# the spooky version of this song will be needed later: decode it now, not at the twist
+	if not name.ends_with("_dark") and name != "karaoke":
+		preload_music(name + "_dark")
 	var old := _cur
 	var nxt := _b if _cur == _a else _a
 	nxt.stream = st
@@ -126,20 +159,46 @@ func _process(delta: float) -> void:
 				song_pos = fmod(song_pos, l)
 
 
-## The lyric line being sung right now ("" during instrumental bits).
-func lyric() -> String:
-	if not SongData.SONGS.has(song):
-		return ""
-	var lines: Array = SongData.SONGS[song]["lines"]
-	var cur := ""
-	for ln in lines:
-		if song_pos >= ln[0] - 0.15:
-			cur = ln[1]
-	if lines.size() > 0:
-		var last: Array = lines[lines.size() - 1]
-		if song_pos > last[0] + 5.5:
-			cur = ""
-	return cur
+var _lyric_lines := {}
+
+
+## Per song: Array of lines {start, end, parts (syllables incl. trailing spaces), times}.
+func _song_lines(name: String) -> Array:
+	if _lyric_lines.has(name):
+		return _lyric_lines[name]
+	var out: Array = []
+	if SongData.SONGS.has(name):
+		for sy in SongData.SONGS[name].get("syl", []):
+			var li := int(sy[4])
+			while out.size() <= li:
+				out.append({"start": INF, "end": 0.0, "parts": PackedStringArray(), "times": PackedFloat32Array()})
+			var ln: Dictionary = out[li]
+			var tt := float(sy[0])
+			ln.start = minf(ln.start, tt)
+			ln.end = maxf(ln.end, tt + float(sy[1]))
+			ln.parts.append(String(sy[2]) + (" " if bool(sy[3]) else ""))
+			ln.times.append(tt)
+	_lyric_lines[name] = out
+	return out
+
+
+## What to show in the lyric bar right now: {} when nothing is being sung, otherwise
+## {"parts": syllables, "sung": how many have been sung, "id": unique line id, "dark": bool}.
+func lyric_state() -> Dictionary:
+	if song == "" or not _cur.playing:
+		return {}
+	var lines := _song_lines(song)
+	var pos := song_pos
+	for i in range(lines.size() - 1, -1, -1):
+		var ln: Dictionary = lines[i]
+		if pos >= ln.start - 0.7 and pos <= ln.end + 1.2:
+			var sung := 0
+			var times: PackedFloat32Array = ln.times
+			for k in times.size():
+				if pos >= times[k] - 0.05:
+					sung = k + 1
+			return {"parts": ln.parts, "sung": sung, "id": song + str(i), "dark": song.ends_with("_dark")}
+	return {}
 
 
 func sfx(name: String, vol_db: float = 0.0, pitch: float = 1.0) -> AudioStreamPlayer:

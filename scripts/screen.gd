@@ -15,6 +15,15 @@ var locked := false
 var show_home := true
 var mouse := Vector2(W * 0.5, H * 0.5)
 var _down := false
+## The canvas the paint helpers draw onto: this node normally, the static layer inside
+## paint_back(). Screens use `pen` instead of `self` so drawing code works in both.
+var pen: CanvasItem = self
+var _back: Node2D = null
+## When true (and a back layer is used) buttons are drawn into the static layer and only
+## hover/press highlights are drawn per frame. Call refresh_back() after changing buttons.
+var bake_buttons := false
+## Where the lyric ticker sits (y in the 1280x720 space); < 0 hides it on this screen.
+var lyrics_y := 690.0
 
 
 func _ready() -> void:
@@ -43,6 +52,77 @@ func paint_top() -> void:
 	pass
 
 
+## Override: static scenery. Only drawn when use_back_layer() was called, and redrawn
+## only when refresh_back() is called, so put everything here that does not move.
+func paint_back() -> void:
+	pass
+
+
+## Creates the static scenery layer (call from enter()). The scenery is rendered once into
+## a texture ("baked") and shown as a single picture, so it costs almost nothing per frame.
+func use_back_layer() -> void:
+	if _back:
+		return
+	_bake = SubViewport.new()
+	_bake.disable_3d = true
+	_bake.transparent_bg = false
+	_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_bake)
+	_back = Node2D.new()
+	_bake.add_child(_back)
+	_back.draw.connect(_draw_back)
+	_bake_sprite = Sprite2D.new()
+	_bake_sprite.centered = false
+	_bake_sprite.show_behind_parent = true
+	_bake_sprite.texture = _bake.get_texture()
+	add_child(_bake_sprite)
+	move_child(_bake_sprite, 0)
+	_layout_back()
+
+
+## Redraws the static layer on the next frame (call when the scenery changes).
+func refresh_back() -> void:
+	if _back:
+		_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
+		_back.queue_redraw()
+
+
+var _bake: SubViewport = null
+var _bake_sprite: Sprite2D = null
+var _baked_pos := Vector2(INF, INF)
+var _baked_vs := Vector2.ZERO
+
+
+func _layout_back() -> void:
+	var vs := get_viewport_rect().size
+	var px := Vector2(get_window().size)
+	var sc := clampf(px.x / maxf(vs.x, 1.0), 0.25, 4.0)
+	_baked_pos = position
+	_baked_vs = vs
+	_bake.size = Vector2i(maxi(16, ceili(vs.x * sc)), maxi(16, ceili(vs.y * sc)))
+	_bake.size_2d_override = Vector2i(ceili(vs.x), ceili(vs.y))
+	_bake.size_2d_override_stretch = true
+	_back.position = position
+	_bake_sprite.position = -position
+	_bake_sprite.scale = Vector2(ceili(vs.x), ceili(vs.y)) / Vector2(_bake.size)
+	refresh_back()
+
+
+func _draw_back() -> void:
+	var t0 := Time.get_ticks_usec()
+	pen = _back
+	Crayon.freeze(true)
+	_back.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	paint_back()
+	if bake_buttons:
+		for b in buttons:
+			if b.visible:
+				_draw_button(b, b.rect)
+	Crayon.freeze(false)
+	pen = self
+	Perf.draw_us += Time.get_ticks_usec() - t0
+
+
 ## Override: pointer callbacks (positions are in the 1280x720 space).
 func press(_p: Vector2) -> void:
 	pass
@@ -62,17 +142,22 @@ func go_home() -> void:
 
 func _process(dt: float) -> void:
 	t += dt
+	if _bake and (position != _baked_pos or get_viewport_rect().size != _baked_vs):
+		_layout_back()
 	tick(dt)
 	queue_redraw()
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	var t0 := Time.get_ticks_usec()
+	if _back == null:
+		draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
 	paint()
 	_draw_buttons()
 	paint_top()
 	if finished:
 		_draw_finished()
+	Perf.draw_us += Time.get_ticks_usec() - t0
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -138,19 +223,31 @@ func _press_button(p: Vector2) -> bool:
 
 
 func _draw_buttons() -> void:
+	var dt := get_process_delta_time()
 	for b in buttons:
 		if not b.visible:
 			continue
-		b.pop = maxf(0.0, b.pop - get_process_delta_time() * 5.0)
+		if b.pop > 0.0:
+			b.pop = maxf(0.0, b.pop - dt * 5.0)
 		var r: Rect2 = b.rect
+		if bake_buttons and _back:
+			# the button itself is baked; just light it up when touched
+			if b.pop > 0.0:
+				pen.draw_rect(r.grow(-3), Color(1, 1, 0.4, 0.55 * b.pop))
+			elif hover_id == b.id:
+				pen.draw_rect(r.grow(-3), Color(1, 1, 1, 0.25))
+			continue
 		var grow: float = (3.0 if hover_id == b.id else 0.0) - b.pop * 6.0
-		r = r.grow(grow)
-		Crayon.rect(self, r, Crayon.INK, 5, b.col, b.seed)
-		if b.id == "home":
-			Crayon.house(self, r.get_center() + Vector2(0, 2), 44, 3)
-		elif b.label != "":
-			var fs: int = b.size
-			Crayon.text(self, r.get_center() + Vector2(0, -2), b.label, fs, Crayon.INK, 1, b.seed, null, 1.0, false)
+		_draw_button(b, r.grow(grow))
+
+
+func _draw_button(b: Dictionary, r: Rect2) -> void:
+	Crayon.rect(pen, r, Crayon.INK, 5, b.col, b.seed)
+	if b.id == "home":
+		Crayon.house(pen, r.get_center() + Vector2(0, 2), 44, 3)
+	elif b.label != "":
+		var fs: int = b.size
+		Crayon.text(pen, r.get_center() + Vector2(0, -2), b.label, fs, Crayon.INK, 1, b.seed, null, 1.0, false)
 
 
 # ------------------------------------------------------------------ helpers
@@ -220,7 +317,7 @@ func paper_bg(col: Color = Crayon.PAPER) -> void:
 
 
 func title_text(p: Vector2, s: String, size: int = 64, col: Color = Crayon.INK, sd: int = 0) -> void:
-	Crayon.text(self, p, s, size, col, 1, sd, Crayon.title_font())
+	Crayon.text(pen, p, s, size, col, 1, sd, Crayon.title_font())
 
 
 ## Draws the little scoreboard / progress label top-right.

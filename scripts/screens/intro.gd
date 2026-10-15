@@ -3,7 +3,10 @@ extends Screen
 
 var denials := 0
 var show_buttons := false
-var stage := 0      # 0 = plain, 1 = today circled, 2 = more circles, 3 = every day
+var stage := 0:     # 0 = plain, 1 = today circled, 2 = more circles, 3 = every day
+	set(v):
+		stage = v
+		refresh_back()
 var talk := false
 
 
@@ -11,6 +14,8 @@ func enter() -> void:
 	show_home = false
 	remove_button("home")
 	Narrator.top = true
+	use_back_layer()
+	lyrics_y = 30.0
 	Audio.play_music("title")
 	_run()
 
@@ -83,18 +88,22 @@ func _no() -> void:
 
 
 func paint() -> void:
+	Host.draw(pen, Vector2(1010, 300), 95, 0.0 if denials < 3 else 0.3, talk or Narrator.is_active(), Vector2(-1, 0.3), 9)
+
+
+func paint_back() -> void:
 	var d := Game.today()
 	var cal := Rect2(60, 165, 640, 540)
 	# calendar page
-	Crayon.rect(self, cal, Crayon.INK, 6, Crayon.WHITE, 1)
-	Crayon.rect(self, Rect2(cal.position, Vector2(cal.size.x, 90)), Crayon.INK, 6, Crayon.RED, 2)
+	Crayon.rect(pen, cal, Crayon.INK, 6, Crayon.WHITE, 1)
+	Crayon.rect(pen, Rect2(cal.position, Vector2(cal.size.x, 90)), Crayon.INK, 6, Crayon.RED, 2)
 	for i in 2:
-		Crayon.circle(self, cal.position + Vector2(160 + i * 320, 0), 14, Crayon.INK, 4, Crayon.GREY, 3 + i)
-	Crayon.text(self, Vector2(cal.get_center().x, cal.position.y + 46), "%s %d" % [Game.MONTHS[d.month - 1].to_upper(), d.year], 50, Crayon.WHITE, 1, 5, Crayon.title_font())
+		Crayon.circle(pen, cal.position + Vector2(160 + i * 320, 0), 14, Crayon.INK, 4, Crayon.GREY, 3 + i)
+	Crayon.text(pen, Vector2(cal.get_center().x, cal.position.y + 46), "%s %d" % [Game.MONTHS[d.month - 1].to_upper(), d.year], 50, Crayon.WHITE, 1, 5, Crayon.title_font())
 	var days := ["S", "M", "T", "W", "T", "F", "S"]
 	var cw := cal.size.x / 7.0
 	for i in 7:
-		Crayon.text(self, Vector2(cal.position.x + cw * (i + 0.5), cal.position.y + 118), days[i], 30, Crayon.GREY, 1, 10 + i)
+		Crayon.text(pen, Vector2(cal.position.x + cw * (i + 0.5), cal.position.y + 118), days[i], 30, Crayon.GREY, 1, 10 + i)
 	var first := Time.get_unix_time_from_datetime_dict({"year": d.year, "month": d.month, "day": 1, "hour": 12})
 	var wd0: int = Time.get_datetime_dict_from_unix_time(int(first)).weekday
 	var ndays := _days_in_month(d.year, d.month)
@@ -106,12 +115,12 @@ func paint() -> void:
 		var is_today: bool = day == d.day
 		var col := Crayon.INK
 		if stage >= 3 and not is_today:
-			Crayon.circle(self, Vector2(cx, cy - 2), 26, Crayon.RED, 3, Color(0, 0, 0, 0), 300 + day)
-			Crayon.text(self, Vector2(cx, cy + 22), "bday", 15, Crayon.RED, 1, 400 + day, null, 0.5, false)
-		Crayon.text(self, Vector2(cx, cy), str(day), 30, col, 1, 20 + day, null, 0.6, false)
+			Crayon.circle(pen, Vector2(cx, cy - 2), 26, Crayon.RED, 3, Color(0, 0, 0, 0), 300 + day)
+			Crayon.text(pen, Vector2(cx, cy + 22), "bday", 15, Crayon.RED, 1, 400 + day, null, 0.5, false)
+		Crayon.text(pen, Vector2(cx, cy), str(day), 30, col, 1, 20 + day, null, 0.6, false)
 		if is_today and stage >= 1:
 			for k in (1 if stage == 1 else 3):
-				Crayon.circle(self, Vector2(cx, cy - 2), 30 + k * 7, Crayon.RED, 6, Color(0, 0, 0, 0), 500 + k)
+				Crayon.circle(pen, Vector2(cx, cy - 2), 30 + k * 7, Crayon.RED, 6, Color(0, 0, 0, 0), 500 + k)
 	# today's label + arrow
 	if stage >= 1:
 		var today_idx: int = wd0 + d.day - 1
@@ -119,13 +128,12 @@ func paint() -> void:
 		var ty: float = cal.position.y + 168 + rh * int(today_idx / 7)
 		var lx := clampf(tx, cal.position.x + 190, cal.end.x - 190)
 		var ly := ty - 70 if ty > cal.position.y + 260 else ty + 70
-		Crayon.text(self, Vector2(lx, ly), "CHUMBO'S BIRFDAY!!!", 40, Crayon.RED, 1, 601, Crayon.title_font())
-		Crayon.line(self, Vector2(lx, ly + (18 if ly < ty else -24)), Vector2(tx, ty + (-34 if ly < ty else 30)), Crayon.RED, 5, 602)
-		Crayon.text(self, Vector2(1010, 455), "TODAY: " + Game.today_text(), 40, Crayon.BLUE, 1, 600, null, 1.0, false)
+		Crayon.text(pen, Vector2(lx, ly), "CHUMBO'S BIRFDAY!!!", 40, Crayon.RED, 1, 601, Crayon.title_font())
+		Crayon.line(pen, Vector2(lx, ly + (18 if ly < ty else -24)), Vector2(tx, ty + (-34 if ly < ty else 30)), Crayon.RED, 5, 602)
+		Crayon.text(pen, Vector2(1010, 455), "TODAY: " + Game.today_text(), 40, Crayon.BLUE, 1, 600, null, 1.0, false)
 		if stage >= 2:
 			for k in 3:
-				Crayon.star(self, Vector2(tx + 40 + k * 20, ty - 40 - k * 25), 14, Crayon.INK, Crayon.YELLOW, 610 + k)
-	Host.draw(self, Vector2(1010, 300), 95, 0.0 if denials < 3 else 0.3, talk or Narrator.is_active(), Vector2(-1, 0.3), 9)
+				Crayon.star(pen, Vector2(tx + 40 + k * 20, ty - 40 - k * 25), 14, Crayon.INK, Crayon.YELLOW, 610 + k)
 
 
 func _days_in_month(y: int, m: int) -> int:

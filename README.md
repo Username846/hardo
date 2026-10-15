@@ -26,7 +26,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | 9 | Lights Out! | flashlight hide-and-seek | pizzicato lullaby |
 | 10 | Karaoke! | sing-along rhythm | disco |
 
-Every game has its own song with sung lyrics, plus a darker version of the song for when things get weird. Lyrics scroll in the corner of the screen. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
+Every game has its own song with sung lyrics, plus a darker version of the song for when things get weird. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
 
 Progress is saved in the browser, so he can stop and come back later.
 
@@ -58,6 +58,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   python3 tools/build_audio.py voice    # narration: re-run after changing any say("...") line
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
+- **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate and drawing time every 2 seconds.
 - **Automated play-through** (plays all 10 games to the end at 4x speed):
   ```sh
   godot --headless --path . -- --bot=all

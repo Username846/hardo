@@ -36,8 +36,12 @@ var badge := 0.0
 var cam := 0.0
 
 
+var _baked_stage := -1
+
+
 func enter() -> void:
 	Narrator.top = true
+	use_back_layer()
 	Audio.play_music("obby")
 	_build_level()
 	pos = flags[0]
@@ -219,20 +223,28 @@ func _ground_at(x: float) -> float:
 	return INF
 
 
-func paint() -> void:
-	var skies := [Color(0.55, 0.82, 1.0), Color(1.0, 0.68, 0.45), Color(0.18, 0.12, 0.28), Color(0.02, 0.02, 0.04)]
-	bg = skies[stage]
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+const SKIES := [Color(0.55, 0.82, 1.0), Color(1.0, 0.68, 0.45), Color(0.18, 0.12, 0.28), Color(0.02, 0.02, 0.04)]
+
+
+func paint_back() -> void:
+	_baked_stage = stage
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), SKIES[stage])
 	if stage < 2:
-		Crayon.sun(self, Vector2(1100, 110), 45, "happy", 2)
+		Crayon.sun(pen, Vector2(1100, 110), 45, "happy", 2)
+
+
+func paint() -> void:
+	if stage != _baked_stage:
+		refresh_back()
+	bg = SKIES[stage]
 	if stage == 3:
 		for k in 40:
-			draw_circle(Vector2(fmod(k * 197.0 - cam * 0.1, W + 40), fmod(k * 113.0, H)), 2, Color(1, 1, 1, 0.5))
+			pen.draw_circle(Vector2(fmod(k * 197.0 - cam * 0.1, W + 40), fmod(k * 113.0, H)), 2, Color(1, 1, 1, 0.5))
 	# distant blocky hills (parallax)
 	if stage < 3:
 		for k in 8:
 			var hx := fmod(k * 260.0 - cam * 0.3, W + 300) - 150
-			Crayon.rect(self, Rect2(hx, 380 - (k % 3) * 60, 200, 400), Crayon.INK.lerp(bg, 0.5), 3, bg.darkened(0.15), 10 + k)
+			Crayon.rect(pen, Rect2(hx, 380 - (k % 3) * 60, 200, 400), Crayon.INK.lerp(bg, 0.5), 3, bg.darkened(0.15), 10 + k)
 	var off := Vector2(-cam, 0)
 	var block_col: Color = [Color(0.35, 0.75, 0.35), Color(0.85, 0.6, 0.4), Color(0.35, 0.3, 0.45), Color(0.85, 0.85, 0.9)][stage]
 	for r in plats:
@@ -241,32 +253,32 @@ func paint() -> void:
 		var col: Color = block_col
 		if r == pad:
 			col = Crayon.YELLOW
-		Crayon.rect(self, Rect2(r.position + off, r.size), Crayon.INK, 4, col, int(r.position.x) % 997)
+		Crayon.rect(pen, Rect2(r.position + off, r.size), Crayon.INK, 4, col, int(r.position.x) % 997)
 		# studs on top like toy bricks
 		var k := 0
 		var sx: float = r.position.x + 20
 		while sx < r.end.x - 10:
-			draw_rect(Rect2(Vector2(sx, r.position.y - 6) + off, Vector2(18, 6)), col.darkened(0.15))
+			pen.draw_rect(Rect2(Vector2(sx, r.position.y - 6) + off, Vector2(18, 6)), col.darkened(0.15))
 			sx += 46
 			k += 1
 	if mercy_until > pos.x:
-		Crayon.rect(self, Rect2(Vector2(flags[cp].x, 560) + off, Vector2(mercy_until - flags[cp].x, 16)), Crayon.INK, 3, Color(1, 0.85, 0.3, 0.9), 900)
+		Crayon.rect(pen, Rect2(Vector2(flags[cp].x, 560) + off, Vector2(mercy_until - flags[cp].x, 16)), Crayon.INK, 3, Color(1, 0.85, 0.3, 0.9), 900)
 	for r in lava:
 		if r.end.x + off.x < -50 or r.position.x + off.x > W + 50:
 			continue
 		var glow := 0.8 + sin(t * 6.0 + r.position.x) * 0.2
-		Crayon.rect(self, Rect2(r.position + off, r.size), Crayon.INK, 3, Color(1.0, 0.25 * glow, 0.1), int(r.position.x) % 991)
+		Crayon.rect(pen, Rect2(r.position + off, r.size), Crayon.INK, 3, Color(1.0, 0.25 * glow, 0.1), int(r.position.x) % 991)
 	for i in flags.size():
 		var f: Vector2 = flags[i] + off
-		Crayon.line(self, f, f + Vector2(0, -90), Crayon.INK, 5, 50 + i)
-		Crayon.poly(self, PackedVector2Array([f + Vector2(0, -90), f + Vector2(44, -76), f + Vector2(0, -62)]), Crayon.INK, 3, Crayon.GREEN if i <= cp else Crayon.RED, 60 + i)
+		Crayon.line(pen, f, f + Vector2(0, -90), Crayon.INK, 5, 50 + i)
+		Crayon.poly(pen, PackedVector2Array([f + Vector2(0, -90), f + Vector2(44, -76), f + Vector2(0, -62)]), Crayon.INK, 3, Crayon.GREEN if i <= cp else Crayon.RED, 60 + i)
 	# badge pad sign
-	Crayon.text(self, pad.get_center() + off + Vector2(0, -90), "BADGE!", 40, Crayon.YELLOW, 1, 70, Crayon.title_font())
+	Crayon.text(pen, pad.get_center() + off + Vector2(0, -90), "BADGE!", 40, Crayon.YELLOW, 1, 70, Crayon.title_font())
 	# the other Chumbo
 	if stage >= 3:
 		var facing := -1.0
 		_noob(other_pos + off, Crayon.YELLOW, Color(0.2, 0.4, 0.9), Crayon.GREEN, 0.0, "wide", facing, 80)
-		Crayon.text(self, other_pos + off + Vector2(0, -100), "chumbo", 24, Crayon.WHITE, 1, 81, null, 0.5, false)
+		Crayon.text(pen, other_pos + off + Vector2(0, -100), "chumbo", 24, Crayon.WHITE, 1, 81, null, 0.5, false)
 	# ghost runners
 	for k in 3:
 		if not runners_on[k] or stage >= 3:
@@ -277,23 +289,23 @@ func paint() -> void:
 		ry -= absf(sin(t * 5.0 + k)) * 30.0
 		var rc: Color = RUNNERS[k][1]
 		_noob(Vector2(rx, ry) + off, Crayon.YELLOW.lerp(rc, 0.4), rc, rc.darkened(0.3), t * 10.0 + k, "happy", 1.0, 90 + k * 5, 0.75)
-		Crayon.text(self, Vector2(rx, ry - 96) + off, String(RUNNERS[k][0]), 18, Crayon.WHITE, 1, 91 + k, null, 0.4, false)
+		Crayon.text(pen, Vector2(rx, ry - 96) + off, String(RUNNERS[k][0]), 18, Crayon.WHITE, 1, 91 + k, null, 0.4, false)
 	# player
 	if dead_t > 0.0:
 		var f := 1.0 - dead_t / 0.8
 		for k in 6:
 			var a := TAU * k / 6.0
-			Crayon.rect(self, Rect2(pos + off + Vector2(cos(a), sin(a) - 1.0) * (30 + f * 80) - Vector2(10, 10), Vector2(20, 20)), Crayon.INK, 2, [Crayon.YELLOW, Crayon.BLUE, Crayon.GREEN][k % 3], 100 + k)
-		Crayon.text(self, pos + off + Vector2(0, -110), "OOF!", 46, Crayon.RED, 1, 110, Crayon.title_font())
+			Crayon.rect(pen, Rect2(pos + off + Vector2(cos(a), sin(a) - 1.0) * (30 + f * 80) - Vector2(10, 10), Vector2(20, 20)), Crayon.INK, 2, [Crayon.YELLOW, Crayon.BLUE, Crayon.GREEN][k % 3], 100 + k)
+		Crayon.text(pen, pos + off + Vector2(0, -110), "OOF!", 46, Crayon.RED, 1, 110, Crayon.title_font())
 	else:
 		_noob(pos + off, Crayon.YELLOW, Color(0.2, 0.4, 0.9), Crayon.GREEN, t * 12.0 if grounded else 0.0, "happy", 1.0, 120)
-		Crayon.text(self, pos + off + Vector2(0, -100), "I'm Chumbo", 20, Crayon.WHITE, 1, 121, null, 0.5, false)
+		Crayon.text(pen, pos + off + Vector2(0, -100), "I'm Chumbo", 20, Crayon.WHITE, 1, 121, null, 0.5, false)
 
 
 func paint_top() -> void:
 	# chat box
 	var r := Rect2(100, 14, 470, 36 + chat.size() * 28)
-	draw_rect(r, Color(0, 0, 0, 0.45))
+	pen.draw_rect(r, Color(0, 0, 0, 0.45))
 	for k in chat.size():
 		var line: String = chat[k]
 		var col := Crayon.WHITE
@@ -301,26 +313,26 @@ func paint_top() -> void:
 			col = Color(1, 0.9, 0.4)
 		elif line.begins_with("chumbo:"):
 			col = Color(1, 0.4, 0.4)
-		Crayon.text(self, Vector2(114, 34 + k * 28), line, 20, col, 0, 200 + k, null, 0.3, false)
+		Crayon.text(pen, Vector2(114, 34 + k * 28), line, 20, col, 0, 200 + k, null, 0.3, false)
 	hud("OOFS: %d" % deaths, Crayon.WHITE)
 	if banner_t > 0.0 and running:
-		Crayon.text(self, Vector2(W * 0.5, 200), STAGES[stage], 52, Crayon.WHITE, 1, 210, Crayon.title_font())
+		Crayon.text(pen, Vector2(W * 0.5, 200), STAGES[stage], 52, Crayon.WHITE, 1, 210, Crayon.title_font())
 	if running and pos.x < 400 and stage == 0:
-		Crayon.text(self, Vector2(W * 0.5, 280), "TAP TO JUMP!", 46, Crayon.YELLOW, 1, 211, Crayon.title_font())
+		Crayon.text(pen, Vector2(W * 0.5, 280), "TAP TO JUMP!", 46, Crayon.YELLOW, 1, 211, Crayon.title_font())
 	if ended:
 		var b := Rect2(W * 0.5 - 300, 120 - (1.0 - badge) * 200, 600, 130)
-		Crayon.rect(self, b, Crayon.INK, 6, Crayon.YELLOW, 220)
-		Crayon.text(self, b.get_center() + Vector2(0, -26), "BADGE EARNED!", 40, Crayon.INK, 1, 221, Crayon.title_font())
-		Crayon.text(self, b.get_center() + Vector2(0, 26), "You Met The Other Chumbo", 30, Crayon.INK, 1, 222)
+		Crayon.rect(pen, b, Crayon.INK, 6, Crayon.YELLOW, 220)
+		Crayon.text(pen, b.get_center() + Vector2(0, -26), "BADGE EARNED!", 40, Crayon.INK, 1, 221, Crayon.title_font())
+		Crayon.text(pen, b.get_center() + Vector2(0, 26), "You Met The Other Chumbo", 30, Crayon.INK, 1, 222)
 
 
 func _noob(feet: Vector2, head: Color, body: Color, legs: Color, run: float, mood: String, facing: float, sd: int, alpha: float = 1.0) -> void:
 	var ink := Color(Crayon.INK, alpha)
 	var sw := sin(run) * 8.0
-	Crayon.rect(self, Rect2(feet + Vector2(-13 + sw * 0.5, -26), Vector2(12, 26)), ink, 3, Color(legs, alpha), sd)
-	Crayon.rect(self, Rect2(feet + Vector2(1 - sw * 0.5, -26), Vector2(12, 26)), ink, 3, Color(legs, alpha), sd + 1)
-	Crayon.rect(self, Rect2(feet + Vector2(-15, -56), Vector2(30, 30)), ink, 3, Color(body, alpha), sd + 2)
-	Crayon.rect(self, Rect2(feet + Vector2(-26, -56 + sw * 0.3), Vector2(11, 26)), ink, 3, Color(head, alpha), sd + 3)
-	Crayon.rect(self, Rect2(feet + Vector2(15, -56 - sw * 0.3), Vector2(11, 26)), ink, 3, Color(head, alpha), sd + 4)
-	Crayon.rect(self, Rect2(feet + Vector2(-13, -82), Vector2(26, 26)), ink, 3, Color(head, alpha), sd + 5)
-	Crayon.face(self, feet + Vector2(facing * 2, -69), 12, mood, Vector2(facing, 0), sd + 6, ink)
+	Crayon.rect(pen, Rect2(feet + Vector2(-13 + sw * 0.5, -26), Vector2(12, 26)), ink, 3, Color(legs, alpha), sd)
+	Crayon.rect(pen, Rect2(feet + Vector2(1 - sw * 0.5, -26), Vector2(12, 26)), ink, 3, Color(legs, alpha), sd + 1)
+	Crayon.rect(pen, Rect2(feet + Vector2(-15, -56), Vector2(30, 30)), ink, 3, Color(body, alpha), sd + 2)
+	Crayon.rect(pen, Rect2(feet + Vector2(-26, -56 + sw * 0.3), Vector2(11, 26)), ink, 3, Color(head, alpha), sd + 3)
+	Crayon.rect(pen, Rect2(feet + Vector2(15, -56 - sw * 0.3), Vector2(11, 26)), ink, 3, Color(head, alpha), sd + 4)
+	Crayon.rect(pen, Rect2(feet + Vector2(-13, -82), Vector2(26, 26)), ink, 3, Color(head, alpha), sd + 5)
+	Crayon.face(pen, feet + Vector2(facing * 2, -69), 12, mood, Vector2(facing, 0), sd + 6, ink)

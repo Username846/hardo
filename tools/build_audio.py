@@ -75,7 +75,9 @@ def write_song_gd(all_meta):
     for name in sorted(all_meta):
         m = all_meta[name]
         base = name.replace("_dark", "")
-        entry = dict(length=m["length"], bpm=m["bpm"], title=titles.get(base, base), lines=m["lines"])
+        # syllables: [time, duration, text, ends_a_word, line] - used for the karaoke-style lyric bar
+        syl = [[x[0], x[1], x[2], x[3], x[4]] for x in m["syllables"]]
+        entry = dict(length=m["length"], bpm=m["bpm"], title=titles.get(base, base), lines=m["lines"], syl=syl)
         lines.append(f"\t{json.dumps(name)}: {gd_value(entry)},")
     lines.append("}")
     lines.append("")

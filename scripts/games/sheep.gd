@@ -25,7 +25,11 @@ var flicker := 0.0
 var sleepy_said := false
 
 
+var _baked_night := -1.0
+
+
 func enter() -> void:
+	use_back_layer()
 	Audio.play_music("sheep")
 	_run()
 
@@ -196,25 +200,31 @@ func tick(dt: float) -> void:
 			thing.pos = Vector2(60 if dog.x > 640 else 1200, 660)
 
 
-func paint() -> void:
+func paint_back() -> void:
+	_baked_night = night
 	var grass := Color(0.55, 0.85, 0.45).lerp(Color(0.1, 0.18, 0.15), night)
-	bg = grass
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), grass)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), grass)
 	var sky := Crayon.SKY.lerp(Color(0.95, 0.5, 0.35), clampf(night * 2.2, 0, 1)).lerp(Color(0.05, 0.03, 0.12), clampf((night - 0.45) * 2.8, 0, 1))
-	draw_rect(Rect2(-2000, -2000, W + 4000, 2110), sky)
-	Crayon.line(self, Vector2(-40, 110), Vector2(W + 40, 110), Crayon.INK, 4, 1)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, 2110), sky)
+	Crayon.line(pen, Vector2(-40, 110), Vector2(W + 40, 110), Crayon.INK, 4, 1)
 	# hills + sun/moon
 	if night < 0.6:
-		Crayon.sun(self, Vector2(640, 110 - night * 160), 40, "happy" if night < 0.3 else "flat", 2)
+		Crayon.sun(pen, Vector2(640, 110 - night * 160), 40, "happy" if night < 0.3 else "flat", 2)
 	else:
-		Crayon.circle(self, Vector2(200, 60), 30, Crayon.INK, 3, Color(1, 1, 0.85), 3)
+		Crayon.circle(pen, Vector2(200, 60), 30, Crayon.INK, 3, Color(1, 1, 0.85), 3)
 	for i in 3:
-		Crayon.ellipse(self, Vector2(200 + i * 450, 112), Vector2(260, 50), Crayon.INK, 4, grass.darkened(0.12), 4 + i)
+		Crayon.ellipse(pen, Vector2(200 + i * 450, 112), Vector2(260, 50), Crayon.INK, 4, grass.darkened(0.12), 4 + i)
 	# flowers
 	for i in 16:
 		var fp := Vector2(fmod(i * 233.0, 900) + 60, 160 + fmod(i * 157.0, 500))
-		Crayon.circle(self, fp, 7, Crayon.INK.lerp(grass, 0.4), 2, Crayon.RAINBOW[i % 7].lerp(grass, night), 10 + i)
+		Crayon.circle(pen, fp, 7, Crayon.INK.lerp(grass, 0.4), 2, Crayon.RAINBOW[i % 7].lerp(grass, night), 10 + i)
 	_pen()
+
+
+func paint() -> void:
+	if absf(night - _baked_night) > 0.02:
+		refresh_back()
+	_gate_arrow()
 	# sheep sorted by y for fake depth
 	var draw_list: Array = []
 	for s in sheep:
@@ -236,14 +246,14 @@ func paint() -> void:
 			"standing":
 				_standing(Vector2(PEN.end.x - 50, PEN.position.y + 120), false)
 	if night > 0.0:
-		draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.02, 0.0, 0.08, night * 0.45))
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.02, 0.0, 0.08, night * 0.45))
 		# eyes still glow in the dark
 		if extra_in_pen:
 			_glow_eyes(Vector2(PEN.end.x - 50, PEN.position.y + 120 - 175))
 		if not thing.is_empty():
 			_glow_eyes(thing.pos + Vector2(0, -175))
 	if flicker > 0.0:
-		draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, flicker * 1.5))
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, flicker * 1.5))
 
 
 func paint_top() -> void:
@@ -252,32 +262,35 @@ func paint_top() -> void:
 		var total: int = [0, 5, 6, 6][mini(round_i, 3)]
 		hud("SHEEP: %d / %d" % [count_shown, total], ink if count_shown <= total else Crayon.RED)
 	if playing and penned == 0 and round_t < 4.0:
-		Crayon.text(self, Vector2(W * 0.5, 160), "DRAG THE PUPPY!", 46, Crayon.RED, 1, 4300, Crayon.title_font())
+		Crayon.text(pen, Vector2(W * 0.5, 160), "DRAG THE PUPPY!", 46, Crayon.RED, 1, 4300, Crayon.title_font())
 
 
 func _glow_eyes(c: Vector2) -> void:
-	draw_circle(c + Vector2(-9, 0), 5, Color(1, 0.9, 0.3))
-	draw_circle(c + Vector2(9, 0), 5, Color(1, 0.9, 0.3))
+	pen.draw_circle(c + Vector2(-9, 0), 5, Color(1, 0.9, 0.3))
+	pen.draw_circle(c + Vector2(9, 0), 5, Color(1, 0.9, 0.3))
 
 
 func _pen() -> void:
 	var c := Crayon.BROWN.lerp(Crayon.INK, night * 0.5)
 	var r := PEN
-	Crayon.line(self, r.position, Vector2(r.end.x, r.position.y), c, 8, 30)
-	Crayon.line(self, Vector2(r.position.x, r.end.y), r.end, c, 8, 31)
-	Crayon.line(self, Vector2(r.end.x, r.position.y), r.end, c, 8, 32)
-	Crayon.line(self, r.position, Vector2(r.position.x, GATE_Y0), c, 8, 33)
-	Crayon.line(self, Vector2(r.position.x, GATE_Y1), Vector2(r.position.x, r.end.y), c, 8, 34)
+	Crayon.line(pen, r.position, Vector2(r.end.x, r.position.y), c, 8, 30)
+	Crayon.line(pen, Vector2(r.position.x, r.end.y), r.end, c, 8, 31)
+	Crayon.line(pen, Vector2(r.end.x, r.position.y), r.end, c, 8, 32)
+	Crayon.line(pen, r.position, Vector2(r.position.x, GATE_Y0), c, 8, 33)
+	Crayon.line(pen, Vector2(r.position.x, GATE_Y1), Vector2(r.position.x, r.end.y), c, 8, 34)
 	for k in 6:
 		var x := r.position.x + k * r.size.x / 5.0
-		Crayon.line(self, Vector2(x, r.position.y - 20), Vector2(x, r.position.y + 10), c, 6, 40 + k)
-		Crayon.line(self, Vector2(x, r.end.y - 10), Vector2(x, r.end.y + 20), c, 6, 50 + k)
-	Crayon.text(self, Vector2(r.get_center().x, r.position.y - 40), "PEN", 34, Crayon.WHITE if night > 0.5 else Crayon.INK, 1, 60, Crayon.title_font())
-	# gate arrow
+		Crayon.line(pen, Vector2(x, r.position.y - 20), Vector2(x, r.position.y + 10), c, 6, 40 + k)
+		Crayon.line(pen, Vector2(x, r.end.y - 10), Vector2(x, r.end.y + 20), c, 6, 50 + k)
+	Crayon.text(pen, Vector2(r.get_center().x, r.position.y - 40), "PEN", 34, Crayon.WHITE if night > 0.5 else Crayon.INK, 1, 60, Crayon.title_font())
+
+
+func _gate_arrow() -> void:
+	var r := PEN
 	if playing:
 		var a := Vector2(r.position.x - 70 + sin(t * 4) * 8, (GATE_Y0 + GATE_Y1) * 0.5)
-		Crayon.line(self, a, a + Vector2(50, 0), Crayon.YELLOW, 6, 61)
-		Crayon.poly(self, PackedVector2Array([a + Vector2(56, 0), a + Vector2(38, -14), a + Vector2(38, 14)]), Crayon.YELLOW, 4, Crayon.YELLOW, 62)
+		Crayon.line(pen, a, a + Vector2(50, 0), Crayon.YELLOW, 6, 61)
+		Crayon.poly(pen, PackedVector2Array([a + Vector2(56, 0), a + Vector2(38, -14), a + Vector2(38, 14)]), Crayon.YELLOW, 4, Crayon.YELLOW, 62)
 
 
 func _sheep(p: Vector2, sd: int, hat: Color, vx: float) -> void:
@@ -285,14 +298,14 @@ func _sheep(p: Vector2, sd: int, hat: Color, vx: float) -> void:
 	var legs := sin(t * 12.0 + sd) * 4.0
 	for k in 4:
 		var lx := p.x - 22 + k * 15
-		Crayon.line(self, Vector2(lx, p.y), Vector2(lx + (legs if k % 2 == 0 else -legs), p.y + 22), Crayon.INK, 5, sd + k)
+		Crayon.line(pen, Vector2(lx, p.y), Vector2(lx + (legs if k % 2 == 0 else -legs), p.y + 22), Crayon.INK, 5, sd + k)
 	for k in 5:
 		var o := Vector2(-22 + k * 11, -6 + (k % 2) * -8)
-		Crayon.circle(self, p + o + Vector2(0, -6), 18, Crayon.INK.lerp(Crayon.GREY, 0.3), 3, Crayon.WHITE, sd + 10 + k)
+		Crayon.circle(pen, p + o + Vector2(0, -6), 18, Crayon.INK.lerp(Crayon.GREY, 0.3), 3, Crayon.WHITE, sd + 10 + k)
 	var head := p + Vector2(f * 34, -14)
-	Crayon.ellipse(self, head, Vector2(14, 12), Crayon.INK, 3, Color(0.2, 0.18, 0.2), sd + 20)
-	draw_circle(head + Vector2(f * 5, -3), 3, Crayon.WHITE)
-	Crayon.party_hat(self, head + Vector2(0, -10), 12, hat, sd + 30, f * 0.3)
+	Crayon.ellipse(pen, head, Vector2(14, 12), Crayon.INK, 3, Color(0.2, 0.18, 0.2), sd + 20)
+	pen.draw_circle(head + Vector2(f * 5, -3), 3, Crayon.WHITE)
+	Crayon.party_hat(pen, head + Vector2(0, -10), 12, hat, sd + 30, f * 0.3)
 
 
 func _dog() -> void:
@@ -302,24 +315,24 @@ func _dog() -> void:
 	p.y -= bounce
 	var fur := Color(0.8, 0.55, 0.3)
 	for k in 4:
-		Crayon.line(self, p + Vector2(-20 + k * 13, 0), p + Vector2(-20 + k * 13, 20), Crayon.INK, 5, 300 + k)
-	Crayon.ellipse(self, p + Vector2(0, -6), Vector2(32, 18), Crayon.INK, 4, fur, 310)
+		Crayon.line(pen, p + Vector2(-20 + k * 13, 0), p + Vector2(-20 + k * 13, 20), Crayon.INK, 5, 300 + k)
+	Crayon.ellipse(pen, p + Vector2(0, -6), Vector2(32, 18), Crayon.INK, 4, fur, 310)
 	var tail := p + Vector2(-f * 30, -14)
-	Crayon.line(self, tail, tail + Vector2(-f * 16, -18 + sin(t * 20.0) * 8), Crayon.INK, 5, 311)
+	Crayon.line(pen, tail, tail + Vector2(-f * 16, -18 + sin(t * 20.0) * 8), Crayon.INK, 5, 311)
 	var head := p + Vector2(f * 30, -24)
-	Crayon.circle(self, head, 17, Crayon.INK, 4, fur, 312)
-	Crayon.ellipse(self, head + Vector2(-f * 10, 6), Vector2(6, 12), Crayon.INK, 3, Crayon.BROWN, 313)
-	Crayon.face(self, head + Vector2(f * 3, 0), 14, "happy", Vector2(f, 0), 314)
-	Crayon.party_hat(self, head + Vector2(0, -14), 13, Crayon.BLUE, 315, f * 0.2)
+	Crayon.circle(pen, head, 17, Crayon.INK, 4, fur, 312)
+	Crayon.ellipse(pen, head + Vector2(-f * 10, 6), Vector2(6, 12), Crayon.INK, 3, Crayon.BROWN, 313)
+	Crayon.face(pen, head + Vector2(f * 3, 0), 14, "happy", Vector2(f, 0), 314)
+	Crayon.party_hat(pen, head + Vector2(0, -14), 13, Crayon.BLUE, 315, f * 0.2)
 
 
 func _standing(feet: Vector2, moving: bool) -> void:
 	var sway := sin(t * 2.0) * 3.0 if moving else 0.0
-	Crayon.line(self, feet + Vector2(-12, 0), feet + Vector2(-8 + sway, -70), Crayon.INK, 6, 400)
-	Crayon.line(self, feet + Vector2(12, 0), feet + Vector2(8 + sway, -70), Crayon.INK, 6, 401)
-	Crayon.line(self, feet + Vector2(-30, -110), feet + Vector2(-42, -70), Crayon.INK, 5, 402)
-	Crayon.line(self, feet + Vector2(30, -110), feet + Vector2(42, -70), Crayon.INK, 5, 403)
+	Crayon.line(pen, feet + Vector2(-12, 0), feet + Vector2(-8 + sway, -70), Crayon.INK, 6, 400)
+	Crayon.line(pen, feet + Vector2(12, 0), feet + Vector2(8 + sway, -70), Crayon.INK, 6, 401)
+	Crayon.line(pen, feet + Vector2(-30, -110), feet + Vector2(-42, -70), Crayon.INK, 5, 402)
+	Crayon.line(pen, feet + Vector2(30, -110), feet + Vector2(42, -70), Crayon.INK, 5, 403)
 	for k in 5:
-		Crayon.circle(self, feet + Vector2(-16 + (k % 2) * 32, -125 + k * 14 - 30), 22, Crayon.INK.lerp(Crayon.GREY, 0.3), 3, Crayon.WHITE, 404 + k)
-	Crayon.circle(self, feet + Vector2(sway, -175), 22, Crayon.INK, 4, Color(0.2, 0.18, 0.2), 410)
-	Crayon.face(self, feet + Vector2(sway, -170), 18, "wide", Vector2.ZERO, 411, Crayon.WHITE)
+		Crayon.circle(pen, feet + Vector2(-16 + (k % 2) * 32, -125 + k * 14 - 30), 22, Crayon.INK.lerp(Crayon.GREY, 0.3), 3, Crayon.WHITE, 404 + k)
+	Crayon.circle(pen, feet + Vector2(sway, -175), 22, Crayon.INK, 4, Color(0.2, 0.18, 0.2), 410)
+	Crayon.face(pen, feet + Vector2(sway, -170), 18, "wide", Vector2.ZERO, 411, Crayon.WHITE)

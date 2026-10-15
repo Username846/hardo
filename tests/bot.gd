@@ -9,21 +9,37 @@ var tmr := 0.0
 var step := 0
 var stuck := 0.0
 var results := {}
+var profile := false
 var shot_dir := ""
 var shot_every := 0
 
 
 func _ready() -> void:
-	for a in OS.get_cmdline_user_args():
+	for a in Game.main._args():
 		if a.begins_with("--bot="):
 			which = a.substr(6)
 		elif a.begins_with("--shots="):
 			shot_dir = a.substr(8)
 			DirAccess.make_dir_recursive_absolute(shot_dir)
+		elif a == "--profile" or a == "--profile=":
+			profile = true
 		elif a.begins_with("--every="):
 			shot_every = int(a.substr(8))
-	Engine.time_scale = 4.0
+	Engine.time_scale = 1.0 if profile else 4.0
 	await get_tree().create_timer(0.5).timeout
+	if profile:
+		Perf.enabled = true
+		for scr in ["title", "name", "intro"]:
+			Game.main._open(scr, null)
+			await get_tree().create_timer(4.2).timeout
+			print("PROFILED ", scr, " -> ", Perf.last)
+		for prog in [0, 9]:
+			Game.done.fill(false)
+			for k in prog:
+				Game.done[k] = true
+			Game.main._open("hub", null)
+			await get_tree().create_timer(4.2).timeout
+			print("PROFILED hub", prog, " -> ", Perf.last)
 	# voice-key sanity check
 	var k: String = Narrator.key_for("Hi there! Welcome to the party! What's your name?", 0)
 	print("VOICE KEY ", k, " exists=", ResourceLoader.exists("res://assets/voice/%s.ogg" % k))
@@ -49,7 +65,8 @@ func _play(i: int) -> void:
 	tmr = 0.0
 	stuck = 0.0
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 150000:
+	var limit := 12500 if profile else 150000
+	while Time.get_ticks_msec() - t0 < limit:
 		await get_tree().process_frame
 		if Narrator.is_active() and Narrator._blocking and Narrator._elapsed > 0.4:
 			Narrator._shown = Narrator._text.length()
@@ -64,6 +81,8 @@ func _play(i: int) -> void:
 			print("  dbg frame ", Engine.get_process_frames(), " fps ", Engine.get_frames_per_second(), " ", _dbg(i))
 		if Game.done[i]:
 			break
+	if profile:
+		print("PROFILED game", i, " ", Game.GAMES[i].id, " -> ", Perf.last)
 	var ok: bool = Game.done[i]
 	results[Game.GAMES[i].id] = ok
 	print("BOT GAME ", i, " ", Game.GAMES[i].id, " done=", ok, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")

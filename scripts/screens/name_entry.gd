@@ -23,6 +23,8 @@ func enter() -> void:
 	show_home = false
 	remove_button("home")
 	Narrator.top = true
+	use_back_layer()
+	bake_buttons = true
 	Audio.play_music("title")
 	var y0 := 300.0
 	for r in ROWS.size():
@@ -54,6 +56,14 @@ func _keys_visible(v: bool) -> void:
 	for b in buttons:
 		if String(b.id).begins_with("k_"):
 			b.visible = v
+	refresh_back()
+
+
+func paint_back() -> void:
+	if state == "punish":
+		return
+	Crayon.text(pen, Vector2(W * 0.5, 165), "MY NAME IS:", 40, Crayon.INK, 1, 11, Crayon.title_font())
+	Crayon.rect(pen, Rect2(W * 0.5 - 330, 190, 660, 86), Crayon.INK, 6, Crayon.WHITE, 12)
 
 
 func _type(ch: String) -> void:
@@ -229,47 +239,45 @@ func paint() -> void:
 	var creep := 0.0
 	if state == "punish" and pun_kind >= 3:
 		creep = 0.25
-	Host.draw(self, Vector2(150, 360), 78, creep, host_talk or Narrator.is_active(), (mouse - Vector2(150, 360)).normalized(), 3)
+	Host.draw(pen, Vector2(150, 360), 78, creep, host_talk or Narrator.is_active(), (mouse - Vector2(150, 360)).normalized(), 3)
 	if state == "punish":
 		_paint_punish()
 		return
-	# name field
-	Crayon.text(self, Vector2(W * 0.5, 165), "MY NAME IS:", 40, Crayon.INK, 1, 11, Crayon.title_font())
+	# name field (the box itself is in the static layer)
 	var field := Rect2(W * 0.5 - 330, 190, 660, 86)
-	Crayon.rect(self, field, Crayon.INK, 6, Crayon.WHITE, 12)
 	var shown := typed
-	var tw := Crayon.text(self, Vector2(field.position.x + 24, field.get_center().y), shown, 54, Crayon.BLUE.darkened(0.2), 0, 13, null, 1.0, false)
+	var tw := Crayon.text(pen, Vector2(field.position.x + 24, field.get_center().y), shown, 54, Crayon.BLUE.darkened(0.2), 0, 13, null, 1.0, false)
 	if state == "typing" and fmod(t, 1.0) < 0.55:
 		var cx := field.position.x + 30 + tw
-		Crayon.line(self, Vector2(cx, field.position.y + 16), Vector2(cx, field.end.y - 16), Crayon.INK, 4, 14, 0.3)
+		Crayon.line(pen, Vector2(cx, field.position.y + 16), Vector2(cx, field.end.y - 16), Crayon.INK, 4, 14, 0.3)
 	# keyboard flash
 	for b in buttons:
 		var id: String = b.id
 		if id.begins_with("k_") and b.visible:
 			var ch := " " if id == "k_space" else id.substr(2)
 			if key_flash.has(ch):
-				draw_rect(b.rect.grow(-4), Color(1, 0.9, 0.2, 0.5))
+				pen.draw_rect(b.rect.grow(-4), Color(1, 0.9, 0.2, 0.5))
 	# the player, waving with a question mark
 	if state != "punish":
 		var mood := "happy" if state != "happy" else "o"
-		Crayon.person(self, Vector2(1140, 520), 170, Crayon.INK, mood, Crayon.GREEN, "up" if state == "happy" else "wave", t * 2.0, 21)
+		Crayon.person(pen, Vector2(1140, 520), 170, Crayon.INK, mood, Crayon.GREEN, "up" if state == "happy" else "wave", t * 2.0, 21)
 		if state == "typing":
-			Crayon.text(self, Vector2(1200, 300 + sin(t * 3) * 5), "?", 70, Crayon.PURPLE, 1, 22, Crayon.title_font())
+			Crayon.text(pen, Vector2(1200, 300 + sin(t * 3) * 5), "?", 70, Crayon.PURPLE, 1, 22, Crayon.title_font())
 		elif state == "happy":
-			Crayon.text(self, Vector2(1140, 300), "CHUMBO!", 44, Crayon.RED, 1, 23, Crayon.title_font())
+			Crayon.text(pen, Vector2(1140, 300), "CHUMBO!", 44, Crayon.RED, 1, 23, Crayon.title_font())
 	if state == "forced":
 		_draw_hand(hand_pos)
 
 
 func _draw_hand(p: Vector2) -> void:
 	var skin := Color(1, 0.85, 0.7)
-	Crayon.poly(self, PackedVector2Array([p, p + Vector2(-14, 40), p + Vector2(40, 120), p + Vector2(110, 110), p + Vector2(70, 30), p + Vector2(18, 26), p + Vector2(10, -8)]), Crayon.INK, 4, skin, 61)
-	Crayon.line(self, p + Vector2(70, 110), p + Vector2(160, 200), Crayon.INK, 8, 62)
+	Crayon.poly(pen, PackedVector2Array([p, p + Vector2(-14, 40), p + Vector2(40, 120), p + Vector2(110, 110), p + Vector2(70, 30), p + Vector2(18, 26), p + Vector2(10, -8)]), Crayon.INK, 4, skin, 61)
+	Crayon.line(pen, p + Vector2(70, 110), p + Vector2(160, 200), Crayon.INK, 8, 62)
 
 
 func _paint_punish() -> void:
 	var ground := 600.0
-	Crayon.line(self, Vector2(260, ground), Vector2(1240, ground), Crayon.GREEN, 6, 70)
+	Crayon.line(pen, Vector2(260, ground), Vector2(1240, ground), Crayon.GREEN, 6, 70)
 	var p := Vector2(760, ground)
 	var mood := "o"
 	var pose := "stand"
@@ -282,7 +290,7 @@ func _paint_punish() -> void:
 			var box := Rect2(330, ground - 120, 140, 120)
 			var lid := 0.0 if tt < 0.6 else 60.0
 			var wob := sin(tt * 40.0) * 4.0 if tt < 0.6 else 0.0
-			Crayon.present(self, Rect2(box.position + Vector2(wob, 0), box.size), Crayon.BLUE, Crayon.YELLOW, 71, lid)
+			Crayon.present(pen, Rect2(box.position + Vector2(wob, 0), box.size), Crayon.BLUE, Crayon.YELLOW, 71, lid)
 			var ext := 0.0
 			if tt >= 0.6 and tt < 0.78:
 				ext = (tt - 0.6) / 0.18
@@ -297,9 +305,9 @@ func _paint_punish() -> void:
 				for i in 13:
 					var f := i / 12.0
 					zig.append(start.lerp(end, f) + Vector2(0, 14 if i % 2 == 0 else -14))
-				Crayon.path(self, zig, Crayon.GREY, 5, 72)
-				Crayon.circle(self, end + Vector2(18, 0), 34, Crayon.INK, 5, Crayon.RED, 73)
-				Crayon.text(self, end + Vector2(18, -60), "BONK!", 40, Crayon.RED, 1, 74, Crayon.title_font())
+				Crayon.path(pen, zig, Crayon.GREY, 5, 72)
+				Crayon.circle(pen, end + Vector2(18, 0), 34, Crayon.INK, 5, Crayon.RED, 73)
+				Crayon.text(pen, end + Vector2(18, -60), "BONK!", 40, Crayon.RED, 1, 74, Crayon.title_font())
 			if tt >= 0.78:
 				var f := clampf((tt - 0.78) / 0.8, 0.0, 1.0)
 				p = Vector2(lerpf(760, 1060, f), ground - sin(f * PI) * 260)
@@ -310,11 +318,11 @@ func _paint_punish() -> void:
 			# giant cake from the sky
 			var fall := clampf(tt / 0.9, 0.0, 1.0)
 			var shadow := fall * 1.0
-			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-			Crayon.ellipse(self, Vector2(760, ground + 4), Vector2(150 * shadow, 22 * shadow), Color(0, 0, 0, 0), 0, Color(0, 0, 0, 0.25), 80)
+			pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+			Crayon.ellipse(pen, Vector2(760, ground + 4), Vector2(150 * shadow, 22 * shadow), Color(0, 0, 0, 0), 0, Color(0, 0, 0, 0.25), 80)
 			if tt < 0.9:
 				var y := lerpf(-300, ground - 40, fall * fall)
-				Crayon.cake(self, Vector2(760, y + 130), 320, 150, Crayon.PINK, 6, true, 81)
+				Crayon.cake(pen, Vector2(760, y + 130), 320, 150, Crayon.PINK, 6, true, 81)
 				mood = "o"
 				pose = "up"
 			else:
@@ -322,16 +330,16 @@ func _paint_punish() -> void:
 				mood = "x"
 				for i in 9:
 					var a := TAU * i / 9.0
-					Crayon.circle(self, Vector2(760, ground - 20) + Vector2(cos(a) * 230, sin(a) * 70 - 30), 18 + i % 3 * 6, Crayon.INK, 3, Crayon.PINK if i % 2 == 0 else Crayon.WHITE, 82 + i)
+					Crayon.circle(pen, Vector2(760, ground - 20) + Vector2(cos(a) * 230, sin(a) * 70 - 30), 18 + i % 3 * 6, Crayon.INK, 3, Crayon.PINK if i % 2 == 0 else Crayon.WHITE, 82 + i)
 				if tt < 2.3:
-					Crayon.ellipse(self, Vector2(760, ground - 22), Vector2(200, 34), Crayon.INK, 5, Crayon.PINK, 95)
-					Crayon.text(self, Vector2(760, ground - 120), "SPLAT!", 70, Crayon.PINK.darkened(0.3), 1, 96, Crayon.title_font())
+					Crayon.ellipse(pen, Vector2(760, ground - 22), Vector2(200, 34), Crayon.INK, 5, Crayon.PINK, 95)
+					Crayon.text(pen, Vector2(760, ground - 120), "SPLAT!", 70, Crayon.PINK.darkened(0.3), 1, 96, Crayon.title_font())
 				else:
 					p.y -= sin(clampf((tt - 2.3) / 0.4, 0, 1) * PI) * 60
 		_:
 			# a hole opens up...
 			var hole_r := clampf(tt / 0.4, 0.0, 1.0) * (1.0 - clampf((tt - 1.8) / 0.4, 0.0, 1.0))
-			Crayon.ellipse(self, Vector2(760, ground + 6), Vector2(170 * hole_r, 34 * hole_r), Crayon.INK, 4, Crayon.BLACK, 100)
+			Crayon.ellipse(pen, Vector2(760, ground + 6), Vector2(170 * hole_r, 34 * hole_r), Crayon.INK, 4, Crayon.BLACK, 100)
 			if tt >= 0.55 and tt < 1.6:
 				var f := clampf((tt - 0.55) / 0.6, 0.0, 1.0)
 				p.y += f * 40
@@ -345,21 +353,21 @@ func _paint_punish() -> void:
 				pose = "fall" if f < 1.0 else "stand"
 				mood = "x" if f >= 1.0 else "o"
 			if tt >= 1.6 and tt < 2.1:
-				Crayon.text(self, Vector2(760, ground + 70), "...thud", 34, Crayon.GREY, 1, 101)
+				Crayon.text(pen, Vector2(760, ground + 70), "...thud", 34, Crayon.GREY, 1, 101)
 	if scale_k > 0.01:
 		var h := 170.0 * scale_k
 		var c := p + Vector2(0, -h * 0.5)
-		draw_set_transform(c, rot, Vector2.ONE)
-		Crayon.person(self, Vector2(0, h * 0.5), h, Crayon.INK, mood, Color(0, 0, 0, 0), pose, t * 6.0, 110)
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		pen.draw_set_transform(c, rot, Vector2.ONE)
+		Crayon.person(pen, Vector2(0, h * 0.5), h, Crayon.INK, mood, Color(0, 0, 0, 0), pose, t * 6.0, 110)
+		pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		if pose != "flat":
 			var tag_y := p.y - h - 40
 			if not (pun_kind == 1 and tt > 0.78 and tt < 1.6):
-				Crayon.text(self, Vector2(p.x, tag_y), "\"" + victim_name + "\"", 40, Crayon.BLUE, 1, 111, null, 1.0, false)
+				Crayon.text(pen, Vector2(p.x, tag_y), "\"" + victim_name + "\"", 40, Crayon.BLUE, 1, 111, null, 1.0, false)
 				var tw := Crayon.body().get_string_size(victim_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
-				Crayon.line(self, Vector2(p.x - tw * 0.6 - 10, tag_y + 4), Vector2(p.x + tw * 0.6 + 10, tag_y - 6), Crayon.RED, 6, 112)
+				Crayon.line(pen, Vector2(p.x - tw * 0.6 - 10, tag_y + 4), Vector2(p.x + tw * 0.6 + 10, tag_y - 6), Crayon.RED, 6, 112)
 		if mood == "x" and pose != "flat":
 			for i in 3:
 				var a := t * 4.0 + TAU * i / 3.0
-				Crayon.star(self, p + Vector2(cos(a) * 50, -h - 6 + sin(a) * 14), 12, Crayon.INK, Crayon.YELLOW, 120 + i)
-	Crayon.text(self, Vector2(W * 0.5 + 60, 190), ["", "WRONG!", "WRONG AGAIN!", "NOPE!!!"][mini(pun_kind, 3)], 80, Crayon.RED, 1, 130, Crayon.title_font())
+				Crayon.star(pen, p + Vector2(cos(a) * 50, -h - 6 + sin(a) * 14), 12, Crayon.INK, Crayon.YELLOW, 120 + i)
+	Crayon.text(pen, Vector2(W * 0.5 + 60, 190), ["", "WRONG!", "WRONG AGAIN!", "NOPE!!!"][mini(pun_kind, 3)], 80, Crayon.RED, 1, 130, Crayon.title_font())

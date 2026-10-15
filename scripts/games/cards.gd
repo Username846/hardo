@@ -18,7 +18,11 @@ var feedback := ""
 var feedback_t := 0.0
 
 
+var _baked_key := ""
+
+
 func enter() -> void:
+	use_back_layer()
 	Audio.play_music("cards")
 	var today: String = Game.date_text(0)
 	cards = [
@@ -128,57 +132,63 @@ func tick(dt: float) -> void:
 	Crayon.shake = 1.0 + (0.6 if i >= 7 else 0.0)
 
 
-func paint() -> void:
+func paint_back() -> void:
+	_baked_key = "%d/%s" % [i, rule4]
 	var dark := 0.0 if i < 7 else clampf((i - 6) / 4.0, 0.0, 1.0)
-	bg = Color(0.75, 0.55, 0.38).lerp(Color(0.22, 0.14, 0.12), dark)
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	var desk := Color(0.75, 0.55, 0.38).lerp(Color(0.22, 0.14, 0.12), dark)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), desk)
 	for k in 9:
-		Crayon.line(self, Vector2(-40, 80 + k * 80), Vector2(W + 40, 80 + k * 80 + 6), bg.darkened(0.15), 3, 10 + k)
+		Crayon.line(pen, Vector2(-40, 80 + k * 80), Vector2(W + 40, 80 + k * 80 + 6), desk.darkened(0.15), 3, 10 + k)
 	_rules()
+
+
+func paint() -> void:
+	if _baked_key != "%d/%s" % [i, rule4]:
+		refresh_back()
 	if i >= 0 and i < cards.size():
 		_card(cards[i])
-	Crayon.text(self, Vector2(1080, 540), "checked: %d" % checked, 30, Crayon.WHITE, 1, 50)
-	Crayon.text(self, Vector2(1080, 580), "oopsies: %d" % mistakes, 30, Crayon.WHITE, 1, 51)
+	Crayon.text(pen, Vector2(1080, 540), "checked: %d" % checked, 30, Crayon.WHITE, 1, 50)
+	Crayon.text(pen, Vector2(1080, 580), "oopsies: %d" % mistakes, 30, Crayon.WHITE, 1, 51)
 	if feedback_t > 0.0:
 		var col := Crayon.GREEN if feedback == "CORRECT!" else Crayon.RED
-		Crayon.text(self, Vector2(645, 650), feedback, 52, col.lightened(0.3), 1, 52, Crayon.title_font())
+		Crayon.text(pen, Vector2(645, 622), feedback, 52, col.lightened(0.3), 1, 52, Crayon.title_font())
 
 
 func paint_top() -> void:
 	if rule4:
 		var nb := get_button("nope")
-		Crayon.line(self, nb.rect.position + Vector2(10, 10), nb.rect.end - Vector2(10, 10), Crayon.INK, 6, 60)
+		Crayon.line(pen, nb.rect.position + Vector2(10, 10), nb.rect.end - Vector2(10, 10), Crayon.INK, 6, 60)
 
 
 func _rules() -> void:
 	var r := Rect2(30, 100, 360, 480)
-	Crayon.rect(self, r, Crayon.INK, 5, Crayon.BROWN.lightened(0.2), 20)
+	Crayon.rect(pen, r, Crayon.INK, 5, Crayon.BROWN.lightened(0.2), 20)
 	var paper := Rect2(r.position + Vector2(20, 40), r.size - Vector2(40, 60))
-	Crayon.rect(self, paper, Crayon.INK, 3, Crayon.WHITE, 21)
-	Crayon.rect(self, Rect2(r.position + Vector2(120, -14), Vector2(120, 34)), Crayon.INK, 4, Crayon.GREY, 22)
-	Crayon.text(self, paper.position + Vector2(paper.size.x * 0.5, 34), "THE RULES", 40, Crayon.RED, 1, 23, Crayon.title_font())
+	Crayon.rect(pen, paper, Crayon.INK, 3, Crayon.WHITE, 21)
+	Crayon.rect(pen, Rect2(r.position + Vector2(120, -14), Vector2(120, 34)), Crayon.INK, 4, Crayon.GREY, 22)
+	Crayon.text(pen, paper.position + Vector2(paper.size.x * 0.5, 34), "THE RULES", 40, Crayon.RED, 1, 23, Crayon.title_font())
 	var rules := ["1. Must say TO: CHUMBO", "2. Must be dated TODAY", "   (" + Game.today_text() + ")", "3. Must be signed"]
 	for k in rules.size():
-		Crayon.text(self, paper.position + Vector2(18, 92 + k * 46), rules[k], 28, Crayon.INK, 0, 24 + k, null, 0.7, false)
+		Crayon.text(pen, paper.position + Vector2(18, 92 + k * 46), rules[k], 28, Crayon.INK, 0, 24 + k, null, 0.7, false)
 	if rule4:
-		Crayon.text(self, paper.position + Vector2(18, 300), "4. ALL CARDS", 34, Crayon.RED, 0, 30, null, 1.6, false)
-		Crayon.text(self, paper.position + Vector2(18, 342), "   ARE APPROVED", 34, Crayon.RED, 0, 31, null, 1.6, false)
+		Crayon.text(pen, paper.position + Vector2(18, 300), "4. ALL CARDS", 34, Crayon.RED, 0, 30, null, 1.6, false)
+		Crayon.text(pen, paper.position + Vector2(18, 342), "   ARE APPROVED", 34, Crayon.RED, 0, 31, null, 1.6, false)
 
 
 func _card(c: Dictionary) -> void:
 	var r := Rect2(CARD.position + card_off, CARD.size)
 	var col: Color = c.col
-	Crayon.rect(self, r, Crayon.INK, 6, col.lightened(0.55), 100 + i)
-	Crayon.rect(self, r.grow(-14), col, 4, Color(0, 0, 0, 0), 101 + i)
+	Crayon.rect(pen, r, Crayon.INK, 6, col.lightened(0.55), 100 + i)
+	Crayon.rect(pen, r.grow(-14), col, 4, Color(0, 0, 0, 0), 101 + i)
 	var cx := r.get_center().x
 	var y := r.position.y
 	_pic(c.pic, Vector2(cx, y + 70), 120 + i)
 	var ink := Crayon.INK
-	Crayon.text(self, Vector2(r.position.x + 30, y + 150), "TO: " + String(c.to), 34, ink, 0, 130 + i, null, 0.6, false)
-	Crayon.text(self, Vector2(r.position.x + 30, y + 196), "DATE: " + String(c.date), 28, ink, 0, 131 + i, null, 0.6, false)
-	Crayon.text_block(self, Vector2(cx, y + 255), String(c.msg), 30, r.size.x - 60, Crayon.BLUE.darkened(0.3), 1, 132 + i)
+	Crayon.text(pen, Vector2(r.position.x + 30, y + 150), "TO: " + String(c.to), 34, ink, 0, 130 + i, null, 0.6, false)
+	Crayon.text(pen, Vector2(r.position.x + 30, y + 196), "DATE: " + String(c.date), 28, ink, 0, 131 + i, null, 0.6, false)
+	Crayon.text_block(pen, Vector2(cx, y + 255), String(c.msg), 30, r.size.x - 60, Crayon.BLUE.darkened(0.3), 1, 132 + i)
 	var from_txt := "FROM: " + String(c.from) if String(c.from) != "" else "FROM: ???"
-	Crayon.text(self, Vector2(r.position.x + 30, r.end.y - 92), from_txt, 26, ink, 0, 133 + i, null, 0.6, false)
+	Crayon.text(pen, Vector2(r.position.x + 30, r.end.y - 92), from_txt, 26, ink, 0, 133 + i, null, 0.6, false)
 	_signature(String(c.sig), Vector2(r.position.x + 30, r.end.y - 50), 140 + i)
 	if stamp != "":
 		var sc := Crayon.GREEN.darkened(0.2) if stamp == "YAY!" else Crayon.RED
@@ -186,53 +196,53 @@ func _card(c: Dictionary) -> void:
 		var sp := r.get_center() + Vector2(40, 40)
 		var k := clampf(stamp_t * 8.0, 0.0, 1.0)
 		var size := int(lerpf(140, 84, k))
-		Crayon.rect(self, Rect2(sp - Vector2(150, 55), Vector2(300, 110)), sc, 8, Color(0, 0, 0, 0), 150)
-		Crayon.text(self, sp, stamp, size, sc, 1, 151, Crayon.title_font(), 0.5, false)
+		Crayon.rect(pen, Rect2(sp - Vector2(150, 55), Vector2(300, 110)), sc, 8, Color(0, 0, 0, 0), 150)
+		Crayon.text(pen, sp, stamp, size, sc, 1, 151, Crayon.title_font(), 0.5, false)
 
 
 func _signature(sig: String, p: Vector2, sd: int) -> void:
 	match sig:
 		"":
-			Crayon.text(self, p + Vector2(0, 0), "sign here: ________", 24, Crayon.GREY, 0, sd, null, 0.3, false)
+			Crayon.text(pen, p + Vector2(0, 0), "sign here: ________", 24, Crayon.GREY, 0, sd, null, 0.3, false)
 		"paw":
-			Crayon.circle(self, p + Vector2(40, 0), 14, Crayon.INK, 3, Crayon.BROWN, sd)
+			Crayon.circle(pen, p + Vector2(40, 0), 14, Crayon.INK, 3, Crayon.BROWN, sd)
 			for k in 4:
-				Crayon.circle(self, p + Vector2(20 + k * 13, -22 - (0 if k % 3 == 0 else 6)), 6, Crayon.INK, 2, Crayon.BROWN, sd + k + 1)
+				Crayon.circle(pen, p + Vector2(20 + k * 13, -22 - (0 if k % 3 == 0 else 6)), 6, Crayon.INK, 2, Crayon.BROWN, sd + k + 1)
 		"hand":
 			var h := p + Vector2(50, -6)
-			Crayon.circle(self, h, 18, Crayon.INK, 3, Color(0.3, 0.25, 0.25), sd)
+			Crayon.circle(pen, h, 18, Crayon.INK, 3, Color(0.3, 0.25, 0.25), sd)
 			for k in 5:
 				var a := -2.6 + k * 0.38
-				Crayon.line(self, h + Vector2(cos(a), sin(a)) * 16, h + Vector2(cos(a), sin(a)) * 40, Color(0.3, 0.25, 0.25), 8, sd + k + 1)
+				Crayon.line(pen, h + Vector2(cos(a), sin(a)) * 16, h + Vector2(cos(a), sin(a)) * 40, Color(0.3, 0.25, 0.25), 8, sd + k + 1)
 		"smile":
-			Crayon.circle(self, p + Vector2(40, -8), 22, Crayon.INK, 3, Crayon.YELLOW, sd)
-			Crayon.face(self, p + Vector2(40, -8), 20, "wide", Vector2.ZERO, sd + 3)
+			Crayon.circle(pen, p + Vector2(40, -8), 22, Crayon.INK, 3, Crayon.YELLOW, sd)
+			Crayon.face(pen, p + Vector2(40, -8), 20, "wide", Vector2.ZERO, sd + 3)
 		_:
-			Crayon.text(self, p, sig, 34, Crayon.BLUE.darkened(0.2), 0, sd, null, 1.4, false)
+			Crayon.text(pen, p, sig, 34, Crayon.BLUE.darkened(0.2), 0, sd, null, 1.4, false)
 			var w := Crayon.body().get_string_size(sig, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
-			Crayon.line(self, p + Vector2(-4, 18), p + Vector2(w + 10, 14), Crayon.BLUE.darkened(0.2), 3, sd + 9)
+			Crayon.line(pen, p + Vector2(-4, 18), p + Vector2(w + 10, 14), Crayon.BLUE.darkened(0.2), 3, sd + 9)
 
 
 func _pic(kind: String, c: Vector2, sd: int) -> void:
 	match kind:
 		"heart":
-			Crayon.heart(self, c, 40, Crayon.INK, Crayon.RED, sd)
+			Crayon.heart(pen, c, 40, Crayon.INK, Crayon.RED, sd)
 		"bone":
-			Crayon.line(self, c + Vector2(-40, 0), c + Vector2(40, 0), Crayon.INK, 18, sd)
+			Crayon.line(pen, c + Vector2(-40, 0), c + Vector2(40, 0), Crayon.INK, 18, sd)
 			for sx in [-1, 1]:
 				for sy in [-1, 1]:
-					Crayon.circle(self, c + Vector2(sx * 44, sy * 10), 12, Crayon.INK, 3, Crayon.WHITE, sd + 2)
+					Crayon.circle(pen, c + Vector2(sx * 44, sy * 10), 12, Crayon.INK, 3, Crayon.WHITE, sd + 2)
 		"cake":
-			Crayon.cake(self, c + Vector2(0, 40), 100, 50, Crayon.PINK, 3, true, sd)
+			Crayon.cake(pen, c + Vector2(0, 40), 100, 50, Crayon.PINK, 3, true, sd)
 		"balloon":
-			Crayon.balloon(self, c + Vector2(-25, -10), 26, Crayon.RED, 30, sd)
-			Crayon.balloon(self, c + Vector2(25, -14), 26, Crayon.BLUE, 30, sd + 5)
+			Crayon.balloon(pen, c + Vector2(-25, -10), 26, Crayon.RED, 30, sd)
+			Crayon.balloon(pen, c + Vector2(25, -14), 26, Crayon.BLUE, 30, sd + 5)
 		"star":
-			Crayon.star(self, c, 44, Crayon.INK, Crayon.YELLOW, sd)
+			Crayon.star(pen, c, 44, Crayon.INK, Crayon.YELLOW, sd)
 		"eye":
-			Crayon.ellipse(self, c, Vector2(60, 32), Crayon.INK, 4, Crayon.WHITE, sd)
-			Crayon.circle(self, c + (mouse - c).normalized() * 10, 18, Crayon.INK, 3, Color(0.4, 0.1, 0.1), sd + 1)
-			Crayon.dot(self, c + (mouse - c).normalized() * 12, 7, Crayon.BLACK)
+			Crayon.ellipse(pen, c, Vector2(60, 32), Crayon.INK, 4, Crayon.WHITE, sd)
+			Crayon.circle(pen, c + (mouse - c).normalized() * 10, 18, Crayon.INK, 3, Color(0.4, 0.1, 0.1), sd + 1)
+			Crayon.dot(pen, c + (mouse - c).normalized() * 12, 7, Crayon.BLACK)
 		"x":
-			Crayon.line(self, c + Vector2(-35, -35), c + Vector2(35, 35), Crayon.RED, 9, sd)
-			Crayon.line(self, c + Vector2(35, -35), c + Vector2(-35, 35), Crayon.RED, 9, sd + 1)
+			Crayon.line(pen, c + Vector2(-35, -35), c + Vector2(35, 35), Crayon.RED, 9, sd)
+			Crayon.line(pen, c + Vector2(35, -35), c + Vector2(-35, 35), Crayon.RED, 9, sd + 1)

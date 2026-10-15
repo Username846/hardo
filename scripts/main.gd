@@ -23,7 +23,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_layout)
 	RenderingServer.set_default_clear_color(Crayon.PAPER)
 	_open("title", null)
-	for a in OS.get_cmdline_user_args():
+	for a in _args():
 		if a.begins_with("--autotest") and ResourceLoader.exists("res://tests/autotest.gd"):
 			add_child(load("res://tests/autotest.gd").new())
 		elif a.begins_with("--bot") and ResourceLoader.exists("res://tests/bot.gd"):
@@ -75,6 +75,7 @@ func _layout() -> void:
 
 
 func _process(_dt: float) -> void:
+	Crayon.tick()
 	if _wipe_amt != _wipe_drawn or switching:
 		_wipe.queue_redraw()
 
@@ -105,3 +106,14 @@ func _draw_wipe() -> void:
 			_wipe.draw_polyline(pts, col, rh * 0.95, true)
 	if _wipe_amt > 0.9:
 		_wipe.draw_rect(Rect2(Vector2.ZERO, vs), Color(Crayon.PAPER, (_wipe_amt - 0.9) * 10.0))
+
+
+## Command line args, plus "?a=b&c" from the page URL on the web (dev/test builds only use it).
+static func _args() -> PackedStringArray:
+	var out := OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
+		var q = JavaScriptBridge.eval("window.location.search", true)
+		if q is String and String(q).length() > 1:
+			for kv in String(q).substr(1).split("&"):
+				out.append("--" + kv)
+	return out

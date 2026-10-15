@@ -17,7 +17,13 @@ var idle_t := 0.0
 var final_fig := 0.0
 
 
+var _baked_key := ""
+var _hole: GradientTexture2D
+
+
 func enter() -> void:
+	use_back_layer()
+	_hole = _make_hole_texture()
 	Audio.play_music("lights")
 	var spots := [
 		["couch", Vector2(330, 392)], ["table", Vector2(760, 528)], ["curtain", Vector2(1080, 506)], ["closet", Vector2(128, 300)],
@@ -135,38 +141,60 @@ func _final() -> void:
 	finish_game(IDX, "FOUND 'EM ALL!")
 
 
-func paint() -> void:
-	bg = Color(0.95, 0.88, 0.75)
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
-	draw_rect(Rect2(-2000, 560, W + 4000, 2000), Color(0.75, 0.55, 0.4))
-	Crayon.line(self, Vector2(-40, 560), Vector2(W + 40, 560), Crayon.INK, 5, 1)
+func _key() -> String:
+	var f := 0
+	for g in guests:
+		if g.found:
+			f += 1
+	return "%d/%s" % [f, lit > 0.5]
+
+
+func paint_back() -> void:
+	_baked_key = _key()
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.95, 0.88, 0.75))
+	pen.draw_rect(Rect2(-2000, 560, W + 4000, 2000), Color(0.75, 0.55, 0.4))
+	Crayon.line(pen, Vector2(-40, 560), Vector2(W + 40, 560), Crayon.INK, 5, 1)
 	_room()
 	for g in guests:
-		_guest(g)
+		if not g.found:
+			_guest(g)
+
+
+func paint() -> void:
+	if _baked_key != _key():
+		refresh_back()
+	for g in guests:
+		if g.found:
+			_guest(g)
 	if phase == "lit":
 		# everyone (and some extra party hats on the table)
 		for k in 4:
-			Crayon.person(self, Vector2(300 + k * 230, 560), 150, Crayon.INK.lerp(Color(0.3, 0.2, 0.4), 0.5), "wide", Color(0, 0, 0, 0), "wave", t * 2.0, 700 + k)
-	# darkness with a flashlight hole
+			Crayon.person(pen, Vector2(300 + k * 230, 560), 150, Crayon.INK.lerp(Color(0.3, 0.2, 0.4), 0.5), "wide", Color(0, 0, 0, 0), "wave", t * 2.0, 700 + k)
+	# darkness with a flashlight hole: one soft-edged gradient + four rectangles
 	if lit < 1.0:
 		var a := 0.975 * (1.0 - lit)
-		_dark_ring(R_LIGHT + 50.0, 3000.0, a)
-		for k in 5:
-			var r0 := R_LIGHT + k * 10.0
-			_dark_ring(r0, r0 + 10.0, a * (k + 0.5) / 5.0)
-		Crayon.circle(self, light, R_LIGHT + 4, Color(1, 0.95, 0.6, 0.35 * (1.0 - lit)), 4, Color(0, 0, 0, 0), 2)
+		var ro := R_LIGHT + 50.0
+		var sq := Rect2(light - Vector2(ro, ro), Vector2(ro, ro) * 2.0)
+		var big := Rect2(-2000, -2000, W + 4000, H + 4000)
+		var dark := Color(0.02, 0.01, 0.05, a)
+		pen.draw_rect(Rect2(big.position.x, big.position.y, big.size.x, sq.position.y - big.position.y), dark)
+		pen.draw_rect(Rect2(big.position.x, sq.end.y, big.size.x, big.end.y - sq.end.y), dark)
+		pen.draw_rect(Rect2(big.position.x, sq.position.y, sq.position.x - big.position.x, sq.size.y), dark)
+		pen.draw_rect(Rect2(sq.end.x, sq.position.y, big.end.x - sq.end.x, sq.size.y), dark)
+		pen.draw_texture_rect(_hole, sq, false, Color(1, 1, 1, a))
+		Crayon.circle(pen, light, R_LIGHT + 4, Color(1, 0.95, 0.6, 0.35 * (1.0 - lit)), 4, Color(0, 0, 0, 0), 2)
 	# found markers + glowing eyes stay visible
 	if lit < 1.0:
 		for g in guests:
 			if g.found:
-				Crayon.star(self, g.pos + Vector2(0, -60), 16, Crayon.INK, Crayon.YELLOW, 600 + int(g.seed))
+				Crayon.star(pen, g.pos + Vector2(0, -60), 16, Crayon.INK, Crayon.YELLOW, 600 + int(g.seed))
 		for e in extras:
 			if not e.gone and fmod(t + e.pos.x, 3.0) > 0.15:
-				draw_circle(e.pos + Vector2(-12, 0), 7, Color(1, 0.95, 0.4))
-				draw_circle(e.pos + Vector2(12, 0), 7, Color(1, 0.95, 0.4))
+				pen.draw_circle(e.pos + Vector2(-12, 0), 7, Color(1, 0.95, 0.4))
+				pen.draw_circle(e.pos + Vector2(12, 0), 7, Color(1, 0.95, 0.4))
 	if final_fig > 0.0 and phase == "final":
 		var fp := Vector2(640, 600)
-		Crayon.person(self, fp, 300 * final_fig, Color(0.9, 0.9, 0.95), "wide", Crayon.GREEN, "stand", 0.0, 800, Color(0.15, 0.1, 0.15))
+		Crayon.person(pen, fp, 300 * final_fig, Color(0.9, 0.9, 0.95), "wide", Crayon.GREEN, "stand", 0.0, 800, Color(0.15, 0.1, 0.15))
 
 
 func paint_top() -> void:
@@ -174,24 +202,29 @@ func paint_top() -> void:
 	if found > 0 or playing:
 		hud("FOUND: %d / %d" % [found, total], col if found <= total else Crayon.RED)
 	if playing and found == 0 and t < 25.0:
-		Crayon.text(self, Vector2(640, 120), "DRAG THE FLASHLIGHT!", 44, Crayon.YELLOW, 1, 20, Crayon.title_font())
+		Crayon.text(pen, Vector2(640, 120), "DRAG THE FLASHLIGHT!", 44, Crayon.YELLOW, 1, 20, Crayon.title_font())
 
 
-func _dark_ring(r0: float, r1: float, a: float) -> void:
-	var col := Color(0.02, 0.01, 0.05, a)
-	var n := 36
-	for i in n:
-		var a0 := TAU * i / n
-		var a1 := TAU * (i + 1) / n
-		var d0 := Vector2(cos(a0), sin(a0))
-		var d1 := Vector2(cos(a1), sin(a1))
-		draw_colored_polygon(PackedVector2Array([light + d0 * r0, light + d0 * r1, light + d1 * r1, light + d1 * r0]), col)
+func _make_hole_texture() -> GradientTexture2D:
+	var ro := R_LIGHT + 50.0
+	var g := Gradient.new()
+	var clear := R_LIGHT / ro
+	g.offsets = PackedFloat32Array([0.0, clear, 1.0])
+	g.colors = PackedColorArray([Color(0.02, 0.01, 0.05, 0.0), Color(0.02, 0.01, 0.05, 0.0), Color(0.02, 0.01, 0.05, 1.0)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.width = 256
+	tex.height = 256
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	return tex
 
 
 func _room() -> void:
 	# window + curtains
-	Crayon.rect(self, Rect2(990, 110, 180, 200), Crayon.INK, 5, Color(0.1, 0.1, 0.25), 10)
-	Crayon.circle(self, Vector2(1100, 170), 18, Crayon.INK, 2, Color(1, 1, 0.85), 11)
+	Crayon.rect(pen, Rect2(990, 110, 180, 200), Crayon.INK, 5, Color(0.1, 0.1, 0.25), 10)
+	Crayon.circle(pen, Vector2(1100, 170), 18, Crayon.INK, 2, Color(1, 1, 0.85), 11)
 	for k in 2:
 		var cx := 960.0 + k * 220.0
 		var pts := PackedVector2Array()
@@ -199,32 +232,32 @@ func _room() -> void:
 			pts.append(Vector2(cx + sin(j * 1.3 + k) * 14, 100 + j * 52))
 		pts.append(Vector2(cx + 60 - k * 120, 520))
 		pts.append(Vector2(cx + 60 - k * 120, 100))
-		Crayon.poly(self, pts, Crayon.INK, 4, Color(0.75, 0.25, 0.3), 12 + k)
+		Crayon.poly(pen, pts, Crayon.INK, 4, Color(0.75, 0.25, 0.3), 12 + k)
 	# closet
-	Crayon.rect(self, Rect2(50, 140, 130, 420), Crayon.INK, 5, Crayon.BROWN, 20)
-	Crayon.circle(self, Vector2(160, 360), 7, Crayon.INK, 2, Crayon.YELLOW, 21)
+	Crayon.rect(pen, Rect2(50, 140, 130, 420), Crayon.INK, 5, Crayon.BROWN, 20)
+	Crayon.circle(pen, Vector2(160, 360), 7, Crayon.INK, 2, Crayon.YELLOW, 21)
 	# couch
-	Crayon.rect(self, Rect2(200, 420, 320, 140), Crayon.INK, 5, Crayon.BLUE, 30)
-	Crayon.rect(self, Rect2(180, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 31)
-	Crayon.rect(self, Rect2(490, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 32)
+	Crayon.rect(pen, Rect2(200, 420, 320, 140), Crayon.INK, 5, Crayon.BLUE, 30)
+	Crayon.rect(pen, Rect2(180, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 31)
+	Crayon.rect(pen, Rect2(490, 400, 50, 160), Crayon.INK, 5, Crayon.BLUE.darkened(0.2), 32)
 	# plant
-	Crayon.rect(self, Rect2(570, 480, 60, 80), Crayon.INK, 4, Crayon.ORANGE, 40)
+	Crayon.rect(pen, Rect2(570, 480, 60, 80), Crayon.INK, 4, Crayon.ORANGE, 40)
 	for k in 5:
 		var a := -PI * 0.5 + (k - 2) * 0.4
-		Crayon.ellipse(self, Vector2(600, 470) + Vector2(cos(a), sin(a)) * 50, Vector2(14, 34), Crayon.INK, 3, Crayon.GREEN, 41 + k)
+		Crayon.ellipse(pen, Vector2(600, 470) + Vector2(cos(a), sin(a)) * 50, Vector2(14, 34), Crayon.INK, 3, Crayon.GREEN, 41 + k)
 	# table
-	Crayon.rect(self, Rect2(640, 440, 260, 24), Crayon.INK, 5, Crayon.BROWN, 50)
-	Crayon.line(self, Vector2(660, 464), Vector2(660, 560), Crayon.INK, 6, 51)
-	Crayon.line(self, Vector2(880, 464), Vector2(880, 560), Crayon.INK, 6, 52)
-	Crayon.cake(self, Vector2(770, 440), 110, 50, Crayon.PINK, 3, lit > 0.5, 53)
+	Crayon.rect(pen, Rect2(640, 440, 260, 24), Crayon.INK, 5, Crayon.BROWN, 50)
+	Crayon.line(pen, Vector2(660, 464), Vector2(660, 560), Crayon.INK, 6, 51)
+	Crayon.line(pen, Vector2(880, 464), Vector2(880, 560), Crayon.INK, 6, 52)
+	Crayon.cake(pen, Vector2(770, 440), 110, 50, Crayon.PINK, 3, lit > 0.5, 53)
 	# shelf
-	Crayon.rect(self, Rect2(1190, 200, 80, 360), Crayon.INK, 5, Crayon.BROWN.lightened(0.1), 60)
+	Crayon.rect(pen, Rect2(1190, 200, 80, 360), Crayon.INK, 5, Crayon.BROWN.lightened(0.1), 60)
 	for k in 4:
-		Crayon.line(self, Vector2(1190, 280 + k * 70), Vector2(1270, 280 + k * 70), Crayon.INK, 4, 61 + k)
+		Crayon.line(pen, Vector2(1190, 280 + k * 70), Vector2(1270, 280 + k * 70), Crayon.INK, 4, 61 + k)
 	# rug
-	Crayon.ellipse(self, Vector2(420, 640), Vector2(170, 40), Crayon.INK, 4, Crayon.PURPLE.lightened(0.2), 70)
+	Crayon.ellipse(pen, Vector2(420, 640), Vector2(170, 40), Crayon.INK, 4, Crayon.PURPLE.lightened(0.2), 70)
 	# gift box
-	Crayon.present(self, Rect2(1000, 600, 130, 100), Crayon.GREEN, Crayon.YELLOW, 80, 18.0)
+	Crayon.present(pen, Rect2(1000, 600, 130, 100), Crayon.GREEN, Crayon.YELLOW, 80, 18.0)
 
 
 func _guest(g: Dictionary) -> void:
@@ -232,22 +265,22 @@ func _guest(g: Dictionary) -> void:
 	var sd: int = g.seed
 	var col: Color = g.col
 	if g.found:
-		Crayon.person(self, p + Vector2(0, 70), 120, Crayon.INK, "happy", col, "up", t * 3.0, sd)
+		Crayon.person(pen, p + Vector2(0, 70), 120, Crayon.INK, "happy", col, "up", t * 3.0, sd)
 		return
 	match String(g.spot):
 		"couch", "plant", "shelf":
-			Crayon.circle(self, p, 22, Crayon.INK, 4, Color(1, 0.9, 0.78), sd)
-			Crayon.face(self, p + Vector2(0, -2), 18, "happy", Vector2.ZERO, sd + 1)
-			Crayon.party_hat(self, p + Vector2(0, -18), 16, col, sd + 2)
+			Crayon.circle(pen, p, 22, Crayon.INK, 4, Color(1, 0.9, 0.78), sd)
+			Crayon.face(pen, p + Vector2(0, -2), 18, "happy", Vector2.ZERO, sd + 1)
+			Crayon.party_hat(pen, p + Vector2(0, -18), 16, col, sd + 2)
 		"table", "gift", "closet":
-			draw_circle(p + Vector2(-9, 0), 5, Crayon.WHITE)
-			draw_circle(p + Vector2(9, 0), 5, Crayon.WHITE)
-			draw_circle(p + Vector2(-8, 1), 2.5, Crayon.INK)
-			draw_circle(p + Vector2(10, 1), 2.5, Crayon.INK)
-			Crayon.party_hat(self, p + Vector2(0, -12), 14, col, sd + 2)
+			pen.draw_circle(p + Vector2(-9, 0), 5, Crayon.WHITE)
+			pen.draw_circle(p + Vector2(9, 0), 5, Crayon.WHITE)
+			pen.draw_circle(p + Vector2(-8, 1), 2.5, Crayon.INK)
+			pen.draw_circle(p + Vector2(10, 1), 2.5, Crayon.INK)
+			Crayon.party_hat(pen, p + Vector2(0, -12), 14, col, sd + 2)
 		"curtain":
-			Crayon.ellipse(self, p + Vector2(-14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd)
-			Crayon.ellipse(self, p + Vector2(14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd + 1)
+			Crayon.ellipse(pen, p + Vector2(-14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd)
+			Crayon.ellipse(pen, p + Vector2(14, 0), Vector2(14, 7), Crayon.INK, 3, Crayon.RED, sd + 1)
 		"rug":
-			Crayon.ellipse(self, p, Vector2(50, 22), Crayon.INK, 3, Crayon.PURPLE.lightened(0.1), sd)
-			Crayon.party_hat(self, p + Vector2(0, -18), 14, col, sd + 2)
+			Crayon.ellipse(pen, p, Vector2(50, 22), Crayon.INK, 3, Crayon.PURPLE.lightened(0.1), sd)
+			Crayon.party_hat(pen, p + Vector2(0, -18), 14, col, sd + 2)

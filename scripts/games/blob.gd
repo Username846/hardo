@@ -20,8 +20,13 @@ var choice := false
 var show_name := true
 
 
+var _baked_stage := -1
+
+
 func enter() -> void:
 	Narrator.top = true
+	use_back_layer()
+	lyrics_y = 96.0
 	Audio.play_music("blob")
 	_run()
 
@@ -231,22 +236,28 @@ func tick(dt: float) -> void:
 	Crayon.shake = 1.0 + maxf(0, stage - 2) * 0.5
 
 
-func paint() -> void:
+func paint_back() -> void:
+	_baked_stage = stage
 	var dark := clampf((stage - 2) / 2.0, 0.0, 1.0)
-	bg = Color(0.98, 0.9, 0.95).lerp(Color(0.16, 0.08, 0.18), dark)
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+	var col := Color(0.98, 0.9, 0.95).lerp(Color(0.16, 0.08, 0.18), dark)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), col)
 	# a little crib rug + wallpaper hearts
 	if stage < 4:
 		for i in 12:
 			var hp := Vector2(fmod(i * 211.0, W), 140 + fmod(i * 97.0, 300))
-			Crayon.heart(self, hp, 12, Color(0, 0, 0, 0), Crayon.PINK.lerp(bg, 0.6 + dark * 0.3), 20 + i)
-		Crayon.ellipse(self, CENTER + Vector2(0, 150), Vector2(330, 50), Crayon.INK, 4, Crayon.BLUE.lerp(bg, 0.5), 5)
+			Crayon.heart(pen, hp, 12, Color(0, 0, 0, 0), Crayon.PINK.lerp(col, 0.6 + dark * 0.3), 20 + i)
+		Crayon.ellipse(pen, CENTER + Vector2(0, 150), Vector2(330, 50), Crayon.INK, 4, Crayon.BLUE.lerp(col, 0.5), 5)
+
+
+func paint() -> void:
+	if stage != _baked_stage:
+		refresh_back()
 	if stage == 0:
 		_egg()
 	else:
 		_blob()
 	for h in hearts:
-		Crayon.heart(self, h.p, 14, Crayon.INK, Color(Crayon.RED, 1.0 - h.t / 1.5), 60)
+		Crayon.heart(pen, h.p, 14, Crayon.INK, Color(Crayon.RED, 1.0 - h.t / 1.5), 60)
 	# animation props
 	match anim:
 		"feed":
@@ -255,48 +266,48 @@ func paint() -> void:
 				var to := CENTER + Vector2(0, 20)
 				var f := anim_t / 0.5
 				var p := from.lerp(to, f) + Vector2(0, -sin(f * PI) * 120)
-				Crayon.poly(self, PackedVector2Array([p + Vector2(-26, 18), p + Vector2(26, 18), p + Vector2(0, -22)]), Crayon.INK, 3, Crayon.PINK, 70)
+				Crayon.poly(pen, PackedVector2Array([p + Vector2(-26, 18), p + Vector2(26, 18), p + Vector2(0, -22)]), Crayon.INK, 3, Crayon.PINK, 70)
 		"play":
 			if anim_t < 0.9:
 				var f := anim_t / 0.9
 				var p := CENTER + Vector2(cos(f * TAU) * (_radius() + 60), -absf(sin(f * TAU * 2)) * 120 - 40)
-				Crayon.circle(self, p, 24, Crayon.INK, 3, Crayon.RED, 71)
-				Crayon.line(self, p + Vector2(-24, 0), p + Vector2(24, 0), Crayon.WHITE, 3, 72)
+				Crayon.circle(pen, p, 24, Crayon.INK, 3, Crayon.RED, 71)
+				Crayon.line(pen, p + Vector2(-24, 0), p + Vector2(24, 0), Crayon.WHITE, 3, 72)
 		"pet":
 			if anim_t < 0.8:
 				var p := CENTER + Vector2(sin(anim_t * 12.0) * 50, -_radius() * 0.7)
-				Crayon.poly(self, PackedVector2Array([p + Vector2(-30, 0), p + Vector2(30, 0), p + Vector2(34, -30), p + Vector2(-34, -30)]), Crayon.INK, 3, Color(1, 0.85, 0.7), 73)
+				Crayon.poly(pen, PackedVector2Array([p + Vector2(-30, 0), p + Vector2(30, 0), p + Vector2(34, -30), p + Vector2(-34, -30)]), Crayon.INK, 3, Color(1, 0.85, 0.7), 73)
 
 
 func paint_top() -> void:
 	var ink := Crayon.INK if stage < 3 else Crayon.WHITE
 	# the player's name, which may get eaten
 	var nm: String = Game.CANON_NAME.substr(0, name_left)
-	Crayon.text(self, Vector2(W * 0.5, 40), "YOUR NAME: " + nm + ("_".repeat(10 - name_left)), 36, ink, 1, 801, null, 1.0, false)
+	Crayon.text(pen, Vector2(W * 0.5, 40), "YOUR NAME: " + nm + ("_".repeat(10 - name_left)), 36, ink, 1, 801, null, 1.0, false)
 	if stage >= 1 and stage < 4:
 		var labels := ["FOOD", "FUN", "LOVE"]
 		var cols := [Crayon.PINK, Crayon.YELLOW, Crayon.RED]
 		for i in 3:
 			var r := Rect2(W - 260, 110 + i * 56, 220, 34)
-			Crayon.text(self, Vector2(r.position.x - 12, r.get_center().y), labels[i], 26, ink, 2, 810 + i)
-			Crayon.rect(self, r, ink, 4, Color(1, 1, 1, 0.3), 820 + i)
-			draw_rect(Rect2(r.position + Vector2(4, 4), Vector2((r.size.x - 8) * meters[i], r.size.y - 8)), cols[i])
-		Crayon.text(self, Vector2(W - 150, 290), ["", "baby", "kid", "BIG", ""][stage], 30, ink, 1, 830)
+			Crayon.text(pen, Vector2(r.position.x - 12, r.get_center().y), labels[i], 26, ink, 2, 810 + i)
+			Crayon.rect(pen, r, ink, 4, Color(1, 1, 1, 0.3), 820 + i)
+			pen.draw_rect(Rect2(r.position + Vector2(4, 4), Vector2((r.size.x - 8) * meters[i], r.size.y - 8)), cols[i])
+		Crayon.text(pen, Vector2(W - 150, 290), ["", "baby", "kid", "BIG", ""][stage], 30, ink, 1, 830)
 	if stage == 0:
-		Crayon.text(self, Vector2(W * 0.5, H - 70), "TAP THE EGG!", 48, Crayon.PURPLE, 1, 840, Crayon.title_font())
+		Crayon.text(pen, Vector2(W * 0.5, H - 70), "TAP THE EGG!", 48, Crayon.PURPLE, 1, 840, Crayon.title_font())
 
 
 func _egg() -> void:
 	var wob := sin(t * 10.0) * 0.05 * (1.0 if cracks > 0 else 0.3) + squish * 0.1
-	draw_set_transform(CENTER, wob, Vector2.ONE)
-	Crayon.ellipse(self, Vector2.ZERO, Vector2(95, 125), Crayon.INK, 6, Color(0.98, 0.95, 0.85), 30)
+	pen.draw_set_transform(CENTER, wob, Vector2.ONE)
+	Crayon.ellipse(pen, Vector2.ZERO, Vector2(95, 125), Crayon.INK, 6, Color(0.98, 0.95, 0.85), 30)
 	for i in 6:
-		Crayon.dot(self, Vector2(-50 + i * 20, -40 + (i % 3) * 30), 8, Crayon.RAINBOW[i])
+		Crayon.dot(pen, Vector2(-50 + i * 20, -40 + (i % 3) * 30), 8, Crayon.RAINBOW[i])
 	for k in cracks:
 		var y := -60.0 + k * 28
 		var pts := PackedVector2Array([Vector2(-70, y), Vector2(-40, y + 14), Vector2(-15, y - 6), Vector2(15, y + 12), Vector2(40, y - 4), Vector2(70, y + 10)])
-		Crayon.path(self, pts, Crayon.INK, 4, 40 + k)
-	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		Crayon.path(pen, pts, Crayon.INK, 4, 40 + k)
+	pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 
 
 func _blob() -> void:
@@ -312,29 +323,29 @@ func _blob() -> void:
 		var a := TAU * i / n
 		var wob := 1.0 + sin(a * 3.0 + t * 3.0) * 0.04 + sin(a * 5.0 - t * 2.0) * 0.03
 		pts.append(c + Vector2(cos(a) * r * (1.0 + sq) * wob, sin(a) * r * (0.85 - sq) * wob))
-	Crayon.poly(self, pts, Crayon.INK, maxf(5.0, r * 0.03), col, 100)
-	draw_circle(c + Vector2(-r * 0.4, -r * 0.45), r * 0.12, Color(1, 1, 1, 0.35))
+	Crayon.poly(pen, pts, Crayon.INK, maxf(5.0, r * 0.03), col, 100)
+	pen.draw_circle(c + Vector2(-r * 0.4, -r * 0.45), r * 0.12, Color(1, 1, 1, 0.35))
 	var look := (mouse - c).normalized()
 	var mood := "happy"
 	if stage == 3:
 		mood = "wide"
 	elif stage >= 4:
 		mood = "wide"
-	Crayon.face(self, c + Vector2(0, -r * 0.05), r * 0.6, mood, look, 101, Crayon.INK if stage < 3 else Crayon.BLACK)
+	Crayon.face(pen, c + Vector2(0, -r * 0.05), r * 0.6, mood, look, 101, Crayon.INK if stage < 3 else Crayon.BLACK)
 	if stage >= 3:
 		# extra eyes
 		for i in (2 if stage == 3 else 6):
 			var e := c + Vector2(-r * 0.55 + i * r * 0.22, -r * 0.6 + (i % 2) * r * 0.1)
 			if stage == 3:
 				e = c + Vector2(-r * 0.6 + i * r * 1.2, -r * 0.55)
-			draw_circle(e, r * 0.07, Crayon.WHITE)
-			draw_circle(e + look * r * 0.025, r * 0.035, Crayon.BLACK)
+			pen.draw_circle(e, r * 0.07, Crayon.WHITE)
+			pen.draw_circle(e + look * r * 0.025, r * 0.035, Crayon.BLACK)
 	if stage >= 1 and stage <= 2:
-		Crayon.party_hat(self, c + Vector2(r * 0.1, -r * 0.8), r * 0.4, Crayon.YELLOW, 102, 0.2)
+		Crayon.party_hat(pen, c + Vector2(r * 0.1, -r * 0.8), r * 0.4, Crayon.YELLOW, 102, 0.2)
 	if stage == 1:
 		ci_blush(c, r)
 
 
 func ci_blush(c: Vector2, r: float) -> void:
-	draw_circle(c + Vector2(-r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
-	draw_circle(c + Vector2(r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
+	pen.draw_circle(c + Vector2(-r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))
+	pen.draw_circle(c + Vector2(r * 0.45, r * 0.1), r * 0.12, Color(1, 0.5, 0.6, 0.5))

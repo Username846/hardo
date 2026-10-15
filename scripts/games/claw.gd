@@ -27,7 +27,11 @@ var last_won := 0
 var dark := false
 
 
+var _baked_key := ""
+
+
 func enter() -> void:
+	use_back_layer()
 	Audio.play_music("claw")
 	var kinds := ["teddy", "duck", "star", "bunny", "dino", "teddy", "duck", "chumbo"]
 	var cols := [Crayon.BROWN, Crayon.YELLOW, Crayon.YELLOW, Crayon.WHITE, Crayon.GREEN, Color(0.95, 0.6, 0.7), Color(0.5, 0.8, 1.0), Color(1, 0.88, 0.75)]
@@ -209,23 +213,38 @@ func _name(kind: String) -> String:
 	return {"teddy": "teddy bear", "duck": "ducky", "star": "star", "bunny": "bunny", "dino": "dino", "chumbo": "Chumbo"}.get(kind, "toy")
 
 
+func paint_back() -> void:
+	_baked_key = "%s/%d" % [dark, won.size()]
+	var col := Color(0.25, 0.15, 0.35).lerp(Color(0.08, 0.04, 0.1), 1.0 if dark else 0.0)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), col)
+	# cabinet
+	var cab := Rect2(290, 70, 700, 640)
+	Crayon.rect(pen, cab, Crayon.INK, 7, Crayon.RED.lerp(Color(0.3, 0.05, 0.1), 0.6 if dark else 0.0), 20)
+	Crayon.text(pen, Vector2(640, 92), "MEGA CLAW", 34, Crayon.YELLOW, 1, 21, Crayon.title_font())
+	Crayon.rect(pen, GLASS, Crayon.INK, 6, Color(0.75, 0.9, 1.0).lerp(Color(0.2, 0.25, 0.3), 0.6 if dark else 0.0), 22)
+	# chute
+	Crayon.rect(pen, Rect2(CHUTE_X - 50, 430, 100, 100), Crayon.INK, 5, Color(0.1, 0.1, 0.12), 23)
+	# rail
+	Crayon.line(pen, Vector2(GLASS.position.x + 10, RAIL_Y), Vector2(GLASS.end.x - 10, RAIL_Y), Crayon.GREY, 8, 24)
+	# the shelf of toys you won
+	Crayon.text(pen, Vector2(640, 566), "YOUR PRIZES:", 30, Crayon.YELLOW, 1, 50)
+	for k in won.size():
+		var pr: Dictionary = won[k]
+		var copy := pr.duplicate()
+		copy.x = 380.0 + k * 62.0
+		copy.y = 636.0
+		_prize(copy)
+
+
 func paint() -> void:
-	bg = Color(0.25, 0.15, 0.35).lerp(Color(0.08, 0.04, 0.1), 1.0 if dark else 0.0)
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
-	# arcade lights
+	if _baked_key != "%s/%d" % [dark, won.size()]:
+		refresh_back()
+	# arcade lights (blinking)
 	for k in 14:
 		var lp := Vector2(80 + k * 90, 40)
 		var on := int(t * 4.0 + k) % 3 == 0
-		Crayon.circle(self, lp, 10, Crayon.INK, 2, Crayon.RAINBOW[k % 7] if on else Crayon.GREY, 10 + k)
-	# cabinet
-	var cab := Rect2(290, 70, 700, 640)
-	Crayon.rect(self, cab, Crayon.INK, 7, Crayon.RED.lerp(Color(0.3, 0.05, 0.1), 0.6 if dark else 0.0), 20)
-	Crayon.text(self, Vector2(640, 92), "MEGA CLAW", 34, Crayon.YELLOW, 1, 21, Crayon.title_font())
-	Crayon.rect(self, GLASS, Crayon.INK, 6, Color(0.75, 0.9, 1.0).lerp(Color(0.2, 0.25, 0.3), 0.6 if dark else 0.0), 22)
-	# chute
-	Crayon.rect(self, Rect2(CHUTE_X - 50, 430, 100, 100), Crayon.INK, 5, Color(0.1, 0.1, 0.12), 23)
-	# rail
-	Crayon.line(self, Vector2(GLASS.position.x + 10, RAIL_Y), Vector2(GLASS.end.x - 10, RAIL_Y), Crayon.GREY, 8, 24)
+		pen.draw_circle(lp, 11, Crayon.INK)
+		pen.draw_circle(lp, 8, Crayon.RAINBOW[k % 7] if on else Crayon.GREY)
 	# prizes
 	for pr in prizes:
 		if not held.has(pr):
@@ -235,44 +254,36 @@ func paint() -> void:
 		_prize(pr)
 	# fog + handprint + HI (on the inside of the glass)
 	if fog > 0.0:
-		draw_rect(GLASS.grow(-4), Color(0.92, 0.94, 0.96, fog * 0.85))
+		pen.draw_rect(GLASS.grow(-4), Color(0.92, 0.94, 0.96, fog * 0.85))
 		if handprint > 0.0:
 			var h := Vector2(560, 300)
 			var hc := Color(0.55, 0.6, 0.65, 0.9)
-			Crayon.ellipse(self, h, Vector2(45, 55), Color(0, 0, 0, 0), 0, hc, 30)
+			Crayon.ellipse(pen, h, Vector2(45, 55), Color(0, 0, 0, 0), 0, hc, 30)
 			for k in 5:
 				var a := -2.5 + k * 0.42
-				Crayon.line(self, h + Vector2(cos(a), sin(a)) * 40, h + Vector2(cos(a), sin(a)) * (85 if k > 0 else 65), hc, 18, 31 + k)
+				Crayon.line(pen, h + Vector2(cos(a), sin(a)) * 40, h + Vector2(cos(a), sin(a)) * (85 if k > 0 else 65), hc, 18, 31 + k)
 		if hi_text > 0.0:
-			Crayon.text(self, Vector2(770, 260), "HI"  if hi_text > 0.5 else "H", 110, Color(0.5, 0.55, 0.6, 0.9), 1, 40, Crayon.title_font())
-	# the shelf of toys you won
-	Crayon.text(self, Vector2(640, 580), "YOUR PRIZES:", 30, Crayon.YELLOW, 1, 50)
-	for k in won.size():
-		var pr: Dictionary = won[k]
-		var copy := pr.duplicate()
-		copy.x = 380.0 + k * 62.0
-		copy.y = 660.0
-		_prize(copy)
+			Crayon.text(pen, Vector2(770, 260), "HI"  if hi_text > 0.5 else "H", 110, Color(0.5, 0.55, 0.6, 0.9), 1, 40, Crayon.title_font())
 
 
 func paint_top() -> void:
 	hud("COINS: %d" % coins, Crayon.YELLOW)
 	if armed and state == "idle" and tries == 0:
-		Crayon.text(self, Vector2(640, 300), "TAP A TOY!", 56, Crayon.RED, 1, 60, Crayon.title_font())
+		Crayon.text(pen, Vector2(640, 300), "TAP A TOY!", 56, Crayon.RED, 1, 60, Crayon.title_font())
 
 
 func _claw() -> void:
 	var top := Vector2(claw_x, RAIL_Y)
 	var c := Vector2(claw_x, claw_y)
-	Crayon.rect(self, Rect2(top - Vector2(24, 12), Vector2(48, 24)), Crayon.INK, 4, Crayon.GREY, 70)
-	Crayon.line(self, top, c, Crayon.INK, 4, 71)
-	Crayon.circle(self, c, 16, Crayon.INK, 4, Crayon.GREY, 72)
+	Crayon.rect(pen, Rect2(top - Vector2(24, 12), Vector2(48, 24)), Crayon.INK, 4, Crayon.GREY, 70)
+	Crayon.line(pen, top, c, Crayon.INK, 4, 71)
+	Crayon.circle(pen, c, 16, Crayon.INK, 4, Crayon.GREY, 72)
 	var spread := 20.0 + claw_open * 22.0
 	for sx in [-1.0, 1.0]:
 		var mid := c + Vector2(sx * spread, 30)
 		var tip := c + Vector2(sx * (spread - 14), 62)
-		Crayon.line(self, c, mid, Crayon.INK, 7, 73 + int(sx))
-		Crayon.line(self, mid, tip, Crayon.INK, 7, 76 + int(sx))
+		Crayon.line(pen, c, mid, Crayon.INK, 7, 73 + int(sx))
+		Crayon.line(pen, mid, tip, Crayon.INK, 7, 76 + int(sx))
 
 
 func _prize(pr: Dictionary) -> void:
@@ -286,33 +297,33 @@ func _prize(pr: Dictionary) -> void:
 		mood = "wide" if tries >= 4 else "flat"
 	match String(pr.kind):
 		"teddy":
-			Crayon.circle(self, p, 26, Crayon.INK, 3, col, sd)
-			Crayon.circle(self, p + Vector2(0, -36), 20, Crayon.INK, 3, col, sd + 1)
-			Crayon.circle(self, p + Vector2(-15, -52), 7, Crayon.INK, 2, col, sd + 2)
-			Crayon.circle(self, p + Vector2(15, -52), 7, Crayon.INK, 2, col, sd + 3)
-			Crayon.face(self, p + Vector2(0, -36), 16, mood, look, sd + 4)
+			Crayon.circle(pen, p, 26, Crayon.INK, 3, col, sd)
+			Crayon.circle(pen, p + Vector2(0, -36), 20, Crayon.INK, 3, col, sd + 1)
+			Crayon.circle(pen, p + Vector2(-15, -52), 7, Crayon.INK, 2, col, sd + 2)
+			Crayon.circle(pen, p + Vector2(15, -52), 7, Crayon.INK, 2, col, sd + 3)
+			Crayon.face(pen, p + Vector2(0, -36), 16, mood, look, sd + 4)
 		"duck":
-			Crayon.ellipse(self, p, Vector2(30, 22), Crayon.INK, 3, col, sd)
-			Crayon.circle(self, p + Vector2(14, -26), 16, Crayon.INK, 3, col, sd + 1)
-			Crayon.poly(self, PackedVector2Array([p + Vector2(28, -28), p + Vector2(44, -22), p + Vector2(28, -18)]), Crayon.INK, 2, Crayon.ORANGE, sd + 2)
-			Crayon.face(self, p + Vector2(12, -28), 12, mood, look, sd + 3)
+			Crayon.ellipse(pen, p, Vector2(30, 22), Crayon.INK, 3, col, sd)
+			Crayon.circle(pen, p + Vector2(14, -26), 16, Crayon.INK, 3, col, sd + 1)
+			Crayon.poly(pen, PackedVector2Array([p + Vector2(28, -28), p + Vector2(44, -22), p + Vector2(28, -18)]), Crayon.INK, 2, Crayon.ORANGE, sd + 2)
+			Crayon.face(pen, p + Vector2(12, -28), 12, mood, look, sd + 3)
 		"star":
-			Crayon.star(self, p + Vector2(0, -14), 34, Crayon.INK, col, sd)
-			Crayon.face(self, p + Vector2(0, -12), 14, mood, look, sd + 1)
+			Crayon.star(pen, p + Vector2(0, -14), 34, Crayon.INK, col, sd)
+			Crayon.face(pen, p + Vector2(0, -12), 14, mood, look, sd + 1)
 		"bunny":
-			Crayon.ellipse(self, p + Vector2(-9, -60), Vector2(7, 22), Crayon.INK, 3, col, sd + 1)
-			Crayon.ellipse(self, p + Vector2(9, -60), Vector2(7, 22), Crayon.INK, 3, col, sd + 2)
-			Crayon.circle(self, p, 24, Crayon.INK, 3, col, sd)
-			Crayon.circle(self, p + Vector2(0, -32), 18, Crayon.INK, 3, col, sd + 3)
-			Crayon.face(self, p + Vector2(0, -32), 15, mood, look, sd + 4)
+			Crayon.ellipse(pen, p + Vector2(-9, -60), Vector2(7, 22), Crayon.INK, 3, col, sd + 1)
+			Crayon.ellipse(pen, p + Vector2(9, -60), Vector2(7, 22), Crayon.INK, 3, col, sd + 2)
+			Crayon.circle(pen, p, 24, Crayon.INK, 3, col, sd)
+			Crayon.circle(pen, p + Vector2(0, -32), 18, Crayon.INK, 3, col, sd + 3)
+			Crayon.face(pen, p + Vector2(0, -32), 15, mood, look, sd + 4)
 		"dino":
-			Crayon.ellipse(self, p, Vector2(32, 22), Crayon.INK, 3, col, sd)
+			Crayon.ellipse(pen, p, Vector2(32, 22), Crayon.INK, 3, col, sd)
 			for k in 3:
-				Crayon.poly(self, PackedVector2Array([p + Vector2(-20 + k * 14, -18), p + Vector2(-13 + k * 14, -32), p + Vector2(-6 + k * 14, -18)]), Crayon.INK, 2, Crayon.ORANGE, sd + 1 + k)
-			Crayon.circle(self, p + Vector2(28, -20), 15, Crayon.INK, 3, col, sd + 5)
-			Crayon.face(self, p + Vector2(28, -20), 12, mood, look, sd + 6)
+				Crayon.poly(pen, PackedVector2Array([p + Vector2(-20 + k * 14, -18), p + Vector2(-13 + k * 14, -32), p + Vector2(-6 + k * 14, -18)]), Crayon.INK, 2, Crayon.ORANGE, sd + 1 + k)
+			Crayon.circle(pen, p + Vector2(28, -20), 15, Crayon.INK, 3, col, sd + 5)
+			Crayon.face(pen, p + Vector2(28, -20), 12, mood, look, sd + 6)
 		"chumbo":
-			Crayon.ellipse(self, p + Vector2(0, -4), Vector2(16, 24), Crayon.INK, 3, Crayon.GREEN, sd)
-			Crayon.circle(self, p + Vector2(0, -42), 18, Crayon.INK, 3, col, sd + 1)
-			Crayon.face(self, p + Vector2(0, -42), 15, "wide" if dark else "happy", look, sd + 2)
-			Crayon.party_hat(self, p + Vector2(0, -58), 12, Crayon.GREEN, sd + 3)
+			Crayon.ellipse(pen, p + Vector2(0, -4), Vector2(16, 24), Crayon.INK, 3, Crayon.GREEN, sd)
+			Crayon.circle(pen, p + Vector2(0, -42), 18, Crayon.INK, 3, col, sd + 1)
+			Crayon.face(pen, p + Vector2(0, -42), 15, "wide" if dark else "happy", look, sd + 2)
+			Crayon.party_hat(pen, p + Vector2(0, -58), 12, Crayon.GREEN, sd + 3)

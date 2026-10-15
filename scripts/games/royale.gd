@@ -30,8 +30,13 @@ var dance := false
 var hurt := 0.0
 
 
+var _baked_key := ""
+var _ring_idx := PackedInt32Array()
+
+
 func enter() -> void:
 	Narrator.top = true
+	use_back_layer()
 	Audio.play_music("royale")
 	_run()
 
@@ -218,63 +223,83 @@ func _wall_pos(w: Dictionary) -> Vector2:
 	return ME + Vector2(cos(w.ang), sin(w.ang)) * 95.0
 
 
-func paint() -> void:
-	if phase == "bus" or phase == "drop" or phase == "intro":
-		_map()
+func _map_phase() -> bool:
+	return phase == "bus" or phase == "drop" or phase == "intro"
+
+
+func paint_back() -> void:
+	_baked_key = "%s/%s" % [_map_phase(), twisted]
+	if _map_phase():
+		_map_back()
 		return
 	var grass := Color(0.5, 0.82, 0.42).lerp(Color(0.2, 0.3, 0.22), 0.6 if twisted else 0.0)
-	bg = grass
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), grass)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), grass)
 	for k in 14:
 		var tp := Vector2(fmod(k * 263.0, W), 140 + fmod(k * 131.0, 560))
 		if tp.distance_to(ME) > 140:
-			Crayon.circle(self, tp, 26, Crayon.INK, 3, Crayon.GREEN.darkened(0.25), 20 + k)
+			Crayon.circle(pen, tp, 26, Crayon.INK, 3, Crayon.GREEN.darkened(0.25), 20 + k)
+
+
+func paint() -> void:
+	if _baked_key != "%s/%s" % [_map_phase(), twisted]:
+		refresh_back()
+	if _map_phase():
+		_map()
+		return
 	# the storm: everything outside storm_r
 	var storm := Color(0.55, 0.25, 0.85, 0.55).lerp(Color(0.1, 0.0, 0.15, 0.85), 1.0 if twisted else 0.0)
 	_storm(storm)
 	for w in walls:
 		var p := _wall_pos(w)
-		draw_set_transform(p, w.ang + PI / 2, Vector2.ONE)
-		Crayon.rect(self, Rect2(-44, -12, 88, 24), Crayon.INK, 4, Crayon.BROWN.lightened(0.15 * w.hp), 40)
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		pen.draw_set_transform(p, w.ang + PI / 2, Vector2.ONE)
+		Crayon.rect(pen, Rect2(-44, -12, 88, 24), Crayon.INK, 4, Crayon.BROWN.lightened(0.15 * w.hp), 40)
+		pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	for f in foes:
 		var a := 1.0 - clampf(f.gone / 0.8, 0, 1)
 		var col := Color(Crayon.INK, a) if not twisted else Color(0.05, 0.02, 0.08, a)
 		var mood := "happy" if not twisted else "blank"
 		if f.hit:
 			mood = "x"
-		Crayon.person(self, f.pos + Vector2(0, 50), 100, col, mood, f.col if not twisted else Color(0, 0, 0, 0), "wave", t * 3.0, f.seed)
+		Crayon.person(pen, f.pos + Vector2(0, 50), 100, col, mood, f.col if not twisted else Color(0, 0, 0, 0), "wave", t * 3.0, f.seed)
 		if f.hit:
-			Crayon.circle(self, f.pos + Vector2(0, -26), 30 * a + 4, Crayon.INK, 3, Color(Crayon.PINK, a), f.seed + 5)
+			Crayon.circle(pen, f.pos + Vector2(0, -26), 30 * a + 4, Crayon.INK, 3, Color(Crayon.PINK, a), f.seed + 5)
 	_me()
 	for s in shots:
-		Crayon.circle(self, s.pos, 13, Crayon.INK, 3, Crayon.SKY, 60)
+		Crayon.circle(pen, s.pos, 13, Crayon.INK, 3, Crayon.SKY, 60)
 	for c in cakes:
-		Crayon.poly(self, PackedVector2Array([c.pos + Vector2(-16, 10), c.pos + Vector2(16, 10), c.pos + Vector2(0, -16)]), Crayon.INK, 3, Crayon.PINK, 61)
+		Crayon.poly(pen, PackedVector2Array([c.pos + Vector2(-16, 10), c.pos + Vector2(16, 10), c.pos + Vector2(0, -16)]), Crayon.INK, 3, Crayon.PINK, 61)
 	if phase == "final" or (phase == "win" and eyes > 0):
 		var e := Vector2(1090, 210)
 		var a := eyes
-		draw_circle(e, 10, Color(1, 0.95, 0.4, a))
-		draw_circle(e + Vector2(36, 0), 10, Color(1, 0.95, 0.4, a))
-		Crayon.face(self, e + Vector2(18, 26), 34, "wide", Vector2.ZERO, 62, Color(1, 1, 1, a))
+		pen.draw_circle(e, 10, Color(1, 0.95, 0.4, a))
+		pen.draw_circle(e + Vector2(36, 0), 10, Color(1, 0.95, 0.4, a))
+		Crayon.face(pen, e + Vector2(18, 26), 34, "wide", Vector2.ZERO, 62, Color(1, 1, 1, a))
 	if hurt > 0.0:
-		draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.3, 0.6, 1.0, hurt * 0.25))
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.3, 0.6, 1.0, hurt * 0.25))
 
 
 func _storm(col: Color) -> void:
-	# draw a big ring polygon from storm_r out to far away
-	var inner := PackedVector2Array()
+	# one triangle mesh for the whole ring from storm_r out to far away
 	var n := 48
-	for i in n + 1:
-		var a := TAU * i / n
-		inner.append(ME + Vector2(cos(a), sin(a)) * storm_r)
+	if _ring_idx.is_empty():
+		for i in n:
+			var j := (i + 1) % n
+			_ring_idx.append_array([i, n + i, n + j, i, n + j, j])
+	var pts := PackedVector2Array()
+	pts.resize(n * 2)
+	var inner := PackedVector2Array()
+	inner.resize(n + 1)
 	for i in n:
-		var a := TAU * i / n
-		var a2 := TAU * (i + 1) / n
-		var quad := PackedVector2Array([ME + Vector2(cos(a), sin(a)) * storm_r, ME + Vector2(cos(a), sin(a)) * 2600.0,
-			ME + Vector2(cos(a2), sin(a2)) * 2600.0, ME + Vector2(cos(a2), sin(a2)) * storm_r])
-		draw_colored_polygon(quad, col)
-	Crayon.path(self, inner, Color(0.85, 0.6, 1.0), 6, 30)
+		var d := Vector2(cos(TAU * i / n), sin(TAU * i / n))
+		pts[i] = ME + d * storm_r
+		pts[n + i] = ME + d * 2600.0
+		inner[i] = pts[i]
+	inner[n] = pts[0]
+	var cols := PackedColorArray()
+	cols.resize(n * 2)
+	cols.fill(col)
+	RenderingServer.canvas_item_add_triangle_array(pen.get_canvas_item(), _ring_idx, pts, cols)
+	Crayon.path(pen, inner, Color(0.85, 0.6, 1.0), 6, 30)
 
 
 func _me() -> void:
@@ -285,58 +310,60 @@ func _me() -> void:
 	if dance:
 		# floss-ish dance
 		var sw := sin(t * 10.0) * 30.0
-		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(-20, 0), Crayon.INK, 5, 70)
-		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(20, 0), Crayon.INK, 5, 71)
-		Crayon.line(self, feet + Vector2(0, -62), feet + Vector2(0, -112), Crayon.INK, 5, 72)
-		Crayon.line(self, feet + Vector2(0, -105), feet + Vector2(-35 + sw, -70), Crayon.INK, 5, 73)
-		Crayon.line(self, feet + Vector2(0, -105), feet + Vector2(35 + sw, -80), Crayon.INK, 5, 74)
-		Crayon.circle(self, feet + Vector2(0, -130), 18, Crayon.INK, 4, Color(1, 0.9, 0.78), 75)
-		Crayon.face(self, feet + Vector2(0, -128), 16, "happy", Vector2.ZERO, 76)
-		Crayon.party_hat(self, feet + Vector2(0, -148), 15, Crayon.GREEN, 77)
+		Crayon.line(pen, feet + Vector2(0, -62), feet + Vector2(-20, 0), Crayon.INK, 5, 70)
+		Crayon.line(pen, feet + Vector2(0, -62), feet + Vector2(20, 0), Crayon.INK, 5, 71)
+		Crayon.line(pen, feet + Vector2(0, -62), feet + Vector2(0, -112), Crayon.INK, 5, 72)
+		Crayon.line(pen, feet + Vector2(0, -105), feet + Vector2(-35 + sw, -70), Crayon.INK, 5, 73)
+		Crayon.line(pen, feet + Vector2(0, -105), feet + Vector2(35 + sw, -80), Crayon.INK, 5, 74)
+		Crayon.circle(pen, feet + Vector2(0, -130), 18, Crayon.INK, 4, Color(1, 0.9, 0.78), 75)
+		Crayon.face(pen, feet + Vector2(0, -128), 16, "happy", Vector2.ZERO, 76)
+		Crayon.party_hat(pen, feet + Vector2(0, -148), 15, Crayon.GREEN, 77)
 	else:
-		Crayon.person(self, feet, 120, Crayon.INK, "o" if hurt > 0.3 else "happy", Crayon.GREEN, pose, t * 2.0, 78)
-	Crayon.text(self, ME + Vector2(0, 86), "YOU", 24, Crayon.WHITE, 1, 79)
+		Crayon.person(pen, feet, 120, Crayon.INK, "o" if hurt > 0.3 else "happy", Crayon.GREEN, pose, t * 2.0, 78)
+	Crayon.text(pen, ME + Vector2(0, 86), "YOU", 24, Crayon.WHITE, 1, 79)
 
 
-func _map() -> void:
-	bg = Color(0.4, 0.7, 1.0)
-	draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), bg)
+func _map_back() -> void:
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.4, 0.7, 1.0))
 	var island := PackedVector2Array()
 	for i in 24:
 		var a := TAU * i / 24.0
 		var r := 330.0 + sin(a * 3.0) * 40.0 + cos(a * 5.0) * 25.0
 		island.append(Vector2(640, 420) + Vector2(cos(a) * r * 1.6, sin(a) * r * 0.8))
-	Crayon.poly(self, island, Crayon.INK, 6, Color(0.5, 0.82, 0.42), 1)
+	Crayon.poly(pen, island, Crayon.INK, 6, Color(0.5, 0.82, 0.42), 1)
 	var marks := [Vector2(240, 400), Vector2(500, 320), Vector2(800, 480), Vector2(1060, 380)]
 	for k in 4:
-		Crayon.circle(self, marks[k], 30, Crayon.INK, 4, Crayon.RAINBOW[k * 2], 2 + k)
-		Crayon.text(self, marks[k] + Vector2(0, 52), SPOTS[k], 28, Crayon.INK, 1, 10 + k)
+		Crayon.circle(pen, marks[k], 30, Crayon.INK, 4, Crayon.RAINBOW[k * 2], 2 + k)
+		Crayon.text(pen, marks[k] + Vector2(0, 52), SPOTS[k], 28, Crayon.INK, 1, 10 + k)
+
+
+func _map() -> void:
 	# party bus
 	var bp := Vector2(bus_x, 160 + sin(t * 2.0) * 8.0)
 	if phase == "bus" or phase == "intro":
-		Crayon.balloon(self, bp + Vector2(-40, -70), 22, Crayon.RED, 40, 20)
-		Crayon.balloon(self, bp + Vector2(30, -76), 22, Crayon.YELLOW, 46, 21)
-		Crayon.rect(self, Rect2(bp + Vector2(-110, -30), Vector2(220, 70)), Crayon.INK, 5, Crayon.BLUE, 22)
+		Crayon.balloon(pen, bp + Vector2(-40, -70), 22, Crayon.RED, 40, 20)
+		Crayon.balloon(pen, bp + Vector2(30, -76), 22, Crayon.YELLOW, 46, 21)
+		Crayon.rect(pen, Rect2(bp + Vector2(-110, -30), Vector2(220, 70)), Crayon.INK, 5, Crayon.BLUE, 22)
 		for k in 4:
-			Crayon.rect(self, Rect2(bp + Vector2(-95 + k * 50, -20), Vector2(36, 26)), Crayon.INK, 3, Crayon.SKY, 23 + k)
-		Crayon.text(self, bp + Vector2(0, 26), "PARTY BUS", 22, Crayon.WHITE, 1, 30)
+			Crayon.rect(pen, Rect2(bp + Vector2(-95 + k * 50, -20), Vector2(36, 26)), Crayon.INK, 3, Crayon.SKY, 23 + k)
+		Crayon.text(pen, bp + Vector2(0, 26), "PARTY BUS", 22, Crayon.WHITE, 1, 30)
 	if phase == "bus":
-		Crayon.text(self, Vector2(640, 640), "TAP TO JUMP!", 60, Crayon.RED, 1, 31, Crayon.title_font())
+		Crayon.text(pen, Vector2(640, 640), "TAP TO JUMP!", 60, Crayon.RED, 1, 31, Crayon.title_font())
 	if phase == "drop":
 		var f := clampf(drop_t / 1.6, 0, 1)
 		var p := Vector2(bus_x - 230.0 * drop_t, lerpf(180, 420, f))
-		Crayon._arc(self, p + Vector2(0, -40), 50, PI, TAU, Crayon.INK, 4, 40)
-		Crayon.line(self, p + Vector2(-50, -40), p + Vector2(0, 0), Crayon.INK, 2, 41)
-		Crayon.line(self, p + Vector2(50, -40), p + Vector2(0, 0), Crayon.INK, 2, 42)
-		Crayon.person(self, p + Vector2(0, 70), 70, Crayon.INK, "o", Crayon.GREEN, "up", t, 43)
+		Crayon._arc(pen, p + Vector2(0, -40), 50, PI, TAU, Crayon.INK, 4, 40)
+		Crayon.line(pen, p + Vector2(-50, -40), p + Vector2(0, 0), Crayon.INK, 2, 41)
+		Crayon.line(pen, p + Vector2(50, -40), p + Vector2(0, 0), Crayon.INK, 2, 42)
+		Crayon.person(pen, p + Vector2(0, 70), 70, Crayon.INK, "o", Crayon.GREEN, "up", t, 43)
 
 
 func paint_top() -> void:
 	if phase in ["fight", "final", "win"]:
 		hud("PLAYERS LEFT: %d" % left, Crayon.WHITE)
 		var hy := 88.0 + (120.0 if Narrator.is_active() else 0.0)
-		Crayon.text(self, Vector2(W - 24, hy), "HP: %d" % hp, 30, Crayon.WHITE, 2, 4250)
+		Crayon.text(pen, Vector2(W - 24, hy), "HP: %d" % hp, 30, Crayon.WHITE, 2, 4250)
 		for k in feed.size():
-			Crayon.text(self, Vector2(110, 110 + k * 32), String(feed[k].m), 22, Color(1, 1, 1, clampf(feed[k].t, 0, 1)), 0, 4260 + k, null, 0.5, false)
+			Crayon.text(pen, Vector2(110, 110 + k * 32), String(feed[k].m), 22, Color(1, 1, 1, clampf(feed[k].t, 0, 1)), 0, 4260 + k, null, 0.5, false)
 		if fight_t < 5.0 and phase == "fight":
-			Crayon.text(self, Vector2(640, 250), "TAP = BUILD   TAP A PLAYER = CAKE", 34, Crayon.YELLOW, 1, 4270)
+			Crayon.text(pen, Vector2(640, 250), "TAP = BUILD   TAP A PLAYER = CAKE", 34, Crayon.YELLOW, 1, 4270)

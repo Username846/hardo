@@ -25,6 +25,21 @@ static var _body: Font
 static var _title: Font
 ## Global wobble multiplier (games crank this up when things get spooky).
 static var shake := 1.0
+## Current "boil" frame. Updated once per frame by tick(); frozen while drawing static layers.
+static var _b := 0
+static var _frozen := false
+static var _tab := PackedFloat32Array()
+static var _fill_cache := {}
+static var _adv_cache := {}
+const TAB_MASK := 8191
+
+
+static func _static_init() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261015
+	_tab.resize(TAB_MASK + 1)
+	for i in TAB_MASK + 1:
+		_tab[i] = rng.randf_range(-1.0, 1.0)
 
 
 static func body() -> Font:
@@ -39,148 +54,197 @@ static func title_font() -> Font:
 	return _title
 
 
-## Changes ~7 times a second so every line gently re-draws itself ("line boil").
+## Called once per frame (by main.gd). Lines "boil" ~7 times a second.
+static func tick() -> void:
+	if not _frozen:
+		_b = int(Time.get_ticks_msec() / 140)
+
+
+## While frozen, everything draws with the same wobble (used for static backgrounds).
+static func freeze(on: bool) -> void:
+	_frozen = on
+	_b = 0 if on else int(Time.get_ticks_msec() / 140)
+
+
 static func boil() -> int:
-	return int(Time.get_ticks_msec() / 140)
+	return _b
 
 
-## Deterministic noise in [-1, 1].
+## Deterministic noise in [-1, 1] (table lookup, cheap).
 static func rnd(s: int) -> float:
-	var h: int = s * 374761393 + 668265263
-	h = (h ^ (h >> 13)) * 1274126177
-	h = h ^ (h >> 16)
-	return float(h & 0xFFFF) / 32767.5 - 1.0
+	return _tab[s & TAB_MASK]
 
 
 static func jit(s: int, amt: float) -> Vector2:
-	return Vector2(rnd(s), rnd(s + 7919)) * amt
+	return Vector2(_tab[s & TAB_MASK], _tab[(s + 7919) & TAB_MASK]) * amt
 
 
 static func _seed(s: int) -> int:
-	return s * 131 + boil() * 977
+	return s * 131 + _b * 977
 
 
 static func _stroke(ci: CanvasItem, pts: PackedVector2Array, col: Color, w: float, s: int) -> void:
-	if pts.size() < 2:
-		return
 	ci.draw_polyline(pts, col, w, true)
+	if w < 3.5:
+		return
 	# waxy second pass slightly off the first one
 	var c2 := col.lightened(0.25)
 	c2.a *= 0.45
-	var off := jit(s + 3, w * 0.35)
+	var off := Vector2(_tab[(s + 3) & TAB_MASK], _tab[(s + 7922) & TAB_MASK]) * (w * 0.35)
+	var n := pts.size()
 	var pts2 := PackedVector2Array()
-	pts2.resize(pts.size())
-	for i in pts.size():
+	pts2.resize(n)
+	for i in n:
 		pts2[i] = pts[i] + off
-	ci.draw_polyline(pts2, c2, maxf(1.0, w * 0.45), true)
+	ci.draw_polyline(pts2, c2, w * 0.45, false)
 
 
 static func line(ci: CanvasItem, a: Vector2, b: Vector2, col: Color = INK, w: float = 5.0, s: int = 0, wob: float = 1.0) -> void:
 	var d := a.distance_to(b)
 	if d < 0.5:
 		return
-	var sd := _seed(s)
+	var sd := s * 131 + _b * 977
 	var dir := (b - a) / d
 	var nrm := Vector2(-dir.y, dir.x)
-	var n := clampi(int(d / 26.0), 1, 30)
+	var n := clampi(int(d / 36.0), 1, 14)
 	var wobble := (1.2 + d * 0.008) * wob * shake
-	var over_a := (2.0 + rnd(sd + 1) * 3.0) * wob
-	var over_b := (2.0 + rnd(sd + 2) * 3.0) * wob
 	var pts := PackedVector2Array()
+	pts.resize(n + 1)
+	var inv := 1.0 / n
 	for i in n + 1:
-		var f := float(i) / n
-		var p := a.lerp(b, f)
-		p += nrm * rnd(sd + i * 17 + 5) * wobble * (0.35 + 0.65 * sin(f * PI))
-		if i == 0:
-			p -= dir * over_a
-		elif i == n:
-			p += dir * over_b
-		pts.append(p)
+		var f := i * inv
+		pts[i] = a + (b - a) * f + nrm * (_tab[(sd + i * 17 + 5) & TAB_MASK] * wobble * (0.35 + 0.65 * sin(f * PI)))
+	pts[0] -= dir * ((2.0 + _tab[(sd + 1) & TAB_MASK] * 3.0) * wob)
+	pts[n] += dir * ((2.0 + _tab[(sd + 2) & TAB_MASK] * 3.0) * wob)
 	_stroke(ci, pts, col, w, sd)
 
 
 ## Open polyline drawn through points (each segment wobbles).
 static func path(ci: CanvasItem, pts: PackedVector2Array, col: Color = INK, w: float = 5.0, s: int = 0, wob: float = 1.0) -> void:
-	if pts.size() < 2:
+	var n := pts.size()
+	if n < 2:
 		return
-	var sd := _seed(s)
+	var sd := s * 131 + _b * 977
+	var amt := 1.4 * wob * shake
 	var out := PackedVector2Array()
-	for i in pts.size():
-		out.append(pts[i] + jit(sd + i * 31, 1.4 * wob * shake))
+	out.resize(n)
+	for i in n:
+		var k := sd + i * 31
+		out[i] = pts[i] + Vector2(_tab[k & TAB_MASK], _tab[(k + 7919) & TAB_MASK]) * amt
 	_stroke(ci, out, col, w, sd)
 
 
+## Polygon with crayon outline and (optionally) colouring that slips outside the lines.
 static func poly(ci: CanvasItem, pts: PackedVector2Array, col: Color = INK, w: float = 5.0, fill: Color = Color(0, 0, 0, 0), s: int = 0, closed: bool = true) -> void:
-	if fill.a > 0.0 and pts.size() >= 3:
+	var n := pts.size()
+	if fill.a > 0.0 and n >= 3:
 		var off := jit(s * 7 + 11, 3.0)
 		var fp := PackedVector2Array()
-		for p in pts:
-			fp.append(p + off)
-		if not Geometry2D.triangulate_polygon(fp).is_empty():
+		fp.resize(n)
+		var lo := pts[0]
+		var hi := pts[0]
+		for i in n:
+			var p := pts[i] + off
+			fp[i] = p
+			lo = lo.min(p)
+			hi = hi.max(p)
+		if n > 16:
+			# big/animated outlines: plain fill, no hatching
 			ci.draw_colored_polygon(fp, fill)
-			_hatch_poly(ci, fp, fill.darkened(0.18), s)
-	var n := pts.size()
+		else:
+			var size := hi - lo
+			var key := s * 1000003 + int(size.x) * 1009 + int(size.y) * 7 + n
+			var entry = _fill_cache.get(key)
+			if entry == null:
+				entry = _make_fill_entry(fp, lo, s)
+				if _fill_cache.size() > 3000:
+					_fill_cache.clear()
+				_fill_cache[key] = entry
+			if entry[0]:
+				ci.draw_colored_polygon(fp, fill)
+				var hc := fill.darkened(0.18)
+				hc.a *= 0.5
+				for seg: PackedVector2Array in entry[1]:
+					var moved := PackedVector2Array()
+					moved.resize(seg.size())
+					for j in seg.size():
+						moved[j] = seg[j] + lo
+					ci.draw_polyline(moved, hc, 3.0, false)
+	if col.a <= 0.0:
+		return
+	if n > 8:
+		# long outlines (icing, blobs, mouths): one wobbly stroke instead of one per edge
+		var outline := pts.duplicate()
+		if closed:
+			outline.append(pts[0])
+		path(ci, outline, col, w, s)
+		return
 	var last := n if closed else n - 1
 	for i in last:
 		line(ci, pts[i], pts[(i + 1) % n], col, w, s + i * 13)
 
 
-static func _hatch_poly(ci: CanvasItem, pts: PackedVector2Array, col: Color, s: int) -> void:
-	var r := Rect2(pts[0], Vector2.ZERO)
-	for p in pts:
+## [valid, hatch segments relative to the bounding box corner]
+static func _make_fill_entry(fp: PackedVector2Array, lo: Vector2, s: int) -> Array:
+	if Geometry2D.triangulate_polygon(fp).is_empty():
+		return [false, []]
+	var r := Rect2(lo, Vector2.ZERO)
+	for p in fp:
 		r = r.expand(p)
-	if r.size.x < 12 or r.size.y < 12:
-		return
-	var zig := PackedVector2Array()
-	var step := clampf(r.size.y / 7.0, 9.0, 22.0)
-	var y := r.position.y + step * 0.5
-	var flip := false
-	var sd := s * 3 + 1
-	while y < r.end.y:
-		var x0 := r.position.x - 4
-		var x1 := r.end.x + 4
-		zig.append(Vector2(x1 if flip else x0, y + rnd(sd) * 3))
-		zig.append(Vector2(x0 if flip else x1, y + step * 0.5 + rnd(sd + 1) * 3))
-		flip = not flip
-		y += step
-		sd += 2
-	var c := col
-	c.a *= 0.5
-	for seg in Geometry2D.intersect_polyline_with_polygon(zig, pts):
-		ci.draw_polyline(seg, c, 3.0, true)
+	var segs: Array = []
+	if r.size.x >= 12 and r.size.y >= 12:
+		var zig := PackedVector2Array()
+		var step := clampf(r.size.y / 7.0, 9.0, 22.0)
+		var y := r.position.y + step * 0.5
+		var flip := false
+		var sd := s * 3 + 1
+		while y < r.end.y:
+			var x0 := r.position.x - 4
+			var x1 := r.end.x + 4
+			zig.append(Vector2(x1 if flip else x0, y + rnd(sd) * 3))
+			zig.append(Vector2(x0 if flip else x1, y + step * 0.5 + rnd(sd + 1) * 3))
+			flip = not flip
+			y += step
+			sd += 2
+		for seg in Geometry2D.intersect_polyline_with_polygon(zig, fp):
+			var rel := PackedVector2Array()
+			for p in seg:
+				rel.append(p - lo)
+			segs.append(rel)
+	return [true, segs]
 
 
 static func rect(ci: CanvasItem, r: Rect2, col: Color = INK, w: float = 5.0, fill: Color = Color(0, 0, 0, 0), s: int = 0) -> void:
 	if fill.a > 0.0:
 		var off := jit(s * 7 + 3, 3.0)
-		ci.draw_rect(Rect2(r.position + off, r.size), fill)
-		_hatch_rect(ci, Rect2(r.position + off, r.size), fill.darkened(0.15), s)
+		var fr := Rect2(r.position + off, r.size)
+		ci.draw_rect(fr, fill)
+		if fr.size.x >= 10 and fr.size.y >= 10:
+			var zig := PackedVector2Array()
+			var step := clampf(fr.size.y / 6.0, 8.0, 24.0) * 0.5
+			var y := fr.position.y + 3
+			var flip := false
+			var sd := s * 5 + 2
+			var xa := fr.position.x + 3
+			var xb := fr.end.x - 3
+			var ylim := fr.end.y - 2
+			while y < ylim:
+				zig.append(Vector2(xb if flip else xa, y + _tab[sd & TAB_MASK] * 2))
+				flip = not flip
+				y += step
+				sd += 1
+			var c := fill.darkened(0.15)
+			c.a *= 0.45
+			if zig.size() >= 2:
+				ci.draw_polyline(zig, c, 3.0, false)
 	var a := r.position
 	var b := Vector2(r.end.x, r.position.y)
-	var c := r.end
+	var c2 := r.end
 	var d := Vector2(r.position.x, r.end.y)
 	line(ci, a, b, col, w, s + 1)
-	line(ci, b, c, col, w, s + 2)
-	line(ci, c, d, col, w, s + 3)
+	line(ci, b, c2, col, w, s + 2)
+	line(ci, c2, d, col, w, s + 3)
 	line(ci, d, a, col, w, s + 4)
-
-
-static func _hatch_rect(ci: CanvasItem, r: Rect2, col: Color, s: int) -> void:
-	if r.size.x < 10 or r.size.y < 10:
-		return
-	var zig := PackedVector2Array()
-	var step := clampf(r.size.y / 6.0, 8.0, 24.0)
-	var y := r.position.y + 3
-	var flip := false
-	var sd := s * 5 + 2
-	while y < r.end.y - 2:
-		zig.append(Vector2(r.end.x - 3 if flip else r.position.x + 3, y + rnd(sd) * 2))
-		flip = not flip
-		y += step * 0.5
-		sd += 1
-	var c := col
-	c.a *= 0.45
-	ci.draw_polyline(zig, c, 3.0, true)
 
 
 static func circle(ci: CanvasItem, c: Vector2, r: float, col: Color = INK, w: float = 5.0, fill: Color = Color(0, 0, 0, 0), s: int = 0) -> void:
@@ -188,54 +252,68 @@ static func circle(ci: CanvasItem, c: Vector2, r: float, col: Color = INK, w: fl
 
 
 static func ellipse(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color = INK, w: float = 5.0, fill: Color = Color(0, 0, 0, 0), s: int = 0) -> void:
-	var sd := _seed(s)
-	var n := clampi(int((rad.x + rad.y) * 0.25), 10, 40)
+	var n := clampi(int((rad.x + rad.y) * 0.2), 10, 32)
 	if fill.a > 0.0:
-		var fp := PackedVector2Array()
 		var off := jit(s * 7 + 5, minf(rad.x, rad.y) * 0.06 + 1.5)
-		for i in n:
-			var a := TAU * i / n
-			fp.append(c + off + Vector2(cos(a) * rad.x, sin(a) * rad.y))
-		ci.draw_colored_polygon(fp, fill)
-		_hatch_ellipse(ci, c + off, rad, fill.darkened(0.18), s)
+		if is_equal_approx(rad.x, rad.y):
+			ci.draw_circle(c + off, rad.x, fill)
+		else:
+			var fp := PackedVector2Array()
+			fp.resize(n)
+			for i in n:
+				var a := TAU * i / n
+				fp[i] = c + off + Vector2(cos(a) * rad.x, sin(a) * rad.y)
+			ci.draw_colored_polygon(fp, fill)
+		if rad.x >= 8 and rad.y >= 8:
+			_hatch_ellipse(ci, c + off, rad, fill.darkened(0.18), s)
 	if col.a <= 0.0 or w <= 0.0:
 		return
-	var start := rnd(sd + 9) * PI
-	var turns := 1.06 + rnd(sd + 4) * 0.05
-	var pts := PackedVector2Array()
+	var sd := s * 131 + _b * 977
+	var start := _tab[(sd + 9) & TAB_MASK] * PI
+	var turns := 1.06 + _tab[(sd + 4) & TAB_MASK] * 0.05
 	var m := int(n * turns) + 1
+	var pts := PackedVector2Array()
+	pts.resize(m + 1)
+	var amp := 0.035 * shake
+	var step := TAU * turns / m
 	for i in m + 1:
-		var a := start + TAU * turns * i / m
-		var k := 1.0 + rnd(sd + i * 7) * 0.035 * shake + (float(i) / m) * 0.04
-		pts.append(c + Vector2(cos(a) * rad.x * k, sin(a) * rad.y * k))
+		var a := start + step * i
+		var k := 1.0 + _tab[(sd + i * 7) & TAB_MASK] * amp + (float(i) / m) * 0.04
+		pts[i] = c + Vector2(cos(a) * rad.x * k, sin(a) * rad.y * k)
 	_stroke(ci, pts, col, w, sd)
 
 
 static func _hatch_ellipse(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color, s: int) -> void:
-	if rad.x < 8 or rad.y < 8:
-		return
+	var rows := clampi(int(rad.y / 10.0), 3, 12)
 	var zig := PackedVector2Array()
-	var rows := clampi(int(rad.y / 9.0), 3, 14)
+	zig.resize((rows + 1) * 2)
 	for i in rows + 1:
 		var fy := -0.9 + 1.8 * float(i) / rows
 		var half := sqrt(maxf(0.0, 1.0 - fy * fy)) * rad.x * 0.92
 		var y := c.y + fy * rad.y
-		if i % 2 == 0:
-			zig.append(Vector2(c.x - half, y + rnd(s + i) * 2))
-			zig.append(Vector2(c.x + half, y + rnd(s + i + 50) * 2))
-		else:
-			zig.append(Vector2(c.x + half, y + rnd(s + i) * 2))
-			zig.append(Vector2(c.x - half, y + rnd(s + i + 50) * 2))
+		var sgn := 1.0 if i % 2 == 0 else -1.0
+		zig[i * 2] = Vector2(c.x - half * sgn, y + _tab[(s + i) & TAB_MASK] * 2)
+		zig[i * 2 + 1] = Vector2(c.x + half * sgn, y + _tab[(s + i + 50) & TAB_MASK] * 2)
 	var cc := col
 	cc.a *= 0.45
-	ci.draw_polyline(zig, cc, 3.0, true)
+	ci.draw_polyline(zig, cc, 3.0, false)
 
 
 static func dot(ci: CanvasItem, c: Vector2, r: float, col: Color = INK) -> void:
 	ci.draw_circle(c + jit(_seed(int(c.x * 3 + c.y)), 0.8), r, col)
 
 
+static func _adv(font: Font, ch: int, size: int) -> float:
+	var key := (font.get_instance_id() * 131 + size) * 70000 + ch
+	var v = _adv_cache.get(key)
+	if v == null:
+		v = font.get_char_size(ch, size).x
+		_adv_cache[key] = v
+	return v
+
+
 ## Kid handwriting. align: 0 = left, 1 = centre, 2 = right. Returns the drawn width.
+## Small, calm text (wob < 0.35) is drawn in one go without per-letter wobble (much cheaper).
 static func text(ci: CanvasItem, pos: Vector2, s: String, size: int = 32, col: Color = INK, align: int = 1,
 		sd: int = 0, font: Font = null, wob: float = 1.0, backwards: bool = true) -> float:
 	if font == null:
@@ -246,21 +324,25 @@ static func text(ci: CanvasItem, pos: Vector2, s: String, size: int = 32, col: C
 		x -= width * 0.5
 	elif align == 2:
 		x -= width
-	var b := _seed(sd)
 	var asc := font.get_ascent(size)
+	if wob < 0.35:
+		ci.draw_string(font, Vector2(x, pos.y + asc * 0.35), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+		return width
+	var b := sd * 131 + _b * 977
 	var y := pos.y + asc * 0.35
+	var ws := wob * shake
+	var half_asc := asc * 0.35
 	for i in s.length():
 		var ch := s.unicode_at(i)
-		var adv := font.get_char_size(ch, size).x
+		var adv := _adv(font, ch, size)
 		if ch != 32:
 			var k := sd * 31 + i * 7
-			var rot := rnd(b + i * 11) * 0.09 * wob * shake
-			var off := Vector2(rnd(b + i * 13) * 1.2, rnd(b + i * 17) * 2.5) * wob * shake
-			var sc := 1.0 + rnd(k + 3) * 0.08
-			var flip := backwards and wob > 0.0 and size >= 30 and (ch == 83 or ch == 78 or ch == 90) and rnd(k + 99) > 0.6
-			var centre := Vector2(x + adv * 0.5, y - asc * 0.35)
-			ci.draw_set_transform(centre + off, rot, Vector2(-sc if flip else sc, sc))
-			ci.draw_char(font, Vector2(-adv * 0.5, asc * 0.35), s.substr(i, 1), size, col)
+			var rot := _tab[(b + i * 11) & TAB_MASK] * 0.09 * ws
+			var off := Vector2(_tab[(b + i * 13) & TAB_MASK] * 1.2, _tab[(b + i * 17) & TAB_MASK] * 2.5) * ws
+			var sc := 1.0 + _tab[(k + 3) & TAB_MASK] * 0.08
+			var flip := backwards and size >= 30 and (ch == 83 or ch == 78 or ch == 90) and _tab[(k + 99) & TAB_MASK] > 0.6
+			ci.draw_set_transform(Vector2(x + adv * 0.5, y - half_asc) + off, rot, Vector2(-sc if flip else sc, sc))
+			ci.draw_char(font, Vector2(-adv * 0.5, half_asc), char(ch), size, col)
 		x += adv
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return width
@@ -487,6 +569,13 @@ static func icing(r: Rect2, s: int) -> PackedVector2Array:
 		var drip := pow(maxf(0.0, sin(x * 0.075 + ph)), 3.0)
 		pts.append(Vector2(x, r.position.y + 5.0 + drip * depth))
 	return pts
+
+
+## Just the flames of a cake drawn with cake(..., lit = false) (so the cake itself can be static).
+static func cake_flames(ci: CanvasItem, base: Vector2, w: float, h: float, candles: int, s: int = 0) -> void:
+	for i in candles:
+		var x := base.x - w * 0.5 + w * (i + 1) / (candles + 1)
+		flame(ci, Vector2(x + 5, base.y - h - 46), 9.0, s + 60 + i)
 
 
 static func flame(ci: CanvasItem, c: Vector2, r: float, s: int = 0) -> void:
