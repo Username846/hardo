@@ -213,12 +213,11 @@ func paint() -> void:
 				col = Crayon.GREY
 			Crayon.circle(self, Vector2(x, LANE_Y), 30, Crayon.INK, 3, col, 50 + i % 40)
 			Crayon.text(self, Vector2(x, LANE_Y), String(chart[i][2]), 22, Crayon.WHITE, 1, 100 + i % 50, null, 0.3, false)
-		_lyrics(now)
 	# the crowd (they creep closer in the dark verse)
 	var n := 9
 	for k in n:
 		var x := 200.0 + k * 110.0
-		var h := 120.0 + crowd_k * 120.0 + (k % 3) * 10.0
+		var h := 120.0 + crowd_k * 70.0 + (k % 3) * 10.0
 		var mood := "happy" if not dark else ("wide" if crowd_k > 0.3 else "flat")
 		var jump := absf(sin(t * 6.0 + k)) * 12.0 * (1.0 - crowd_k)
 		Crayon.person(self, Vector2(x, H + 70 + crowd_k * 30 - jump), h, Crayon.INK.lerp(Crayon.BLACK, 0.5), mood, Crayon.RAINBOW[k % 7] if not dark else Color(0, 0, 0, 0), "up" if not dark else "stand", t * 3.0, 200 + k, Color(0.85, 0.75, 0.7))
@@ -241,6 +240,8 @@ func paint() -> void:
 
 func paint_top() -> void:
 	if phase == "cute" or phase == "dark":
+		draw_rect(Rect2(170, 540, W - 340, 64), Color(0, 0, 0, 0.45))
+		_lyrics(Audio.song_pos)
 		hud("SCORE: %d" % score, Crayon.WHITE)
 		Crayon.text(self, Vector2(W - 24, 170 if Narrator.is_active() else 90), "COMBO: %d" % combo, 28, Crayon.YELLOW, 2, 4300)
 		if judge_t > 0.0:

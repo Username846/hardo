@@ -9,12 +9,19 @@ var tmr := 0.0
 var step := 0
 var stuck := 0.0
 var results := {}
+var shot_dir := ""
+var shot_every := 0
 
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--bot="):
 			which = a.substr(6)
+		elif a.begins_with("--shots="):
+			shot_dir = a.substr(8)
+			DirAccess.make_dir_recursive_absolute(shot_dir)
+		elif a.begins_with("--every="):
+			shot_every = int(a.substr(8))
 	Engine.time_scale = 4.0
 	await get_tree().create_timer(0.5).timeout
 	# voice-key sanity check
@@ -23,10 +30,13 @@ func _ready() -> void:
 	var idxs: Array = []
 	if which == "all":
 		idxs = range(10)
-	else:
+	elif which != "name":
 		idxs = [int(which)]
-	for i in idxs:
-		await _play(i)
+	if which == "name" or which == "all":
+		await _name_flow()
+	if which != "name":
+		for i in idxs:
+			await _play(i)
 	print("BOT RESULTS ", results)
 	get_tree().quit()
 
@@ -47,6 +57,9 @@ func _play(i: int) -> void:
 		if not is_instance_valid(g):
 			break
 		_drive(i, get_process_delta_time())
+		if shot_dir != "" and shot_every > 0 and Engine.get_process_frames() % shot_every == 0:
+			var img := get_viewport().get_texture().get_image()
+			img.save_png(shot_dir.path_join("g%d_%06d.png" % [i, Engine.get_process_frames()]))
 		if Engine.get_process_frames() % 300 == 0:
 			print("  dbg frame ", Engine.get_process_frames(), " fps ", Engine.get_frames_per_second(), " ", _dbg(i))
 		if Game.done[i]:
@@ -55,6 +68,66 @@ func _play(i: int) -> void:
 	results[Game.GAMES[i].id] = ok
 	print("BOT GAME ", i, " ", Game.GAMES[i].id, " done=", ok, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
 	await get_tree().create_timer(1.0).timeout
+
+
+func _skip_narration() -> void:
+	if Narrator.is_active() and Narrator._blocking and Narrator._elapsed > 0.4:
+		Narrator._shown = Narrator._text.length()
+		Narrator._finish(true)
+
+
+func _snap(name: String) -> void:
+	if shot_dir != "":
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(shot_dir.path_join(name + ".png"))
+
+
+func _wait_unlocked(n: Node, limit: float = 30.0) -> void:
+	var t0 := Time.get_ticks_msec()
+	while is_instance_valid(n) and n.locked and Time.get_ticks_msec() - t0 < limit * 1000.0:
+		_skip_narration()
+		await get_tree().process_frame
+
+
+## Types three wrong names (punishments), checks the forced name, then denies the birthday.
+func _name_flow() -> void:
+	Game.reset()
+	Game.main._open("name", null)
+	var n: Node = Game.main.current
+	await _wait_unlocked(n)
+	for attempt in 3:
+		for ch in ["B", "O", "B"]:
+			n._type(ch)
+		n._submit()
+		for k in 4:
+			await get_tree().create_timer(0.25).timeout
+			await _snap("name_pun%d_%d" % [attempt + 1, k])
+		await _wait_unlocked(n, 60.0)
+		if not is_instance_valid(n):
+			print("NAME attempt ", attempt + 1, " -> moved on")
+			break
+		print("NAME attempt ", attempt + 1, " state=", n.state, " wrong=", n.wrong)
+	var t0 := Time.get_ticks_msec()
+	while is_instance_valid(n) and Game.main.current == n and Time.get_ticks_msec() - t0 < 60000:
+		_skip_narration()
+		await get_tree().process_frame
+	print("NAME forced player_name=", Game.player_name)
+	await get_tree().create_timer(1.0).timeout
+	var intro: Node = Game.main.current
+	print("NOW ON ", intro.get_script().resource_path)
+	await _wait_unlocked(intro)
+	for k in 3:
+		await _snap("intro_deny%d" % k)
+		intro._no()
+		await get_tree().process_frame
+		await _wait_unlocked(intro)
+	t0 = Time.get_ticks_msec()
+	while Game.main.current == intro and Time.get_ticks_msec() - t0 < 60000:
+		_skip_narration()
+		await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	print("INTRO done=", Game.intro_done, " now ", Game.main.current.get_script().resource_path)
+	await _snap("hub_after_intro")
 
 
 func _dbg(i: int) -> String:

@@ -37,6 +37,7 @@ var cam := 0.0
 
 
 func enter() -> void:
+	Narrator.top = true
 	Audio.play_music("obby")
 	_build_level()
 	pos = flags[0]

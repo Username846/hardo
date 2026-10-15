@@ -334,7 +334,8 @@ func _map() -> void:
 func paint_top() -> void:
 	if phase in ["fight", "final", "win"]:
 		hud("PLAYERS LEFT: %d" % left, Crayon.WHITE)
-		Crayon.text(self, Vector2(W - 24, 88), "HP: %d" % hp, 30, Crayon.WHITE, 2, 4250)
+		var hy := 88.0 + (120.0 if Narrator.is_active() else 0.0)
+		Crayon.text(self, Vector2(W - 24, hy), "HP: %d" % hp, 30, Crayon.WHITE, 2, 4250)
 		for k in feed.size():
 			Crayon.text(self, Vector2(110, 110 + k * 32), String(feed[k].m), 22, Color(1, 1, 1, clampf(feed[k].t, 0, 1)), 0, 4260 + k, null, 0.5, false)
 		if fight_t < 5.0 and phase == "fight":

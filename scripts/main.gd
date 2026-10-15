@@ -7,6 +7,7 @@ var switching := false
 var _wipe: Control
 var _wipe_layer: CanvasLayer
 var _wipe_amt := 0.0
+var _wipe_drawn := 0.0
 
 
 func _ready() -> void:
@@ -74,11 +75,12 @@ func _layout() -> void:
 
 
 func _process(_dt: float) -> void:
-	if _wipe_amt > 0.0 or switching:
+	if _wipe_amt != _wipe_drawn or switching:
 		_wipe.queue_redraw()
 
 
 func _draw_wipe() -> void:
+	_wipe_drawn = _wipe_amt
 	if _wipe_amt <= 0.0:
 		return
 	var vs := _wipe.get_viewport_rect().size
