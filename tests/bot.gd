@@ -164,24 +164,42 @@ func _rocko() -> void:
 		await _snap("rocko_done")
 
 
-## Party room music with a forced 450 ms freeze every 3 seconds: the lyric clock must stay
-## on the real playback position.
+## What the speakers are really playing, from outside the game's own clock: in the browser
+## the test page records when each song really started in the Web Audio engine
+## (window.__truth, see the web test scripts); natively Godot's playback position is exact.
+func _truth() -> float:
+	if OS.has_feature("web"):
+		var v = JavaScriptBridge.eval("window.__truth ? window.__truth() : -1", true)
+		return float(v) if v != null else -1.0
+	return Audio._cur.get_playback_position() + AudioServer.get_time_since_last_mix() - AudioServer.get_output_latency()
+
+
+## Music in the party room and then karaoke, with a forced 450 ms freeze every 3 seconds:
+## the lyric/note clock must stay on what is really playing.
 func _sync_probe() -> void:
+	Engine.time_scale = 1.0
 	Game.done.fill(false)
 	Game.hub_lines_heard = 99
-	Game.main._open("hub", null)
-	var t0 := Time.get_ticks_msec()
 	var worst := 0.0
-	while Time.get_ticks_msec() - t0 < 30000:
-		await get_tree().create_timer(3.0).timeout
-		OS.delay_msec(450)
-		# compare within the same frame, after Audio has updated its clock
-		await get_tree().process_frame
-		await RenderingServer.frame_pre_draw
-		var real: float = Audio._audio_pos()
-		var err: float = Audio.song_pos - real
-		worst = maxf(worst, absf(err))
-		print("SYNC song_pos=%.3f audio=%.3f diff=%.3f" % [Audio.song_pos, real, err])
+	for scr in ["hub", "karaoke"]:
+		if scr == "hub":
+			Game.main._open("hub", null)
+		else:
+			Game.main._open("game", 9)
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 30000:
+			await get_tree().create_timer(3.0).timeout
+			_skip_narration()
+			OS.delay_msec(450)
+			await get_tree().process_frame
+			# compare at the same moment: bring the game's clock up to date first
+			Audio._process(0.0)
+			var real := _truth()
+			if real < 0.0 or Audio.song == "":
+				continue
+			var err: float = Audio.song_pos - real
+			worst = maxf(worst, absf(err))
+			print("SYNC %s %s song_pos=%.3f really_playing=%.3f diff=%+.3f" % [scr, Audio.song, Audio.song_pos, real, err])
 	print("SYNC worst diff=%.3f" % worst)
 
 
@@ -376,7 +394,7 @@ func _dbg(i: int) -> String:
 		8:
 			return "phase=%s playing=%s found=%d light=%s locked=%s" % [g.phase, g.playing, g.found, g.light, g.locked]
 		9:
-			return "phase=%s song_pos=%.3f audio=%.3f score=%d" % [g.phase, Audio.song_pos, Audio._audio_pos(), g.score]
+			return "phase=%s song_pos=%.3f really_playing=%.3f score=%d" % [g.phase, Audio.song_pos, _truth(), g.score]
 	return ""
 
 

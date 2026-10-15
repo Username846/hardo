@@ -29,6 +29,7 @@ func _ready() -> void:
 	voice = _player()
 	voice.volume_db = 2.0
 	apply_mute()
+	_web_clock_setup()
 
 
 func _player() -> AudioStreamPlayer:
@@ -112,6 +113,9 @@ func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool =
 	nxt.stream = st
 	nxt.pitch_scale = 1.0
 	nxt.volume_db = -40.0 if fade > 0.0 else _target_db()
+	if OS.has_feature("web"):
+		var n = JavaScriptBridge.eval("window.__chumboMusic ? window.__chumboMusic.n : 0", true)
+		_web_starts = int(n) if n != null else 0
 	nxt.play(from)
 	if fade > 0.0 or old.playing:
 		var tw := create_tween().set_parallel(true)
@@ -123,6 +127,7 @@ func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool =
 	_cur = nxt
 	song = name
 	song_pos = from
+	_stream_pos = from
 
 
 func stop_music(fade: float = 1.0) -> void:
@@ -162,40 +167,75 @@ func duck(on: bool) -> void:
 		tw.tween_property(_cur, "volume_db", _target_db(), 0.25)
 
 
-var _pb_last := -1.0
-var _pb_at_us := 0
+var _stream_pos := 0.0
+var _web_starts := 0
+
+## Browser only: notes when each song really starts playing in the Web Audio engine (Godot
+## starts it a little after play() is called, and its own reported position runs a second
+## behind), so the game can read exactly where the music is from the audio clock.
+const WEB_CLOCK_JS := """
+(function () {
+	if (window.__chumboMusic) return;
+	var M = window.__chumboMusic = { n: 0, s: null };
+	var start = AudioBufferSourceNode.prototype.start;
+	AudioBufferSourceNode.prototype.start = function (when, offset) {
+		try {
+			if (this.buffer && this.buffer.duration > 20) {
+				var c = this.context;
+				M.n++;
+				M.s = { node: this, c: c, t: Math.max(when || 0, c.currentTime), pos: offset || 0, last: -1, dur: this.buffer.duration };
+			}
+		} catch (e) {}
+		return start.apply(this, arguments);
+	};
+	M.now = function () {
+		var s = M.s;
+		if (!s) return M.n + ' -1';
+		var c = s.c, now = c.currentTime;
+		if (now >= s.t) {
+			if (s.last < 0) s.last = s.t;
+			s.pos += (now - s.last) * s.node.playbackRate.value;
+			s.last = now;
+		}
+		var p = s.pos;
+		if (s.node.loop && s.dur > 0) p = p % s.dur;
+		return M.n + ' ' + (p - (c.baseLatency || 0) - (c.outputLatency || 0));
+	};
+})();
+"""
 
 
-## Where the music really is, in seconds. Accumulating frame times drifts: Godot caps the
-## frame time after a long hitch, so every stutter used to push the lyrics further behind.
-## The reported position only moves in steps (and in the browser it arrives a frame late
-## after a freeze), so it is carried forward by the time since it last changed.
-func _audio_pos() -> float:
-	var p := _cur.get_playback_position()
-	var now := Time.get_ticks_usec()
-	if p != _pb_last:
-		_pb_last = p
-		_pb_at_us = now
-	p += minf((now - _pb_at_us) * 0.000001, 1.0) * _cur.pitch_scale
-	return p - clampf(AudioServer.get_output_latency(), 0.0, 0.15)
+func _web_clock_setup() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval(WEB_CLOCK_JS, true)
 
 
+## How far into the song we are, as heard from the speakers. Summing frame times drifted
+## (Godot caps the frame time after a long hitch, so every stutter pushed the lyrics further
+## behind), so the clock comes from the audio itself: the Web Audio clock in the browser,
+## Godot's playback position elsewhere.
 func _process(delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	var step := (now - _clock_us) * 0.000001 if _clock_us > 0 else delta
 	_clock_us = now
 	if not (_cur.playing and song != ""):
 		return
-	# move smoothly with the clock, then lean towards the real playback position
-	song_pos += clampf(step, 0.0, 0.25) * _cur.pitch_scale
-	var err := _audio_pos() - song_pos
-	if absf(err) > 0.12:
-		song_pos += err
+	if OS.has_feature("web"):
+		var r = JavaScriptBridge.eval("window.__chumboMusic ? window.__chumboMusic.now() : ''", true)
+		var parts := str(r).split(" ")
+		if parts.size() == 2:
+			# until the new song has really started, stay at its first note
+			if int(parts[0]) > _web_starts:
+				song_pos = float(parts[1])
+			return
+		# no audio clock (shouldn't happen): fall back to the real-time clock
+		_stream_pos += step * _cur.pitch_scale
 	else:
-		song_pos += err * minf(1.0, delta * 8.0)
+		_stream_pos = _cur.get_playback_position() + AudioServer.get_time_since_last_mix() * _cur.pitch_scale
 	var l := song_length()
-	if l > 0.0 and song_pos >= l and (_cur.stream as AudioStreamOggVorbis).loop:
-		song_pos = fmod(song_pos, l)
+	if l > 0.0 and _stream_pos >= l and (_cur.stream as AudioStreamOggVorbis).loop:
+		_stream_pos = fmod(_stream_pos, l)
+	song_pos = _stream_pos - clampf(AudioServer.get_output_latency(), 0.0, 0.3)
 
 
 var _lyric_lines := {}
