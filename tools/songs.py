@@ -270,7 +270,7 @@ SONGS.append(dict(
             dark="Let-ters come from far a-way. / Names are fad{fay}-ing{ding} ev-ery day. / "
                  "Pip's card came a year too late. / Rules are rules. It has to wait.",
             dark2="Ev-ery year a lit-tle less, / for-got-ten name and ad-dress. / "
-                  "Stamp it, stamp it, let it go. / Who was Pip? You'll nev-er know.",
+                  "Stamp it, stamp it, let it go. / Who were they? You'll nev-er know.",
         ),
         chorus=dict(
             melody="5:0.5 6:1 5:0.5 6:1 5:0.5 6:0.5 | 1':1 7:3 | r:0.5 6:1 6:0.5 5:1 4:1 | 3:1.5 4:0.5 5:2 | "

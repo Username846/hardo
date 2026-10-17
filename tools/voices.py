@@ -99,12 +99,13 @@ def tts_text(text):
     return t
 
 
-# Every character always speaks with exactly the same voice. The party host and the announcer
-# have two each - a good one and an evil one - and every one of their spooky lines uses the evil
-# one, so there are never more than those two.
+# Every character always speaks with exactly the same voice. The party host has three (good,
+# evil, and a whisper for its quiet grey lines) and the announcer two (good and evil); each of
+# their lines uses the one that matches its box.
 CHARACTERS = {
     "host": dict(timbre="lady", pitch=178, speed=152, range=120),
     "host_evil": dict(timbre="deep", pitch=64, speed=118, range=28),
+    "host_whisper": dict(timbre="lady_whisper", pitch=178, speed=128, range=60),
     "announcer": dict(timbre="guy", pitch=128, speed=178, range=130),
     "announcer_evil": dict(timbre="guy", pitch=84, speed=132, range=40),
     "sarge": dict(timbre="deep", pitch=100, speed=172, range=100),
@@ -116,7 +117,7 @@ CHARACTERS = {
 }
 
 # Narrator mood -> whose voice
-MOOD_VOICE = {0: "host", 1: "host_evil", 2: "host_evil", 3: "diji", 4: "everyone", 5: "announcer", 6: "chumbo",
+MOOD_VOICE = {0: "host", 1: "host_evil", 2: "host_whisper", 3: "diji", 4: "everyone", 5: "announcer", 6: "chumbo",
               7: "rocko", 8: "diji", 9: "honk", 10: "pip", 11: "taxman", 12: "sarge", 13: "announcer_evil"}
 
 
@@ -175,7 +176,7 @@ def voice(who, text):
     elif who == "taxman":
         # on a little TV screen in the truck
         x = S.bp(x, 280, 3400) * 1.4
-    room = {"host": (0.12, 0.6), "pip": (0.5, 1.4), "sarge": (0.12, 0.5)}.get(who, (0.1, 0.5))
+    room = {"host": (0.12, 0.6), "host_whisper": (0.4, 1.2), "pip": (0.5, 1.4), "sarge": (0.12, 0.5)}.get(who, (0.1, 0.5))
     return x, S.reverb(x, *room)
 
 

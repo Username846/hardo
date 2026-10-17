@@ -4,8 +4,8 @@ extends CanvasLayer
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
 ## Who is talking decides the voice (tools/voices.py) and the name on the box. The party host
-## has a good voice (CUTE) and an evil voice (DARK, and WHISPER for its quiet spooky lines); the
-## announcer too (HYPE good, HYPE_DARK evil). SARGE is Sgt. Sprinkles, CREEPY is "everyone" (the
+## has a good voice (CUTE), an evil voice (DARK) and a whisper (WHISPER, the grey box); the
+## announcer has a good one (HYPE) and an evil one (HYPE_DARK). SARGE is Sgt. Sprinkles, CREEPY is "everyone" (the
 ## guests speaking together), CRITTER and MONSTER are the Dijimon (one voice), HONK is Tony Honk.
 enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN, SARGE, HYPE_DARK }
 

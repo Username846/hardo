@@ -1,13 +1,22 @@
 extends Screen
 ## Present 4: CARD CHECKPOINT (document inspection). Check every birthday card against the
 ## rules and stamp it YAY or NOPE. Later, the rules change. Everyone is invited.
-## Everyone except Pip, your best friend, whose cards keep fading... and so does Pip.
+## Everyone except the people in the photo on your desk: one by one their cards come back
+## faded, can't be delivered, and they disappear from the picture. In the end it's just you.
 
 const IDX := 3
 const CARD := Rect2(420, 110, 450, 480)
-const PHOTO := Rect2(948, 14, 290, 172)
-## How much of Pip is left in the photo after each of Pip's sad cards.
-const PIP_LEFT := [1.0, 0.62, 0.36, 0.14, 0.0]
+const PHOTO := Rect2(934, 10, 324, 202)
+## The family photo, left to right. Chumbo ("ME") stays; everyone else will fade away.
+const PEOPLE := [
+	{"name": "GRANDMA", "col": Color(0.6, 0.4, 0.75), "h": 0.9, "hair": Color(0.85, 0.85, 0.85)},
+	{"name": "MOM", "col": Color(0.95, 0.45, 0.6), "h": 1.0, "hair": Color(0.45, 0.28, 0.15)},
+	{"name": "ME", "col": Color(0.3, 0.72, 0.3), "h": 0.74, "hair": Color(0, 0, 0, 0)},
+	{"name": "PIP", "col": Color(0.98, 0.55, 0.16), "h": 0.72, "hair": Color(0.2, 0.15, 0.1)},
+	{"name": "MAX", "col": Color(0.25, 0.5, 0.9), "h": 0.8, "hair": Color(0.95, 0.8, 0.3)},
+	{"name": "LULU", "col": Color(1.0, 0.85, 0.2), "h": 0.95, "hair": Color(0.85, 0.3, 0.15)},
+]
+const ME := 2
 
 var cards: Array = []
 var i := -1
@@ -21,9 +30,9 @@ var mistakes := 0
 var rule4 := false
 var feedback := ""
 var feedback_t := 0.0
-## Pip fades from the photo one step per lost card; pip_shown animates towards it.
-var pip_lost := 0
-var pip_shown := 1.0
+## How much of each person is still in the photo (1 = there, 0 = gone).
+var shown := [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+var lost := 0
 var lost_note := ""
 var lost_t := 0.0
 var photo_zoom := 0.0
@@ -39,35 +48,56 @@ func enter() -> void:
 	var today: String = Game.date_text(0)
 	var long_ago: String = Game.date_text(-365)
 	var cream := Color(0.85, 0.85, 0.8)
+	# "say": said when the card arrives, "good": after a correct stamp, "then": what happens
+	# next, "who": the person in the photo this (lost) card belongs to, "after": said once they fade
 	cards = [
-		{"from": "Grandma", "to": "Chumbo", "date": today, "msg": "Happy birthday sweetie! Wear a sweater!", "sig": "Grandma xoxo", "ok": true, "col": Crayon.PINK, "pic": "heart"},
+		{"from": "Grandma", "to": "Chumbo", "date": today, "msg": "Happy birthday sweetie! Wear a sweater!", "sig": "Grandma xoxo", "ok": true, "col": Crayon.PINK, "pic": "heart",
+			"good": ["Good job! Grandma would be proud.", Narrator.CUTE]},
 		{"from": "Your Dog", "to": "Chumbo", "date": today, "msg": "WOOF WOOF WOOF (happy birthday)", "sig": "paw", "ok": true, "col": Crayon.YELLOW, "pic": "bone"},
-		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "HAPPY BIRTHDAY!!! Race you to the cake! Best friends forever!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "friends", "pip": true},
-		{"from": "Uncle Steve", "to": "Chimbo", "date": today, "msg": "Happy birthday, champ! Love ya!", "sig": "Steve", "ok": false, "col": Crayon.ORANGE, "pic": "cake"},
-		{"from": "Cousin Max", "to": "Chumbo", "date": Game.date_text(1), "msg": "HAPPY BIRTHDAY DUDE!!! Party time!", "sig": "Max", "ok": false, "col": Crayon.SKY, "pic": "balloon"},
+		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "HAPPY BIRTHDAY!!! Race you to the cake! Best friends forever!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "friends",
+			"say": ["A card from Pip! Pip is your best friend in the whole world.", Narrator.CUTE]},
+		{"from": "Uncle Steve", "to": "Chimbo", "date": today, "msg": "Happy birthday, champ! Love ya!", "sig": "Steve", "ok": false, "col": Crayon.ORANGE, "pic": "cake",
+			"say": ["Hmm. Look very closely at the name.", Narrator.CUTE]},
+		{"from": "Cousin Max", "to": "Chumbo", "date": Game.date_text(1), "msg": "HAPPY BIRTHDAY DUDE!!! Party time!", "sig": "Max", "ok": false, "col": Crayon.SKY, "pic": "balloon",
+			"say": ["Cousin Max is always in a hurry. Check the date!", Narrator.CUTE]},
 		{"from": "The Mailman", "to": "Chumbo", "date": today, "msg": "Happy birthday from the mail guy.", "sig": "", "ok": false, "col": Crayon.ORANGE, "pic": "star"},
 		{"from": "Mom", "to": "Chumbo", "date": today, "msg": "Happy birthday! I can't believe you forgot your own birthday!", "sig": "Mom", "ok": true, "col": Crayon.PINK, "pic": "heart"},
 		{"from": "Aunt Lulu", "to": "Chumbo", "date": today, "msg": "Happy birthday! I put a sticker in here. Don't eat it.", "sig": "Lulu", "ok": true, "col": Crayon.PURPLE, "pic": "star"},
-		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "Remember our treehouse? I saved you the best seat!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "tree", "pip": true},
+		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "Remember our treehouse? I saved you the best seat!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "tree",
+			"good": ["Pip saved you a seat. That's what best friends do.", Narrator.CUTE]},
 		{"from": "Pizza Palace", "to": "Valued Customer", "date": today, "msg": "Happy birthday! Enjoy 10% off one (1) breadstick.", "sig": "The Manager", "ok": false, "col": Crayon.RED, "pic": "star"},
 		{"from": "Your Teacher", "to": "Chumbo", "date": Game.date_text(-1), "msg": "Have a wonderful birthday. Homework is due Monday.", "sig": "Mrs. B", "ok": false, "col": Crayon.BLUE, "pic": "star"},
-		{"from": "The Dentist", "to": "Chumbo", "date": today, "msg": "Happy birthday! Brush after the cake! And floss!", "sig": "Dr. Molar", "ok": true, "col": Crayon.SKY, "pic": "star"},
-		# ---- the mail comes from strange places now
+		{"from": "The Dentist", "to": "Chumbo", "date": today, "msg": "Happy birthday! Brush after the cake! And floss!", "sig": "Dr. Molar", "ok": true, "col": Crayon.SKY, "pic": "star",
+			"then": "dark"},
+		# ---- the mail comes from strange places now, and the people in the photo start to fade
 		{"from": "The Neighbor's Basement", "to": "Chumbo", "date": today, "msg": "We can't wait to meet you.", "sig": "hand", "ok": true, "col": Color(0.55, 0.5, 0.45), "pic": "eye"},
-		{"from": "Pip", "to": "Chumbo", "date": long_ago, "msg": "Is it still your birthday? It's been your birthday for so long.", "sig": "Pip", "ok": false, "col": Crayon.GREEN.lerp(cream, 0.4), "pic": "friends", "pip": true, "lost": true},
-		{"from": "Everyone In The Walls", "to": "Chumbo", "date": today, "msg": "We sang for you last night. Did you hear us?", "sig": "us", "ok": true, "col": Color(0.6, 0.55, 0.6), "pic": "eye"},
+		{"from": "Cousin Ma_", "to": "Chumbo", "date": long_ago, "msg": "Hey dude! Are you still having that party? Nobody answers the door.", "sig": "Max", "ok": false, "col": Crayon.SKY.lerp(cream, 0.5), "pic": "balloon", "who": 4,
+			"say": ["This card is from a long time ago. Rules are rules.", Narrator.DARK],
+			"after": ["Huh. The picture looks a little different.", Narrator.DARK]},
+		{"from": "Everyone In The Walls", "to": "Chumbo", "date": today, "msg": "We sang for you last night. Did you hear us?", "sig": "us", "ok": true, "col": Color(0.6, 0.55, 0.6), "pic": "eye",
+			"then": "rule4"},
+		{"from": "Aunt L_l_", "to": "Chumbo", "date": "", "msg": "I put a sticker in here. Did it get to you? Did I?", "sig": "L", "ok": true, "col": Crayon.PURPLE.lerp(cream, 0.6), "pic": "star", "who": 5,
+			"say": ["L... l...? Somebody forgot how to spell their own name.", Narrator.DARK],
+			"after": ["Return to sender. No such address.", Narrator.DARK]},
 		{"from": "The Moon", "to": "Chumbo", "date": today, "msg": "I can see your party from here. It never stops.", "sig": "moon", "ok": true, "col": Color(0.85, 0.82, 0.55), "pic": "moon"},
-		{"from": "P_p", "to": "Chumbo", "date": long_ago, "msg": "I knocked and knocked. Nobody opened the door.", "sig": "P", "ok": true, "col": Crayon.GREEN.lerp(cream, 0.65), "pic": "tree", "pip": true, "lost": true},
+		{"from": "Gr_ndm_", "to": "Chumbo", "date": long_ago, "msg": "I baked your favorite cake. I left it on the porch. Nobody came out.", "sig": "G", "ok": true, "col": Crayon.PINK.lerp(cream, 0.7), "pic": "heart", "who": 0,
+			"say": ["Grandma's card is so faded. You can hardly read it.", Narrator.DARK],
+			"after": ["Someone is missing from the picture. Never mind.", Narrator.DARK]},
 		{"from": "Your Shadow", "to": "Chumbo", "date": today, "msg": "I'll be right behind you. At every party. Forever.", "sig": "smudge", "ok": true, "col": Color(0.35, 0.33, 0.4), "pic": "x"},
-		{"from": "You (from next year)", "to": "Chumbo", "date": today, "msg": "Don't open the last present.", "sig": "Chumbo", "ok": true, "col": cream, "pic": "x"},
-		{"from": "P", "to": "Chumbo", "date": "", "msg": "do you rem", "sig": "", "ok": true, "col": Crayon.GREEN.lerp(cream, 0.85), "pic": "", "pip": true, "lost": true},
+		{"from": "You (from next year)", "to": "Chumbo", "date": today, "msg": "Don't open the last present.", "sig": "Chumbo", "ok": true, "col": cream, "pic": "x",
+			"say": ["That's your handwriting, isn't it?", Narrator.DARK]},
+		{"from": "M_", "to": "Chumbo", "date": "", "msg": "I'm still in the picture, aren't I?", "sig": "", "ok": true, "col": Crayon.PINK.lerp(cream, 0.85), "pic": "", "who": 1,
+			"say": ["Another one. You almost remember who sends these.", Narrator.DARK],
+			"after": ["The picture is getting so empty.", Narrator.DARK]},
 		{"from": "", "to": "Chumbo", "date": "TODAY TODAY TODAY", "msg": "WE'RE ALREADY HERE", "sig": "smile", "ok": true, "col": Color(0.4, 0.3, 0.35), "pic": "eye"},
 		{"from": "The Clock", "to": "Chumbo", "date": today, "msg": "I stopped. Now it can be your birthday forever. You're welcome.", "sig": "clock", "ok": true, "col": Color(0.7, 0.6, 0.5), "pic": "clock"},
-		{"from": "", "to": "Chumbo", "date": "", "msg": "", "sig": "", "ok": true, "col": cream, "pic": "", "pip": true, "lost": true},
+		{"from": "", "to": "Chumbo", "date": "", "msg": "", "sig": "", "ok": true, "col": cream, "pic": "", "who": 3,
+			"say": ["This one is empty. It's still warm, like someone was holding it.", Narrator.DARK],
+			"after": ["bye, Chumbo.", Narrator.PIP]},
 		{"from": "Everyone", "to": "Chumbo", "date": today, "msg": "Happy birthday, Chumbo. It's always your birthday.", "sig": "everyone", "ok": true, "col": Color(0.5, 0.15, 0.2), "pic": "cake"},
 	]
-	add_button("yay", Rect2(930, 220, 300, 120), "YAY!", func(): _stamp("YAY!"), Crayon.GREEN, 64)
-	add_button("nope", Rect2(930, 370, 300, 120), "NOPE!", func(): _stamp("NOPE!"), Crayon.RED, 64)
+	add_button("yay", Rect2(930, 222, 300, 116), "YAY!", func(): _stamp("YAY!"), Crayon.GREEN, 64)
+	add_button("nope", Rect2(930, 366, 300, 116), "NOPE!", func(): _stamp("NOPE!"), Crayon.RED, 64)
 	_run()
 
 
@@ -75,7 +105,7 @@ func _run() -> void:
 	locked = true
 	await wait(0.4)
 	await say("Present number four! You got a job! You're the Birthday Card Inspector. Read the rules, then stamp each card YAY or NOPE.")
-	await say("That's you and Pip in the picture. Best friends forever!")
+	await say("That's you in the picture, with Grandma, Mom, your best friend Pip, Cousin Max and Aunt Lulu!")
 	locked = false
 	_next()
 
@@ -93,21 +123,9 @@ func _next() -> void:
 	tw.tween_property(self, "card_off", Vector2.ZERO, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	busy = false
-	match i:
-		2:
-			say_bg("A card from Pip! Pip is your best friend in the whole world.")
-		3:
-			say_bg("Hmm. Look very closely at the name.")
-		13:
-			say_bg("This card from Pip is from a long time ago. Rules are rules.", Narrator.DARK)
-		16:
-			say_bg("P... p? Somebody forgot how to spell their own name.", Narrator.DARK)
-		18:
-			say_bg("That's your handwriting, isn't it?", Narrator.DARK)
-		19:
-			say_bg("Another one. You almost remember who sends these.", Narrator.DARK)
-		22:
-			say_bg("This one is empty. It's still warm, like someone was holding it.", Narrator.DARK)
+	var c: Dictionary = cards[i]
+	if c.has("say"):
+		say_bg(c.say[0], c.say[1])
 
 
 func _stamp(kind: String) -> void:
@@ -132,7 +150,7 @@ func _stamp(kind: String) -> void:
 		Audio.sfx("wrong", -6)
 	feedback_t = 1.2
 	await wait(0.8)
-	if c.has("lost"):
+	if c.has("who"):
 		await _lose(c)
 	else:
 		var tw := create_tween()
@@ -140,32 +158,31 @@ func _stamp(kind: String) -> void:
 		tw.tween_property(self, "card_off", dest, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		Audio.sfx("whoosh", -6)
 		await tw.finished
-	if i == 0 and correct:
-		say_bg("Good job! Grandma would be proud.")
-	elif i == 8:
-		say_bg("Pip saved you a seat. That's what best friends do.")
-	if i == 11:
-		locked = true
-		Audio.play_music("cards_dark", 2.0)
-		await say("Uh oh. The mail is coming from... strange places now.", Narrator.DARK)
-		locked = false
-	if i == 14:
-		locked = true
-		rule4 = true
-		Audio.sfx("scribble")
-		var nb := get_button("nope")
-		nb.label = "YAY!"
-		nb.col = Crayon.GREEN
-		await say("New rule. All cards are approved. Everyone is invited.", Narrator.DARK)
-		locked = false
+	if correct and c.has("good"):
+		say_bg(c.good[0], c.good[1])
+	match c.get("then", ""):
+		"dark":
+			locked = true
+			Audio.play_music("cards_dark", 2.0)
+			await say("Uh oh. The mail is coming from... strange places now.", Narrator.DARK)
+			locked = false
+		"rule4":
+			locked = true
+			rule4 = true
+			Audio.sfx("scribble")
+			var nb := get_button("nope")
+			nb.label = "YAY!"
+			nb.col = Crayon.GREEN
+			await say("New rule. All cards are approved. Everyone is invited.", Narrator.DARK)
+			locked = false
 	_next()
 
 
-## Pip's card can't be delivered, whatever the stamp says. It crumbles away, and a little
-## more of Pip goes with it.
+## A card from someone in the photo can't be delivered, whatever the stamp says. It crumbles
+## away, and that person fades out of the picture.
 func _lose(c: Dictionary) -> void:
-	pip_lost = mini(pip_lost + 1, PIP_LEFT.size() - 1)
-	lost_note = "RETURN TO SENDER" if pip_lost < 3 else "NO SUCH PERSON"
+	lost += 1
+	lost_note = "RETURN TO SENDER" if lost <= 2 else "NO SUCH PERSON"
 	lost_t = 2.4
 	Audio.sfx("paper", -6, 0.7)
 	Audio.sfx("wind", -10)
@@ -174,18 +191,15 @@ func _lose(c: Dictionary) -> void:
 		bits.append({"p": p, "v": Vector2(randf_range(-30, 50), randf_range(-90, -30)), "t": randf_range(1.2, 2.2), "col": (c.col as Color).lightened(0.4)})
 	var tw := create_tween()
 	tw.tween_property(self, "card_alpha", 0.0, 1.6)
+	var who: int = c.who
 	var tw2 := create_tween()
-	tw2.tween_property(self, "pip_shown", PIP_LEFT[pip_lost], 2.2)
+	tw2.tween_method(func(v: float): shown[who] = v, 1.0, 0.0, 2.4)
 	await tw.finished
-	match pip_lost:
-		1:
-			say_bg("Huh. The picture looks a little different.", Narrator.DARK)
-		2:
-			say_bg("Return to sender. No such address.", Narrator.DARK)
-		4:
-			Audio.sfx("whisper_chumbo", -8, 1.15)
-			await wait(0.4)
-			say_bg("bye, Chumbo.", Narrator.PIP)
+	if who == 3:
+		# Pip says goodbye
+		Audio.sfx("whisper_chumbo", -8, 1.15)
+		await wait(0.4)
+	say_bg(c.after[0], c.after[1])
 	await wait(0.4)
 
 
@@ -197,7 +211,7 @@ func _end() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "photo_zoom", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
 	await tw.finished
-	await say("Who's that in your picture? Oh. Just you. It was always just you.", Narrator.DARK)
+	await say("Who were all those people in your picture? Oh. Nobody. It was always just you.", Narrator.DARK)
 	await say("Wasn't it?", Narrator.WHISPER)
 	var tw2 := create_tween()
 	tw2.tween_property(self, "photo_zoom", 0.0, 0.8)
@@ -254,55 +268,60 @@ func paint_top() -> void:
 		var nb := get_button("nope")
 		Crayon.line(pen, nb.rect.position + Vector2(10, 10), nb.rect.end - Vector2(10, 10), Crayon.INK, 6, 60)
 	if photo_zoom > 0.0:
-		# the photo comes up close at the end: just Chumbo, one arm around nobody
-		var big := Rect2(W * 0.5 - 330, 110, 660, 392)
+		# the photo comes up close at the end: just Chumbo, arms out to nobody
+		var big := Rect2(W * 0.5 - 340, 110, 680, 424)
 		var r := Rect2(PHOTO.position.lerp(big.position, photo_zoom), PHOTO.size.lerp(big.size, photo_zoom))
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, 0.45 * photo_zoom))
 		_photo(r)
 
 
-## Chumbo and Pip under a crayon sun. Pip fades out as pip_shown drops.
+## Chumbo with five family and friends under a crayon sun, everyone's name written underneath.
+## People fade out (and the sky goes grey) as they're forgotten.
 func _photo(r: Rect2) -> void:
 	var k := r.size.x / PHOTO.size.x
 	Crayon.rect(pen, r, Crayon.INK, 5, Color(0.95, 0.85, 0.55), 70)
-	var pic := r.grow(-12 * k)
-	pic.size.y -= 26 * k
-	pen.draw_rect(pic, Crayon.SKY.lerp(Color(0.6, 0.6, 0.65), 1.0 - pip_shown))
-	pen.draw_rect(Rect2(pic.position + Vector2(0, pic.size.y * 0.72), Vector2(pic.size.x, pic.size.y * 0.28)), Color(0.5, 0.78, 0.42))
-	Crayon.disc(pen, pic.position + Vector2(pic.size.x - 30 * k, 26 * k), 16 * k, Crayon.YELLOW)
-	var feet_y := pic.position.y + pic.size.y * 0.92
-	var h := pic.size.y * 0.72
-	var cx := pic.position.x + pic.size.x * 0.36
-	var px := pic.position.x + pic.size.x * 0.64
-	_kid(Vector2(cx, feet_y), h, Crayon.GREEN, 1.0, 71, "happy" if pip_shown > 0.5 else "flat", (px - cx) * 0.55)
-	if pip_shown > 0.01:
-		_kid(Vector2(px, feet_y), h * 0.96, Crayon.ORANGE, pip_shown, 81, "happy", -(px - cx) * 0.55)
-	# the caption, written in crayon, loses Pip's name too
-	var cap := "ME + PIP"
-	if pip_shown < 0.7:
-		cap = "ME + P_P"
-	if pip_shown < 0.45:
-		cap = "ME + P"
-	if pip_shown < 0.2:
-		cap = "ME +"
-	if pip_shown < 0.02:
-		cap = "ME"
-	Crayon.text(pen, Vector2(r.get_center().x, r.end.y - 20 * k), cap, int(26 * k), Crayon.INK, 1, 90, null, 0.8, false)
+	var pic := r.grow(-10 * k)
+	pic.size.y -= 24 * k
+	var left := 0.0
+	for v in shown:
+		left += v
+	var grey := 1.0 - (left - 1.0) / 5.0
+	pen.draw_rect(pic, Crayon.SKY.lerp(Color(0.6, 0.6, 0.65), grey))
+	pen.draw_rect(Rect2(pic.position + Vector2(0, pic.size.y * 0.74), Vector2(pic.size.x, pic.size.y * 0.26)), Color(0.5, 0.78, 0.42).lerp(Color(0.5, 0.55, 0.5), grey))
+	Crayon.disc(pen, pic.position + Vector2(pic.size.x - 22 * k, 20 * k), 13 * k, Crayon.YELLOW.lerp(Color(0.8, 0.8, 0.75), grey))
+	var n := PEOPLE.size()
+	var slot := pic.size.x / n
+	var feet_y := pic.position.y + pic.size.y * 0.95
+	var mood := "happy" if left > 3.5 else "flat"
+	for j in n:
+		var a: float = shown[j]
+		var x := pic.position.x + slot * (j + 0.5)
+		var person: Dictionary = PEOPLE[j]
+		if a > 0.01:
+			_person(Vector2(x, feet_y), pic.size.y * 0.8 * float(person.h), person, a, 71 + j * 9, mood if j == ME else "happy", slot * 0.5)
+		Crayon.text(pen, Vector2(x, r.end.y - 18 * k), person.name, int(13 * k), Color(Crayon.INK, maxf(a, 0.0)), 1, 90 + j, null, 0.6, false)
 
 
-## A stick kid with an arm reaching towards the other one (reach = x offset of the hand).
-func _kid(feet: Vector2, h: float, shirt: Color, a: float, sd: int, mood: String, reach: float) -> void:
+## A stick person holding hands with the people either side (so when a neighbour is gone,
+## the hand just reaches into empty air).
+func _person(feet: Vector2, h: float, person: Dictionary, a: float, sd: int, mood: String, reach: float) -> void:
 	var ink := Color(Crayon.INK, a)
-	var w := maxf(3.0, h * 0.05)
+	var w := maxf(2.5, h * 0.05)
 	var hip := feet + Vector2(0, -h * 0.42)
 	var neck := feet + Vector2(0, -h * 0.72)
-	var head := feet + Vector2(0, -h * 0.85)
-	var hr := h * 0.14
-	Crayon.line(pen, hip, feet + Vector2(-h * 0.13, 0), ink, w, sd)
-	Crayon.line(pen, hip, feet + Vector2(h * 0.13, 0), ink, w, sd + 1)
-	Crayon.poly(pen, PackedVector2Array([neck + Vector2(-h * 0.11, 0), neck + Vector2(h * 0.11, 0), hip + Vector2(h * 0.14, 0), hip + Vector2(-h * 0.14, 0)]), ink, w * 0.8, Color(shirt, a), sd + 2)
-	Crayon.line(pen, neck + Vector2(0, h * 0.04), neck + Vector2(reach, h * 0.08), ink, w, sd + 3)
-	Crayon.line(pen, neck + Vector2(0, h * 0.04), neck + Vector2(-signf(reach) * h * 0.2, h * 0.22), ink, w, sd + 4)
+	var head := feet + Vector2(0, -h * 0.86)
+	var hr := h * 0.13
+	Crayon.line(pen, hip, feet + Vector2(-h * 0.11, 0), ink, w, sd)
+	Crayon.line(pen, hip, feet + Vector2(h * 0.11, 0), ink, w, sd + 1)
+	Crayon.poly(pen, PackedVector2Array([neck + Vector2(-h * 0.1, 0), neck + Vector2(h * 0.1, 0), hip + Vector2(h * 0.14, 0), hip + Vector2(-h * 0.14, 0)]), ink, w * 0.8, Color(person.col, a), sd + 2)
+	var hand_y := neck.y + h * 0.16
+	Crayon.line(pen, neck + Vector2(0, h * 0.04), Vector2(feet.x - reach * 0.95, hand_y), ink, w, sd + 3)
+	Crayon.line(pen, neck + Vector2(0, h * 0.04), Vector2(feet.x + reach * 0.95, hand_y), ink, w, sd + 4)
+	var hair: Color = person.hair
+	if hair.a > 0.0:
+		Crayon.disc(pen, head + Vector2(-hr * 0.75, -hr * 0.2), hr * 0.6, Color(hair, a))
+		Crayon.disc(pen, head + Vector2(hr * 0.75, -hr * 0.2), hr * 0.6, Color(hair, a))
+		Crayon.disc(pen, head + Vector2(0, -hr * 0.85), hr * 0.65, Color(hair, a))
 	Crayon.circle(pen, head, hr, ink, w, Color(1, 0.9, 0.78, a), sd + 5)
 	Crayon.face(pen, head + Vector2(0, hr * 0.1), hr * 0.9, mood, Vector2.ZERO, sd + 6, ink)
 
@@ -340,10 +359,10 @@ func _card(c: Dictionary) -> void:
 	Crayon.text(pen, Vector2(r.position.x + 30, y + 196), "DATE: " + String(c.date), 28, ink, 0, 131 + i, null, 0.6, false)
 	Crayon.text_block(pen, Vector2(cx, y + 255), String(c.msg), 30, r.size.x - 60, _c(Crayon.BLUE.darkened(0.3)), 1, 132 + i)
 	var from_txt := "FROM: " + String(c.from) if String(c.from) != "" else "FROM: ???"
-	if c.has("pip") and String(c.from) == "":
+	if c.has("who") and String(c.from) == "":
 		from_txt = "FROM: "
 	Crayon.text(pen, Vector2(r.position.x + 30, r.end.y - 92), from_txt, 26, ink, 0, 133 + i, null, 0.6, false)
-	_signature(String(c.sig), Vector2(r.position.x + 30, r.end.y - 50), 140 + i, c.has("pip"))
+	_signature(String(c.sig), Vector2(r.position.x + 30, r.end.y - 50), 140 + i, c.has("who"))
 	if stamp != "":
 		var sc := Crayon.GREEN.darkened(0.2) if stamp == "YAY!" else Crayon.RED
 		sc.a = 0.85
@@ -354,10 +373,10 @@ func _card(c: Dictionary) -> void:
 		Crayon.text(pen, sp, stamp, size, _c(sc), 1, 151, Crayon.title_font(), 0.5, false)
 
 
-func _signature(sig: String, p: Vector2, sd: int, pip: bool) -> void:
+func _signature(sig: String, p: Vector2, sd: int, fading: bool) -> void:
 	match sig:
 		"":
-			if not pip:
+			if not fading:
 				Crayon.text(pen, p + Vector2(0, 0), "sign here: ________", 24, _c(Crayon.GREY), 0, sd, null, 0.3, false)
 		"paw":
 			Crayon.circle(pen, p + Vector2(40, 0), 14, _c(Crayon.INK), 3, _c(Crayon.BROWN), sd)
