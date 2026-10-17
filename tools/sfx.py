@@ -42,6 +42,15 @@ def voice_fx(text, timbre, pitch, speed=170, rng=None, shift=1.0):
     return x
 
 
+def character(who, how, text):
+    import voices
+    x, y = voices.voice(who, how, text)
+    y = np.asarray(y)
+    if y.ndim == 2:
+        y = y.mean(axis=0)
+    return y[: len(x) + int(0.3 * SR)]
+
+
 def crowd(text, n=6, spread=0.12):
     out = np.zeros(int(1.6 * SR))
     rng = np.random.default_rng(3)
@@ -101,13 +110,6 @@ def build(out_dir, only=None):
     fx["clank"] = (np.sin(2 * np.pi * 900 * t) + np.sin(2 * np.pi * 1370 * t) * 0.7 + np.sin(2 * np.pi * 2210 * t) * 0.4) * np.exp(-t * 18) * 0.5
 
     # animals / creatures
-    baa = voice_fx("baaaa", "kid", 330, 120, 30)
-    t = np.arange(len(baa)) / SR
-    fx["baa"] = baa * (0.75 + 0.25 * np.sin(2 * np.pi * 14 * t))
-    fx["baa_human"] = voice_fx("baaaa. chumbo", "deep", 85, 110, 10)
-    t = t_(0.18)
-    arf = S.saw_wave(np.cumsum(500 - 900 * t) / SR)
-    fx["bark"] = (bp(arf, 400, 2500) * np.exp(-t * 12) + hp(noise(len(t)), 2000) * np.exp(-t * 40) * 0.2) * 0.8
     fx["blip"] = sweep(700, 1300, 0.09, "sine") * env_exp(int(0.09 * SR), 0.05)
     fx["blip2"] = sweep(900, 500, 0.12, "sine") * env_exp(int(0.12 * SR), 0.06)
     t = t_(0.25)
@@ -125,15 +127,13 @@ def build(out_dir, only=None):
     fx["surprise"] = crowd("surprise!", 5, 0.05)
     fx["giggle"] = voice_fx("hee hee hee", "kid", 380, 230, 120)
     fx["giggle_low"] = voice_fx("hee hee hee", "croak", 90, 140, 30)
-    fx["oof"] = voice_fx("oof", "guy", 140, 300, 20)
-    fx["found_you"] = voice_fx("found you", "whisper", 90, 110, 10)
-    fx["whisper_chumbo"] = voice_fx("chumbo", "whisper", 80, 90, 5)
-    fx["hello"] = voice_fx("hello chumbo", "croak", 75, 100, 5)
-    fx["im_chumbo"] = voice_fx("I'm chumbo.", "croak", 70, 120, 5)
-    fx["im_chumbo_cute"] = voice_fx("I'm chumbo!", "kid", 360, 180, 150)
+    # characters' own voices (the same ones as their narration, see voices.py)
+    fx["oof"] = character("chumbo", "normal", "oof!")
+    fx["ow"] = character("chumbo", "normal", "ow!")
+    fx["whisper_chumbo"] = character("pip", "normal", "chumbo")
+    fx["im_chumbo"] = character("diji", "dark", "I'm chumbo.")
     fx["yay_small"] = voice_fx("yay!", "kid", 350, 200, 150)
     fx["uh_oh"] = voice_fx("uh oh!", "kid", 300, 180, 120)
-    fx["ow"] = voice_fx("ow!", "guy", 150, 220, 80)
 
     # game-y
     fx["jump"] = sweep(300, 900, 0.12, "square", 0.5) * env_exp(int(0.12 * SR), 0.1) * 0.3
@@ -272,7 +272,7 @@ def build(out_dir, only=None):
     for st, f in ((0.0, 1300), (0.28, 900)):
         rl += np.where(t >= st, (hp(noise(len(t)), 1500) * 0.6 + np.sin(2 * np.pi * f * t) * 0.5) * np.exp(-np.maximum(t - st, 0) * 50), 0)
     fx["reload"] = rl
-    zz = voice_fx("haaapy biiirthdaaay", "croak", 70, 75, 25)
+    zz = character("everyone", "normal", "haaapy biiirthdaaay")
     t = np.arange(len(zz)) / SR
     fx["zombie"] = zz * (0.75 + 0.25 * np.sin(2 * np.pi * 5 * t))
     fx["streak"] = tone_seq([76, 79, 83, 88], "pulse25", 0.06, 0.1)
@@ -289,6 +289,30 @@ def build(out_dir, only=None):
     fx["poop"] = sweep(500, 140, 0.3, "sine", 0.6) * np.exp(-t * 8) + lp(noise(len(t)), 600) * np.exp(-t * 25) * 0.4
     t = t_(0.9)
     fx["flush"] = bp(noise(len(t)), 300, 3000) * np.sin(np.pi * t / 0.9) * (0.6 + 0.4 * np.sin(2 * np.pi * 7 * t))
+
+    # R.E.P.O.: the grab beam, the duck, the money
+    t = t_(0.5)
+    hum = np.sin(2 * np.pi * np.cumsum(300 + 500 * np.minimum(1, t / 0.15)) / SR)
+    fx["beam"] = (hum * 0.5 + S.saw_wave(np.cumsum(np.full(len(t), 150.0)) / SR) * 0.15
+                  + bp(noise(len(t)), 2000, 6000) * 0.15) * np.minimum(1, (0.5 - t) * 6) * (0.8 + 0.2 * np.sin(2 * np.pi * 30 * t))
+
+    def quack(sec, f0, rough):
+        t = t_(sec)
+        f = f0 * (1 + 0.25 * np.sin(np.pi * np.minimum(t / sec, 1)))
+        ph = np.cumsum(f) / SR
+        x = S.saw_wave(ph) + S.square_wave(ph * 2, 0.3) * 0.4
+        x = bp(x, 700, 2600) * 1.4 + bp(x, 2600, 4200) * 0.4
+        x = np.tanh(x * rough)
+        return x * np.minimum(1, t / 0.02) * np.minimum(1, (sec - t) / 0.05)
+    fx["quack"] = quack(0.22, 330, 1.5)
+    qa = np.concatenate([quack(0.3, 180, 6.0), np.zeros(int(0.05 * SR)), quack(0.4, 150, 8.0)])
+    fx["quack_angry"] = qa
+    cash = tone_seq([88, 96], "glock", 0.08, 0.3)
+    n = int(0.12 * SR)
+    cash[:n] += lp(noise(n), 3000) * np.exp(-t_(0.12) * 30) * 0.6
+    fx["cash"] = cash
+    t = t_(1.6)
+    fx["alarm"] = S.square_wave(np.cumsum(700 + 250 * np.sign(np.sin(2 * np.pi * 2.5 * t))) / SR) * 0.3 * np.minimum(1, (1.6 - t) * 4)
 
     for name, x in fx.items():
         if only and name not in only:

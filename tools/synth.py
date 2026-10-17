@@ -776,6 +776,13 @@ TIMBRES = {
     "whisper": ("male", "formant 0 100 0 100\nformant 1 100 80 100\n", "voicing 25\nbreath 75 75 50 40 15 10\nbreathw 150 150 200 200 400 400\n"),
     "robot": ("male", "formant 0 100 100 100\n", "flutter 0\nroughness 0\n"),
     "croak": ("male", "formant 0 92 100 100\nformant 1 90 100 100\n", "roughness 7\nflutter 30\n"),
+    # the host's and Pip's whispers keep their own vocal tract (formants), so they still sound like them
+    "lady_whisper": ("female", "formant 0 105 0 120\nformant 1 110 70 120\nformant 2 110 75 120\nformant 3 110 75 120\n",
+                     "voicing 30\nbreath 70 70 50 40 15 10\nbreathw 150 150 200 200 400 400\n"),
+    "kid_whisper": ("female", "formant 0 115 0 110\nformant 1 120 70 110\nformant 2 118 80 110\nformant 3 115 80 110\n",
+                    "voicing 30\nbreath 70 70 50 40 15 10\nbreathw 150 150 200 200 400 400\n"),
+    # Tony Honk: a nasal, honky goose
+    "goose": ("male", "formant 0 125 70 100\nformant 1 130 60 130\nformant 2 118 90 150\nformant 3 115 90 120\n", "roughness 1\n"),
 }
 
 

@@ -16,17 +16,19 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | # | Game | Genre | Music |
 |---|------|-------|-------|
 | 1 | KNEAD FOR SPEED: UNDERGROUND | night street racing + drag race | big beat (acid bass + distorted guitar) |
-| 2 | TONY HONK'S PRO SKATER 2 | skateboarding tricks + combos | ska punk (dub when it gets weird) |
-| 3 | DIJIMON | digital pet that dijivolves | music-box waltz |
+| 2 | TONY HONK'S PRO SKATER 2 | one-minute skate sessions: tricks + combos | ska punk (dub when it gets weird) |
+| 3 | DIJIMON | digital pet that dijivolves | anime rock theme song |
 | 4 | Card Checkpoint | document inspection | bossa nova vibraphone |
 | 5 | CALL OF BIRTHDAY: MODERN PARTYFARE | foam-dart shooting gallery + party zombies | epic orchestral |
 | 6 | FORTNIGHT: Birthday Royale | battle-royale build defence | EDM supersaws |
 | 7 | ROBLOCKS Birthday Obby | obstacle-course runner | tropical marimba + steel drum |
 | 8 | POKeMANS | creature-catching battles | Game Boy chiptune |
-| 9 | Lights Out! | flashlight hide-and-seek | pizzicato lullaby |
-| 10 | Karaoke! | sing-along rhythm | disco |
+| 9 | R.E.P.O. (Retrieve Every Party Object) | robot hauling valuables to the extraction truck | sea shanty |
+| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake | Vocaloid J-pop |
 
 **Secret (spoilers):** after the credits, the cake on the party table shows **???**. Tap it. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
+
+Every character keeps one voice all game (the party host, the announcer, Chumbo, Rocko, the Dijimon, Tony Honk, Pip, the Taxman and "everyone", the guests speaking together); the host's dark lines are the same voice, just slower and lower. Every song is sung by the same two singers, and every dark version by the same two spooky ones.
 
 Every game has its own song with sung lyrics (two verses, a solo and the chorus twice), plus a darker version of the song for when things get weird. The dark versions have their own, much gloomier words: the party never ends. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
 
@@ -58,6 +60,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   python3 tools/build_audio.py          # everything
   python3 tools/build_audio.py music    # just the songs (tools/songs.py has melodies + lyrics)
   python3 tools/build_audio.py voice    # narration: re-run after changing any say("...") line
+  python3 tools/build_audio.py voice force   # re-record every line (after changing a voice)
   python3 tools/build_audio.py sfx meow # just some sound effects (tools/sfx.py)
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
@@ -71,4 +74,4 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
 
 - Fonts: *Finger Paint* (Ralph du Carrois) and *Gochi Hand* (Huerta Tipográfica), SIL Open Font License, see `assets/fonts/OFL.txt`.
 - Voices: generated with [eSpeak NG](https://github.com/espeak-ng/espeak-ng).
-- KNEAD FOR SPEED, TONY HONK'S PRO SKATER, DIJIMON, CALL OF BIRTHDAY, FORTNIGHT, ROBLOCKS and POKeMANS are affectionate parodies drawn from scratch; they are not affiliated with the real games.
+- KNEAD FOR SPEED, TONY HONK'S PRO SKATER, DIJIMON, CALL OF BIRTHDAY, FORTNIGHT, ROBLOCKS, POKeMANS, R.E.P.O. and HATSUNE MIKAKE are affectionate parodies drawn from scratch; they are not affiliated with the real games.

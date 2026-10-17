@@ -3,7 +3,8 @@
 
     python3 tools/build_audio.py            # music + sfx + narration
     python3 tools/build_audio.py music      # just one group (music | sfx | voice)
-    python3 tools/build_audio.py music cake # just one song
+    python3 tools/build_audio.py music race # just one song
+    python3 tools/build_audio.py voice force # re-record every narration line
 
 Needs: python3, numpy, scipy, espeak-ng, oggenc (vorbis-tools).
 """
@@ -103,7 +104,7 @@ def main():
         sfx.build(os.path.join(ROOT, "assets", "sfx"), set(sys.argv[2:]) or None)
     if what in ("all", "voice"):
         import voices
-        voices.build(ROOT)
+        voices.build(ROOT, force="force" in sys.argv[2:])
 
 
 if __name__ == "__main__":

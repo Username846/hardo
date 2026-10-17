@@ -14,8 +14,8 @@ const GAMES := [
 	{"id": "royale", "title": "FORTNIGHT", "script": "res://scripts/games/royale.gd", "col": Color(0.4, 0.3, 0.9)},
 	{"id": "obby", "title": "ROBLOCKS", "script": "res://scripts/games/obby.gd", "col": Color(0.89, 0.2, 0.22)},
 	{"id": "poke", "title": "POKeMANS", "script": "res://scripts/games/poke.gd", "col": Color(1.0, 0.85, 0.2)},
-	{"id": "lights", "title": "Lights Out!", "script": "res://scripts/games/lights.gd", "col": Color(0.2, 0.2, 0.35)},
-	{"id": "karaoke", "title": "Karaoke!", "script": "res://scripts/games/karaoke.gd", "col": Color(0.95, 0.3, 0.6)},
+	{"id": "repo", "title": "R.E.P.O.", "script": "res://scripts/games/repo.gd", "col": Color(0.2, 0.2, 0.35)},
+	{"id": "karaoke", "title": "MIKAKE KARAOKE", "script": "res://scripts/games/karaoke.gd", "col": Color(0.2, 0.75, 0.75)},
 ]
 
 const SCREENS := {

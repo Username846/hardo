@@ -363,11 +363,6 @@ func _dbg(i: int) -> String:
 	var b := _game_bot(i)
 	if b != null:
 		return b.dbg(g) if b.has_method("dbg") else ""
-	match i:
-		8:
-			return "phase=%s playing=%s found=%d light=%s locked=%s" % [g.phase, g.playing, g.found, g.light, g.locked]
-		9:
-			return "phase=%s song_pos=%.3f really_playing=%.3f score=%d" % [g.phase, Audio.song_pos, _truth(), g.score]
 	return ""
 
 
@@ -438,33 +433,3 @@ func _drive(i: int, dt: float) -> void:
 			elif g.mode == "battle" and g.menu == "moves" and tmr > 0.3:
 				tmr = 0.0
 				_btn("m1")
-		8:
-			if not g.playing:
-				return
-			if g.phase == "hide":
-				for gg in g.guests:
-					if not gg.found:
-						g.light = gg.pos
-						g.mouse = gg.pos
-						break
-			elif g.phase == "extra":
-				for e in g.extras:
-					if not e.gone:
-						g.light = e.pos
-						g.mouse = e.pos
-						break
-		9:
-			if g.phase == "cute" or g.phase == "dark":
-				var now: float = Audio.song_pos
-				for k in g.chart.size():
-					if not g.hits.has(k) and absf(float(g.chart[k][0]) - now) < 0.05:
-						g.press(Vector2.ZERO)
-						break
-			elif g.phase == "candles" and tmr > 0.4 and not g.locked:
-				tmr = 0.0
-				for c in g.candles:
-					if c.lit:
-						g.press(Vector2(c.x, 400))
-						break
-			if g.phase == "wish" or Game.main.current != g:
-				pass

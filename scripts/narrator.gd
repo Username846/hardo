@@ -3,8 +3,11 @@ extends CanvasLayer
 ## voice clip (tools/voices.py renders one clip per say() line found in the scripts).
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
-## CHUMBO and ROCKO are characters talking (the box shows their name).
-enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO }
+## Who is talking decides the voice (tools/voices.py): CUTE, DARK and WHISPER are all the party
+## host (same voice, different mood). HYPE is the announcer, CREEPY is "everyone" (the guests
+## speaking together), CRITTER and MONSTER are the Dijimon (baby and grown), HONK is Tony Honk.
+## Characters get their name on the box.
+enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN }
 
 const BOX_W := 900.0
 
@@ -116,7 +119,8 @@ func _process(delta: float) -> void:
 	if _voice_len <= 0.0 and int(_shown) != before:
 		_blip_acc += 1
 		if _blip_acc % 3 == 0 and _text.substr(int(_shown) - 1, 1) != " ":
-			var pitch: float = {CUTE: 1.0, DARK: 0.55, WHISPER: 0.7, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45}[_mood]
+			var pitch: float = {CUTE: 1.0, DARK: 0.75, WHISPER: 0.85, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45,
+				MONSTER: 0.9, HONK: 1.3, PIP: 1.1, TAXMAN: 0.6}[_mood]
 			Audio.sfx("blip" if _blip_acc % 2 == 0 else "blip2", -16.0, pitch * randf_range(0.9, 1.1))
 	if _shown >= _text.length() and _done_typing_at < 0.0:
 		_done_typing_at = _elapsed
@@ -157,9 +161,17 @@ func _style() -> Dictionary:
 		WHISPER:
 			return {"bg": Color(0.2, 0.2, 0.24, 0.8), "ink": Color(0.85, 0.85, 0.9), "edge": Color(0.45, 0.45, 0.5), "wob": 1.3}
 		CRITTER:
-			return {"bg": Color(1.0, 0.85, 0.95, 0.97), "ink": Color(0.45, 0.15, 0.55), "edge": Color(0.6, 0.25, 0.7), "wob": 1.2}
+			return {"bg": Color(1.0, 0.85, 0.95, 0.97), "ink": Color(0.45, 0.15, 0.55), "edge": Color(0.6, 0.25, 0.7), "wob": 1.2, "name": "DIJIMON"}
+		MONSTER:
+			return {"bg": Color(0.16, 0.05, 0.2, 0.96), "ink": Color(1.0, 0.75, 0.95), "edge": Color(0.6, 0.15, 0.65), "wob": 1.9, "name": "DIJIMON"}
 		CREEPY:
-			return {"bg": Color(0.18, 0.08, 0.22, 0.96), "ink": Color(0.95, 0.9, 1.0), "edge": Color(0.55, 0.2, 0.6), "wob": 1.9}
+			return {"bg": Color(0.18, 0.08, 0.22, 0.96), "ink": Color(0.95, 0.9, 1.0), "edge": Color(0.55, 0.2, 0.6), "wob": 1.9, "name": "EVERYONE"}
+		HONK:
+			return {"bg": Color(1.0, 1.0, 1.0, 0.97), "ink": Crayon.INK, "edge": Color(1.0, 0.55, 0.1), "wob": 1.1, "name": "TONY HONK"}
+		PIP:
+			return {"bg": Color(0.86, 0.9, 0.86, 0.75), "ink": Color(0.35, 0.45, 0.35), "edge": Color(0.55, 0.65, 0.55), "wob": 1.4, "name": "PIP"}
+		TAXMAN:
+			return {"bg": Color(0.1, 0.16, 0.1, 0.96), "ink": Color(1.0, 0.85, 0.3), "edge": Color(0.75, 0.6, 0.15), "wob": 1.3, "name": "TAXMAN"}
 		HYPE:
 			return {"bg": Color(0.2, 0.85, 1.0, 0.97), "ink": Color(0.1, 0.05, 0.3), "edge": Color(0.95, 0.2, 0.6), "wob": 1.0}
 		CHUMBO:

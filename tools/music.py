@@ -15,6 +15,10 @@ SCALES = {
     "dorian": [0, 2, 3, 5, 7, 9, 10],
 }
 
+# Who sings: lead + chorus harmony, the same in every song.
+SINGERS = ("kid", "lady")
+DARK_SINGERS = ("croak", "whisper")
+
 ROMAN = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7}
 
 TOKEN_RE = re.compile(r"^(b|#)?([1-7]|r)([',]*)(?::([0-9.]+))?$")
@@ -421,7 +425,7 @@ def pick_octave(midis, male):
     return o
 
 
-def render_vocals(song, ctx, notes, nsamp, timbre, harmony=False, choir=False):
+def render_vocals(song, ctx, notes, nsamp, timbre, harmony=False):
     sung = [n for n in notes if n.syl is not None]
     if not sung:
         return None
@@ -434,27 +438,17 @@ def render_vocals(song, ctx, notes, nsamp, timbre, harmony=False, choir=False):
             continue
         deg = n.deg + (2 if harmony else 0)
         midi = ctx.deg_midi(deg, n.acc, n.octv) + 12 * o
-        if ctx.detune:
-            midi_f = midi  # keep vocals in tune; instruments carry the wobble
-        else:
-            midi_f = midi
+        # vocals stay in tune (the instruments carry the dark versions' wobble)
         dur = n.dur * ctx.spb * 0.96
-        if choir:
-            x = S.render_note("choir", int(midi_f), round(dur, 3), 0.9)
-        else:
-            x = S.sing_syllable(n.syl[0], midi_f, dur, timbre)
+        x = S.sing_syllable(n.syl[0], midi, dur, timbre)
         i = int(ctx.t(n.beat) * S.SR)
         k = min(len(x), nsamp - i)
         if k > 0:
             track[i:i + k] += x[:k]
-    if not choir:
-        track = S.vibrato(track, 5.3, 22 if not ctx.dark else 40)
-        track = S.hp(track, 140)
-        track = S.lp(track, 7500)
-        track = np.tanh(track * 1.5) / 1.5
-    if song.get("crush_vocals"):
-        track = S.bitcrush(track, 7, 2) * 0.7 + track * 0.3
-    return track
+    track = S.vibrato(track, 5.3, 22 if not ctx.dark else 40)
+    track = S.hp(track, 140)
+    track = S.lp(track, 7500)
+    return np.tanh(track * 1.5) / 1.5
 
 
 def render_song(song, dark=False):
@@ -472,22 +466,14 @@ def render_song(song, dark=False):
         b = render_part(p, ctx, notes, chords, total_beats, nsamp)
         b = rms_norm(b, p.get("vol", -20))
         mix += b
-    timbre = d.get("voice", song["voice"]) if dark else song["voice"]
-    timbre2 = d.get("voice2", song["voice2"]) if dark else song["voice2"]
+    # the same two singers in every song: one pair for the cute versions, one for the dark ones
+    timbre, timbre2 = DARK_SINGERS if dark else SINGERS
     lead = render_vocals(song, ctx, notes, nsamp, timbre)
     if lead is not None:
-        lead_st = S.pan_stereo(lead, 0.0)
-        mix += rms_norm(lead_st, -13.5)
-        if song.get("double_whisper") and not dark:
-            w = render_vocals(song, ctx, notes, nsamp, "whisper")
-            mix += rms_norm(S.pan_stereo(w, 0.15), -22)
+        mix += rms_norm(S.pan_stereo(lead, 0.0), -13.5)
         harm = render_vocals(song, ctx, notes, nsamp, timbre2, harmony=True)
         if harm is not None and np.any(harm):
             mix += rms_norm(S.pan_stereo(harm, -0.3), -21)
-        if song.get("choir"):
-            ch = render_vocals(song, ctx, notes, nsamp, timbre, harmony=True, choir=True)
-            if ch is not None and np.any(ch):
-                mix += rms_norm(S.pan_stereo(ch, 0.3), -23)
     fx = d.get("fx", {}) if dark else {}
     # master chain
     if fx.get("radio"):

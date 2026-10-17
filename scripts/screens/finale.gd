@@ -6,6 +6,8 @@ const Race := preload("res://scripts/games/race.gd")
 const Skate := preload("res://scripts/games/skate.gd")
 const Digi := preload("res://scripts/games/digi.gd")
 const Duty := preload("res://scripts/games/duty.gd")
+const Repo := preload("res://scripts/games/repo.gd")
+const Karaoke := preload("res://scripts/games/karaoke.gd")
 
 var light := 0.0
 var credits := false
@@ -76,14 +78,15 @@ func paint() -> void:
 	Skate.draw_mascot(pen, Vector2(272, floor_y), 1.0, t, true)
 	Digi.draw_mascot(pen, Vector2(418, floor_y), 0.55, t)
 	Duty.draw_mascot(pen, Vector2(890, floor_y), 0.95, t)
+	Repo.draw_mascot(pen, Vector2(1080, floor_y), 0.8, t)
 	# Chumbmon
-	Crayon.ellipse(pen, Vector2(1010, floor_y - 70), Vector2(60, 70), Crayon.INK, 5, Color(0.15, 0.1, 0.2), 30)
-	Crayon.face(pen, Vector2(1010, floor_y - 80), 50, "wide", Vector2.ZERO, 31, Crayon.WHITE)
+	Crayon.ellipse(pen, Vector2(985, floor_y - 70), Vector2(55, 66), Crayon.INK, 5, Color(0.15, 0.1, 0.2), 30)
+	Crayon.face(pen, Vector2(985, floor_y - 80), 46, "wide", Vector2.ZERO, 31, Crayon.WHITE)
 	# the other Chumbo
-	Crayon.person(pen, Vector2(1160, floor_y), 170, Crayon.INK, mood, Crayon.GREEN, "wave", t * 2.0, 40)
-	Crayon.text(pen, Vector2(1160, floor_y - 205), "chumbo", 22, Crayon.GREY, 1, 41, null, 0.5, false)
+	Crayon.person(pen, Vector2(1195, floor_y), 170, Crayon.INK, mood, Crayon.GREEN, "wave", t * 2.0, 40)
+	Crayon.text(pen, Vector2(1195, floor_y - 205), "chumbo", 22, Crayon.GREY, 1, 41, null, 0.5, false)
 	Crayon.person(pen, Vector2(500, floor_y), 160, Crayon.INK, mood, Crayon.RED, "up" if cheer else "stand", t * 2.0, 42)
-	Crayon.person(pen, Vector2(770, floor_y), 150, Crayon.INK, mood, Crayon.BLUE, "up" if cheer else "stand", t * 2.0, 43)
+	Karaoke.draw_mascot(pen, Vector2(775, floor_y), 0.78, t)
 	if credits:
 		_credits()
 

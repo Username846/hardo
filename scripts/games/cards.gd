@@ -185,7 +185,7 @@ func _lose(c: Dictionary) -> void:
 		4:
 			Audio.sfx("whisper_chumbo", -8, 1.15)
 			await wait(0.4)
-			say_bg("bye, Chumbo.", Narrator.WHISPER)
+			say_bg("bye, Chumbo.", Narrator.PIP)
 	await wait(0.4)
 
 

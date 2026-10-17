@@ -346,15 +346,15 @@ func _grow() -> void:
 			await say("A rookie! Look at its little party hat! Keep going and it will become a champion!")
 		4:
 			age_spin = true
-			await say("Grrr. Is it my birthday too?", Narrator.CREEPY)
+			await say("Grrr. Is it my birthday too?", Narrator.MONSTER)
 			await say("Champion level. It's so big now, and it's always hungry. Try not to look at its candle teeth.", Narrator.DARK)
 		5:
-			await say("MORE.", Narrator.CREEPY)
+			await say("MORE.", Narrator.MONSTER)
 			await say("It ate the cake. It ate the plate. It ate the calendar, so now it's always today.", Narrator.DARK)
 			await say("The other buttons don't work anymore. Just feed it.", Narrator.DARK)
 		6:
 			Audio.sfx("im_chumbo", -2)
-			await say("I'm Chumbo.", Narrator.CREEPY)
+			await say("I'm Chumbo.", Narrator.MONSTER)
 			await say("That's not a Dijimon anymore. It still wants something else.", Narrator.DARK)
 	_show_buttons(true)
 	busy = false
@@ -373,9 +373,9 @@ func _eat_name() -> void:
 		await wait(0.28)
 	eaten_name = true
 	await wait(0.6)
-	await say("I'm Chumbo.", Narrator.CREEPY)
+	await say("I'm Chumbo.", Narrator.MONSTER)
 	await say("That's not right. You are Chumbo.", Narrator.DARK)
-	await say("No. I'm Chumbo.", Narrator.CREEPY)
+	await say("No. I'm Chumbo.", Narrator.MONSTER)
 	await say("Which one of you is the real Chumbo?", Narrator.DARK)
 	choice = true
 	add_button("c1", Rect2(220, H - 110, 380, 86), "I'm Chumbo", _choose, Crayon.WHITE, 40)
@@ -392,8 +392,8 @@ func _choose() -> void:
 	remove_button("c2")
 	remove_button("feed")
 	meters = [0.3, 0.3, 0.3]
-	await say("See? We are both Chumbo now.", Narrator.CREEPY)
-	await say("And we will both have a birthday. Every day. Forever and ever.", Narrator.CREEPY)
+	await say("See? We are both Chumbo now.", Narrator.MONSTER)
+	await say("And we will both have a birthday. Every day. Forever and ever.", Narrator.MONSTER)
 	Audio.sfx("gulp", 0, 0.5)
 	name_left = 10
 	eaten_name = false

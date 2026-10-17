@@ -12,7 +12,7 @@ const LOOP := 6400.0
 const SPEED := 360.0
 const GRAV := 2000.0
 const OLLIE := 860.0
-const SESSION := 120.0
+const SESSION := 60.0
 const TILE := Vector2(1280, 330)
 const DUSK := Color(0.5, 0.44, 0.72)
 const FUNBOX_RAMP := 110.0
@@ -125,11 +125,11 @@ func _run() -> void:
 	honk_t = 4.0
 	honk_txt = "HONK!"
 	Audio.sfx("honk", 0, 1.1)
-	await say("HONK! I'm Tony Honk! Show me your sickest birthday tricks!", Narrator.HYPE)
+	await say("HONK! I'm Tony Honk! Show me your sickest birthday tricks!", Narrator.HONK)
 	var tw := create_tween()
 	tw.tween_property(self, "title_k", 0.0, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	await say("Tap to ollie. Tap again in the air to flip. Hold to grab. Land on a rail to grind!")
-	await say("You have two minutes. Finish your tricks before you land, or you'll bail!")
+	await say("You have one minute. Finish your tricks before you land, or you'll bail!")
 	_start_session(1)
 
 
@@ -185,7 +185,7 @@ func _goal(id: String) -> void:
 				_banner("GOAL!  " + String(g.t))
 				Audio.sfx("levelup", -2)
 				Audio.sfx("honk", -2, 1.15)
-				_line(["HONK! Goal complete!", Narrator.HYPE], true)
+				_line(["HONK! Goal complete!", Narrator.HONK], true)
 			else:
 				honk_txt = "honk."
 				_banner("GOAL. AGAIN.")
@@ -292,7 +292,7 @@ func _trick(name: String, pts: int) -> void:
 	if special < 1.0:
 		special = minf(1.0, special + pts / 1400.0)
 		if special >= 1.0 and session == 1:
-			_line(["Special meter full! Tap in the air for a 900!", Narrator.HYPE])
+			_line(["Special meter full! Tap in the air for a 900!", Narrator.HONK])
 
 
 func _bank() -> void:
@@ -463,17 +463,17 @@ func tick(dt: float) -> void:
 func _clock_events() -> void:
 	var el := SESSION - time_left
 	if session == 1:
-		if time_left <= 60.0:
-			_line(["One minute left!", Narrator.HYPE])
+		if time_left <= 30.0:
+			_line(["Thirty seconds left!", Narrator.HONK])
 		if time_left <= 10.0:
-			_line(["Ten seconds! Big finish!", Narrator.HYPE])
+			_line(["Ten seconds! Big finish!", Narrator.HONK])
 		if time_left <= 0.0 and phase == "s1":
 			_end_session_1()
 		return
 	night = clampf(0.45 + el / SESSION * 0.55, 0.0, 1.0) if not reset_done else 1.0
-	if el > 14.0:
+	if el > 10.0:
 		_line(["They don't clap. They just watch.", Narrator.DARK])
-	if el > 66.0:
+	if el > 34.0:
 		_line(["It's the same cake again. It's always the same cake.", Narrator.DARK])
 	if time_left <= 15.0 and not reset_done:
 		_line(["Almost over. Almost.", Narrator.DARK])
@@ -631,7 +631,7 @@ func _land_rail(r: Dictionary) -> void:
 	Audio.sfx("grind", -2)
 	grind_snd = 0.7
 	if session == 1:
-		_line(["Grinding! Sick!", Narrator.HYPE])
+		_line(["Grinding! Sick!", Narrator.HONK])
 
 
 func _step_grind(h: float) -> void:
@@ -688,7 +688,7 @@ func _pickups(ox: float) -> void:
 		_pop("SECRET TAPE!", Crayon.PINK, 56)
 		if session == 1:
 			_goal("tape")
-			_line(["You found the secret tape! Radical!", Narrator.HYPE])
+			_line(["You found the secret tape! Radical!", Narrator.HONK])
 		else:
 			_line(["It's a tape of you. Skating here. Yesterday. And the day before.", Narrator.DARK])
 	if state == "bail":
@@ -701,7 +701,7 @@ func _pickups(ox: float) -> void:
 					_pop("CAKE GAP!", Crayon.PINK, 48)
 					_goal("cake")
 					if session == 1:
-						_line(["You jumped the cake! Happy birthday, cake!", Narrator.HYPE])
+						_line(["You jumped the cake! Happy birthday, cake!", Narrator.HONK])
 			"arch":
 				if state == "air" and _crossed(ox, x, float(f.x) + float(f.w) * 0.5):
 					_trick("BALLOON GAP", 300)
@@ -741,7 +741,7 @@ func _end_session_1() -> void:
 	Audio.sfx("tada")
 	honk_t = 6.0
 	honk_txt = "HONK HONK!"
-	await say("Time's up! What a session! Look at all those tricks!", Narrator.HYPE)
+	await say("Time's up! What a session! Look at all those tricks!", Narrator.HONK)
 	await wait(0.6)
 	_twist()
 
@@ -783,7 +783,7 @@ func _ending() -> void:
 	honk_txt = "HONK."
 	Audio.sfx("honk", -2, 0.75)
 	await wait(0.8)
-	await say("HONK.", Narrator.CREEPY)
+	await say("HONK.", Narrator.HONK)
 	await say("The session never ends, Chumbo. The park will be right here tomorrow. On your birthday.", Narrator.DARK)
 	await say("Present number two, done! Sick tricks, Chumbo!")
 	finish_game(IDX, "SICK TRICKS!")

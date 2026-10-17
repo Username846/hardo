@@ -10,7 +10,8 @@ import numpy as np
 
 import synth as S
 
-MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5, "CHUMBO": 6, "ROCKO": 7}
+MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5, "CHUMBO": 6, "ROCKO": 7,
+         "MONSTER": 8, "HONK": 9, "PIP": 10, "TAXMAN": 11}
 
 STR = r'"((?:[^"\\]|\\.)*)"'
 SAY_RE = re.compile(r"\bsay(?:_bg)?\(\s*" + STR + r"\s*(?:,\s*Narrator\.(\w+))?")
@@ -92,38 +93,72 @@ def tts_text(text):
     return t
 
 
-def render(mood, text):
+# Every character always speaks with the same voice. The party host has moods (cute, dark,
+# whisper), but it is the same espeak voice and vocal tract each time, just said differently.
+CHARACTERS = {
+    "host": dict(timbre="lady", pitch=178, speed=152, range=120),
+    "announcer": dict(timbre="guy", pitch=128, speed=178, range=130),
+    "chumbo": dict(timbre="guy", pitch=108, speed=158, range=45),
+    "diji": dict(timbre="kid", pitch=320, speed=175, range=220),
+    "honk": dict(timbre="goose", pitch=150, speed=185, range=110),
+    "pip": dict(timbre="kid_whisper", pitch=260, speed=125, range=50),
+    "taxman": dict(timbre="deep", pitch=84, speed=142, range=35),
+}
+
+# Narrator mood -> (who is talking, how)
+MOOD_VOICE = {0: ("host", "normal"), 1: ("host", "dark"), 2: ("host", "whisper"), 3: ("diji", "normal"),
+              4: ("everyone", "normal"), 5: ("announcer", "normal"), 6: ("chumbo", "normal"), 7: ("rocko", "normal"),
+              8: ("diji", "dark"), 9: ("honk", "normal"), 10: ("pip", "normal"), 11: ("taxman", "normal")}
+
+
+def _base(who, t, pitch_mul=1.0, speed_mul=1.0, range_mul=1.0, timbre=None):
+    c = CHARACTERS[who]
+    return S.speak(t, timbre or c["timbre"], c["pitch"] * pitch_mul, int(c["speed"] * speed_mul), c["range"] * range_mul)
+
+
+def _mix(*parts):
+    n = max(len(p) for p, _, _ in parts)
+    out = np.zeros(n + int(0.1 * S.SR))
+    for x, gain, delay in parts:
+        j = int(delay * S.SR)
+        out[j:j + len(x)] += x * gain
+    return out
+
+
+def voice(who, how, text):
+    """One line of speech for a character, as dry-ish mono samples with its room sound."""
     t = tts_text(text)
-    if mood == 0:      # CUTE party host
-        x = S.speak(t, "lady", 178, 152, 120)
-        y = S.reverb(x, 0.12, 0.6)
-    elif mood == 1:    # DARK
-        x = S.speak(t, "deep", 64, 118, 28)
-        x = S.resample(x, 1.08)  # a touch slower + lower
-        x = S.lp(x, 4200)
-        y = S.reverb(x, 0.35, 1.3)
-    elif mood == 2:    # WHISPER
-        x = S.speak(t, "whisper", 95, 115, 20)
-        y = S.reverb(x, 0.4, 1.2)
-    elif mood == 3:    # CRITTER
-        x = S.speak(t, "kid", 320, 175, 220)
-        x = S.resample(x, 1 / 1.12)
-        y = S.reverb(x, 0.1, 0.5)
-    elif mood == 4:    # CREEPY (croak + whisper an octave apart)
-        a = S.speak(t, "croak", 62, 108, 8)
-        b = S.speak(t, "whisper", 120, 108, 8)
-        n = max(len(a), len(b))
-        a = np.pad(a, (0, n - len(a)))
-        b = np.pad(b, (0, n - len(b)))
-        x = a * 0.8 + b * 0.5
-        y = S.reverb(x, 0.4, 1.4)
-    elif mood == 5:    # HYPE announcer
-        x = S.speak(t, "guy", 128, 178, 130)
-        y = S.reverb(x, 0.15, 0.7)
-    elif mood == 6:    # CHUMBO himself, relaxed
-        x = S.speak(t, "guy", 108, 158, 45)
-        y = S.reverb(x, 0.1, 0.5)
-    else:              # ROCKO, the demon cat (growl + whisper, slowed down)
+    if who == "host":
+        if how == "dark":
+            # the same host, slower and lower, in a bigger, darker room
+            x = _base("host", t, 0.8, 0.85, 0.4)
+            x = S.lp(x, 4200)
+            return x, S.reverb(x, 0.35, 1.3)
+        if how == "whisper":
+            x = _base("host", t, 1.0, 0.82, 0.5, timbre="lady_whisper")
+            return x, S.reverb(x, 0.4, 1.2)
+        x = _base("host", t)
+        return x, S.reverb(x, 0.12, 0.6)
+    if who == "diji":
+        if how == "dark":
+            # the same little monster, grown huge: lower, slower, growling
+            x = _base("diji", t, 0.45, 0.8, 0.35)
+            x = S.resample(x, 1.1)
+            tt = np.arange(len(x)) / S.SR
+            x = np.tanh(x * (0.75 + 0.25 * np.sin(2 * np.pi * 27 * tt)) * 2.2) * 0.6
+            return x, S.reverb(x, 0.35, 1.3)
+        x = S.resample(_base("diji", t), 1 / 1.12)
+        return x, S.reverb(x, 0.1, 0.5)
+    if who == "everyone":
+        # all the party guests saying it together, slow and flat
+        a = S.speak(t, "lady", 150, 108, 12)
+        b = S.speak(t, "guy", 96, 108, 8)
+        c = S.speak(t, "kid", 250, 108, 12)
+        d = S.speak(t, "whisper", 120, 108, 8)
+        x = _mix((a, 0.7, 0.0), (b, 0.8, 0.025), (c, 0.45, 0.05), (d, 0.5, 0.012))
+        return x, S.reverb(x, 0.45, 1.4)
+    if who == "rocko":
+        # the demon cat (growl + whisper, slowed down)
         a = S.speak(t, "croak", 56, 118, 12)
         b = S.speak(t, "whisper", 112, 118, 12)
         n = max(len(a), len(b))
@@ -133,7 +168,25 @@ def render(mood, text):
         x = np.tanh(a * (0.7 + 0.3 * np.sin(2 * np.pi * 29 * tt)) * 2.5) * 0.7 + b * 0.45
         x = S.resample(x, 1.1)
         x = S.lp(x, 3800)
-        y = S.reverb(x, 0.45, 1.5)
+        return x, S.reverb(x, 0.45, 1.5)
+    if who == "honk":
+        x = S.bp(_base("honk", t), 380, 3800)
+        x = S.resample(x, 1 / 1.06)
+        return x, S.reverb(x, 0.1, 0.5)
+    if who == "pip":
+        x = _base("pip", t)
+        return x, S.reverb(x, 0.5, 1.4)
+    if who == "taxman":
+        # on a little TV screen in the truck
+        x = S.bp(_base("taxman", t), 280, 3400) * 1.4
+        return x, S.reverb(x, 0.15, 0.6)
+    x = _base(who, t)
+    return x, S.reverb(x, 0.15 if who == "announcer" else 0.1, 0.6)
+
+
+def render(mood, text):
+    who, how = MOOD_VOICE[mood]
+    x, y = voice(who, how, text)
     y = np.asarray(y)
     if y.ndim == 2:
         y = y.mean(axis=0)
@@ -145,7 +198,7 @@ def render(mood, text):
     return y
 
 
-def build(root):
+def build(root, force=False):
     out_dir = os.path.join(root, "assets", "voice")
     os.makedirs(out_dir, exist_ok=True)
     lines = find_lines(root)
@@ -155,7 +208,7 @@ def build(root):
         k = key_for(mood, text)
         keep.add(k + ".ogg")
         path = os.path.join(out_dir, k + ".ogg")
-        if os.path.exists(path):
+        if os.path.exists(path) and not force:
             continue
         y = render(mood, text)
         y = y / (np.max(np.abs(y)) + 1e-9) * 0.9
