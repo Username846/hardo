@@ -28,6 +28,11 @@ var twisted := false
 var eyes := 0.0
 var dance := false
 var hurt := 0.0
+## The loot llama pinata (tap it for full health and fixed walls).
+var llama := {}
+var llama_done := false
+const STILL_THERE := [" is still in the storm", " can't find the exit", " joined again", " has been here for 300 years",
+	" is waiting for you", " forgot their name", " is still dancing"]
 
 
 var _baked_key := ""
@@ -55,6 +60,9 @@ func press(p: Vector2) -> void:
 		"bus":
 			_jump()
 		"fight":
+			if not llama.is_empty() and p.distance_to(llama.pos) < 70.0:
+				_smash_llama()
+				return
 			for f in foes:
 				if p.distance_to(f.pos) < 48.0 and not f.hit:
 					cakes.append({"pos": ME, "target": f})
@@ -115,13 +123,23 @@ func tick(dt: float) -> void:
 
 func _fight(dt: float) -> void:
 	fight_t += dt
-	storm_r = maxf(170.0, storm_r - dt * 9.0)
+	storm_r = maxf(170.0, storm_r - dt * 4.5)
 	tick_t -= dt
 	if tick_t <= 0.0 and left > 2:
-		tick_t = randf_range(0.35, 0.7) if not twisted else randf_range(2.0, 3.0)
+		tick_t = randf_range(0.8, 1.4) if not twisted else randf_range(4.0, 5.5)
 		left -= 1
 		var who: String = NAMES[randi() % NAMES.size()] + str(randi() % 90 + 10)
-		_feed(who + (" got caught in the storm" if not twisted else " is still in the storm"))
+		_feed(who + (" got caught in the storm" if not twisted else STILL_THERE[randi() % STILL_THERE.size()]))
+	if left <= 60 and not llama_done and llama.is_empty():
+		var a := randf() * TAU
+		llama = {"pos": ME + Vector2(cos(a) * 230.0, sin(a) * 150.0), "t": 0.0}
+		Audio.sfx("sparkle")
+		say_bg("A loot llama! Tap it for a surprise!")
+	if not llama.is_empty():
+		llama.t += dt
+		if llama.t > 18.0:
+			llama = {}
+			llama_done = true
 	if left <= 12 and not twisted:
 		_twist()
 	spawn_t -= dt
@@ -184,6 +202,18 @@ func _move_projectiles(dt: float) -> void:
 		else:
 			c.pos += d.normalized() * minf(d.length(), 760.0 * dt)
 	cakes = cakes.filter(func(c): return not c.get("dead", false))
+
+
+func _smash_llama() -> void:
+	confetti_burst(llama.pos, 60)
+	Audio.sfx("pop")
+	Audio.sfx("levelup", -4)
+	llama = {}
+	llama_done = true
+	hp = 100
+	for w in walls:
+		w.hp = 3
+	_feed("You smashed the Birthday Llama! Full health!")
 
 
 func _twist() -> void:
@@ -254,6 +284,8 @@ func paint() -> void:
 		pen.draw_set_transform(p, w.ang + PI / 2, Vector2.ONE)
 		Crayon.rect(pen, Rect2(-44, -12, 88, 24), Crayon.INK, 4, Crayon.BROWN.lightened(0.15 * w.hp), 40)
 		pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	if not llama.is_empty():
+		_llama(llama.pos + Vector2(0, sin(t * 4.0) * 6.0))
 	for f in foes:
 		var a := 1.0 - clampf(f.gone / 0.8, 0, 1)
 		var col := Color(Crayon.INK, a) if not twisted else Color(0.05, 0.02, 0.08, a)
@@ -276,6 +308,21 @@ func paint() -> void:
 		Crayon.face(pen, e + Vector2(18, 26), 34, "wide", Vector2.ZERO, 62, Color(1, 1, 1, a))
 	if hurt > 0.0:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.3, 0.6, 1.0, hurt * 0.25))
+
+
+## A stripy pinata llama (Fortnite's loot llama, birthday edition).
+func _llama(p: Vector2) -> void:
+	var body := Rect2(p + Vector2(-46, -20), Vector2(92, 46))
+	for k in 4:
+		Crayon.line(pen, p + Vector2(-34 + k * 22, 24), p + Vector2(-34 + k * 22, 54), Crayon.INK, 7, 960 + k)
+	Crayon.rect(pen, body, Crayon.INK, 4, Crayon.PINK, 964)
+	for k in 3:
+		pen.draw_rect(Rect2(body.position + Vector2(8 + k * 28, 4), Vector2(12, body.size.y - 8)), Crayon.RAINBOW[(k * 2 + 1) % 7])
+	Crayon.rect(pen, Rect2(p + Vector2(28, -74), Vector2(26, 60)), Crayon.INK, 4, Crayon.PURPLE.lightened(0.3), 965)
+	Crayon.rect(pen, Rect2(p + Vector2(28, -92), Vector2(44, 26)), Crayon.INK, 4, Crayon.PURPLE.lightened(0.3), 966)
+	Crayon.disc(pen, p + Vector2(58, -82), 4, Crayon.INK)
+	Crayon.line(pen, p + Vector2(34, -92), p + Vector2(30, -110), Crayon.INK, 5, 967)
+	Crayon.text(pen, p + Vector2(0, -120), "TAP!", 30, Crayon.YELLOW, 1, 968, Crayon.title_font())
 
 
 func _storm(col: Color) -> void:

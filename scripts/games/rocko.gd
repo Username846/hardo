@@ -6,7 +6,7 @@ extends Screen
 
 const LANES := [470.0, 565.0, 660.0]
 const ME_X := 640.0
-const RUN_TIME := 70.0
+const RUN_TIME := 140.0
 const HIP := Vector2(450, 472)
 const CAT_SEAT := Vector2(660, 458)
 const DOOR := Rect2(1070, 190, 150, 370)
@@ -65,12 +65,16 @@ var LINES := [
 	["Come back, Chumbo! The cake is getting cold!", Narrator.ROCKO],
 	["Why does every house have balloons now?", Narrator.DARK],
 	["Everybody is waiting for you, Chumbo.", Narrator.ROCKO],
+	["This street looks familiar. Didn't we already pass that mailbox?", Narrator.DARK],
 	["Don't look at the guests. Keep running.", Narrator.DARK],
+	["Your party misses you. Your party always misses you.", Narrator.ROCKO],
+	["Every street sign says Party Lane now.", Narrator.DARK],
 	["You can't run away from your birthday!", Narrator.ROCKO],
+	["Every year you run. Every year I bring you back.", Narrator.ROCKO],
 	["Look! A house! Hide in there!", Narrator.DARK],
 ]
 ## How far down the street (0..1) each of the LINES is said.
-const LINE_AT := [0.1, 0.28, 0.45, 0.6, 0.78, 0.92]
+const LINE_AT := [0.06, 0.15, 0.24, 0.34, 0.44, 0.54, 0.64, 0.74, 0.84, 0.93]
 
 
 func enter() -> void:

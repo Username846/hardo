@@ -12,6 +12,7 @@ const RUNNERS := [["xX_CakeLover_Xx", Color(1.0, 0.5, 0.7)], ["guest_1337", Colo
 
 var plats: Array = []       # Rect2
 var lava: Array = []        # Rect2
+var springs: Array = []     # Rect2 (bounce pads on top of platforms)
 var flags: Array = []       # Vector2 (checkpoint positions, feet)
 var stage_x: Array = []     # start x of each stage
 var chat_at: Array = []     # [x, text, action]
@@ -69,13 +70,15 @@ func _build_level() -> void:
 		plats.append(Rect2(x, y, 560, 60))
 		flags.append(Vector2(x + 80, y))
 		x += 560 + 120
-		var segs: int = [6, 7, 7, 6][s]
+		var segs: int = [12, 13, 13, 11][s]
 		for i in segs:
 			var ny := clampf(y + rng.randf_range(-90, 80), 380, 600)
 			var plen := rng.randf_range(240, 460) if s < 3 else rng.randf_range(160, 300)
 			plats.append(Rect2(x, ny, plen, 60 if s < 3 else 36))
 			if s >= 1 and rng.randf() < 0.55 and plen > 260:
 				lava.append(Rect2(x + plen * 0.5 - 35, ny - 22, 70, 22))
+			elif s <= 2 and plen > 300 and rng.randf() < 0.35:
+				springs.append(Rect2(x + plen * 0.3, ny - 14, 74, 14))
 			if s == 3 and i % 2 == 1:
 				lava.append(Rect2(x + plen - 60, ny - 22, 50, 22))
 			y = ny
@@ -89,13 +92,21 @@ func _build_level() -> void:
 	chat_at = [
 		[200, "xX_CakeLover_Xx: happy bday chumbo!!", ""], [700, "guest_1337: gg", ""],
 		[1500, "builderman_jr: nice obby lol", ""], [2200, "xX_CakeLover_Xx: race u to the end", ""],
+		[3300, "builderman_jr: this obby is sooo long lol", ""], [4400, "guest_1337: brb getting cake", ""],
+		[5400, "xX_CakeLover_Xx: jump on the springs!!", ""],
 		[stage_x[1] + 300, "guest_1337: the lava is cake flavored", ""], [stage_x[1] + 1400, "builderman_jr: wait for me", ""],
+		[stage_x[1] + 2700, "guest_1337: is it still ur birthday", ""], [stage_x[1] + 3900, "xX_CakeLover_Xx: its always his birthday lol", ""],
+		[stage_x[1] + 5100, "builderman_jr: wait how long have we been playing", ""],
 		[stage_x[2] + 200, "[guest_1337 left the game]", "leave1"], [stage_x[2] + 900, "[builderman_jr left the game]", "leave2"],
 		[stage_x[2] + 1500, "xX_CakeLover_Xx: chumbo its getting dark", ""], [stage_x[2] + 2100, "[xX_CakeLover_Xx left the game]", "leave0"],
+		[stage_x[2] + 3100, "[guest_1337 joined the game]", ""], [stage_x[2] + 3400, "[guest_1337 left the game]", ""],
+		[stage_x[2] + 4500, "[server restarting in 99 years]", ""],
 		[stage_x[3] - 200, "[chumbo joined the game]", ""], [stage_x[3] + 400, "chumbo: hi", ""],
 		[stage_x[3] + 1200, "chumbo: you took my name", ""], [stage_x[3] + 1900, "chumbo: its my birthday too", ""],
+		[stage_x[3] + 2900, "chumbo: ive been in this obby a long time", ""], [stage_x[3] + 3800, "chumbo: nobody ever reaches the end", ""],
 		[other_pos.x - 600, "chumbo: wait for me at the end", ""],
 	]
+	chat_at.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
 
 
 func press(_p: Vector2) -> void:
@@ -165,6 +176,14 @@ func tick(dt: float) -> void:
 			vy = 0.0
 			grounded = true
 			jumps = 0
+	# springs throw you up high (you can still double jump once)
+	if grounded:
+		for sp in springs:
+			if absf(pos.y - (sp.end.y)) < 2.0 and pos.x > sp.position.x and pos.x < sp.end.x:
+				vy = -JUMP * 1.35
+				grounded = false
+				jumps = 1
+				Audio.sfx("boing", -4)
 	if mercy_until < pos.x:
 		for r in lava:
 			if Rect2(pos.x - 13, pos.y - 58, 26, 56).intersects(r):
@@ -268,6 +287,13 @@ func paint() -> void:
 			continue
 		var glow := 0.8 + sin(t * 6.0 + r.position.x) * 0.2
 		Crayon.rect(pen, Rect2(r.position + off, r.size), Crayon.INK, 3, Color(1.0, 0.25 * glow, 0.1), int(r.position.x) % 991)
+	for sp in springs:
+		if sp.end.x + off.x < -50 or sp.position.x + off.x > W + 50:
+			continue
+		var r2 := Rect2(sp.position + off, sp.size)
+		for k in 3:
+			Crayon.line(pen, r2.position + Vector2(10 + k * 27, 14), r2.position + Vector2(20 + k * 27, 2), Crayon.INK, 3, 940 + k)
+		Crayon.rect(pen, Rect2(r2.position + Vector2(0, -6), Vector2(r2.size.x, 8)), Crayon.INK, 3, Crayon.PINK, 943)
 	for i in flags.size():
 		var f: Vector2 = flags[i] + off
 		Crayon.line(pen, f, f + Vector2(0, -90), Crayon.INK, 5, 50 + i)

@@ -223,6 +223,73 @@ def build(out_dir, only=None):
     dm = dm[: int(2.1 * SR)]
     fx["meow_demon"] = dm * np.minimum(1, (len(dm) - np.arange(len(dm))) / (0.3 * SR))
 
+    # cars (street racing)
+    def engine(sec, f0, f1, grit=0.5):
+        t = t_(sec)
+        f = f0 + (f1 - f0) * (t / sec) ** 0.8
+        ph = np.cumsum(f) / SR
+        x = S.saw_wave(ph) * 0.6 + S.square_wave(ph * 0.5, 0.3) * 0.4 + np.sin(2 * np.pi * ph * 2) * 0.3
+        x = lp(x, 1400) + bp(noise(len(t)), 300, 1200) * grit * 0.4
+        return np.tanh(x * 2.5) * (0.85 + 0.15 * np.sin(2 * np.pi * f * 0.25 * t))
+    fx["engine"] = engine(0.6, 70, 75, 0.4) * np.minimum(1, np.minimum(t_(0.6), 0.6 - t_(0.6)) * 20)
+    fx["rev"] = engine(0.9, 60, 210, 0.6) * np.minimum(1, (0.9 - t_(0.9)) * 6)
+    t = t_(1.2)
+    roar = engine(1.2, 150, 240, 0.8)
+    fx["nitro"] = (roar * 0.6 + bp(noise(len(t)), 600, 5000) * 1.2 * np.minimum(1, t / 0.05)) * np.minimum(1, (1.2 - t) * 2.5)
+    t = t_(0.7)
+    sq = np.sin(2 * np.pi * np.cumsum(1900 + 250 * np.sin(2 * np.pi * 9 * t)) / SR)
+    fx["screech"] = (sq * 0.5 + bp(noise(len(t)), 1500, 4000) * 0.6) * np.sin(np.pi * t / 0.7) ** 0.5
+    t = t_(0.18)
+    fx["shift"] = lp(noise(len(t)), 2500) * np.exp(-t * 40) + np.sin(2 * np.pi * 160 * t) * np.exp(-t * 30) * 0.6
+    t = t_(0.9)
+    smash = lp(noise(len(t)), 1800) * np.exp(-t * 7) + np.sin(2 * np.pi * np.cumsum(90 * np.exp(-t * 3) + 40) / SR) * np.exp(-t * 8)
+    for k, f in enumerate((2400, 3100, 3900, 2700)):
+        st = 0.08 + k * 0.07
+        smash += np.where(t >= st, np.sin(2 * np.pi * f * (t - st)) * np.exp(-np.maximum(t - st, 0) * 25), 0) * 0.25
+    fx["smash"] = smash
+
+    # skateboarding
+    t = t_(0.22)
+    fx["ollie"] = (np.sin(2 * np.pi * 420 * t) * np.exp(-t * 45) + hp(noise(len(t)), 1500) * np.exp(-t * 70) * 0.8
+                   + np.sin(2 * np.pi * 180 * t) * np.exp(-t * 25) * 0.5)
+    t = t_(0.8)
+    scrape = bp(noise(len(t)), 2500, 7000) * (0.7 + 0.3 * np.sin(2 * np.pi * 37 * t))
+    ring = np.sin(2 * np.pi * 3100 * t) * 0.15 + np.sin(2 * np.pi * 4700 * t) * 0.08
+    fx["grind"] = (scrape + ring) * np.minimum(1, t / 0.03) * np.minimum(1, (0.8 - t) * 5)
+    t = t_(0.3)
+    fx["land"] = (lp(noise(len(t)), 1200) * np.exp(-t * 30) + np.sin(2 * np.pi * 140 * t) * np.exp(-t * 20) * 0.8
+                  + hp(noise(len(t)), 3000) * np.exp(-t * 60) * 0.4)
+    t = t_(1.0)
+    fx["roll"] = lp(noise(len(t)), 700) * (0.8 + 0.2 * (np.sin(2 * np.pi * 14 * t) > 0)) * np.minimum(1, np.minimum(t, 1.0 - t) * 10) * 0.7
+
+    # foam dart blasters
+    t = t_(0.22)
+    fx["dart"] = (bp(noise(len(t)), 900, 5000) * np.exp(-t * 22) + sweep(900, 300, 0.22, "sine") * np.exp(-t * 18) * 0.5)
+    t = t_(0.09)
+    fx["hitmarker"] = (np.sin(2 * np.pi * 3200 * t) * 0.6 + hp(noise(len(t)), 5000) * 0.5) * np.exp(-t * 70)
+    t = t_(0.55)
+    rl = np.zeros(len(t))
+    for st, f in ((0.0, 1300), (0.28, 900)):
+        rl += np.where(t >= st, (hp(noise(len(t)), 1500) * 0.6 + np.sin(2 * np.pi * f * t) * 0.5) * np.exp(-np.maximum(t - st, 0) * 50), 0)
+    fx["reload"] = rl
+    zz = voice_fx("haaapy biiirthdaaay", "croak", 70, 75, 25)
+    t = np.arange(len(zz)) / SR
+    fx["zombie"] = zz * (0.75 + 0.25 * np.sin(2 * np.pi * 5 * t))
+    fx["streak"] = tone_seq([76, 79, 83, 88], "pulse25", 0.06, 0.1)
+    t = t_(0.35)
+    fx["radio"] = bp(noise(len(t)), 1500, 4000) * np.exp(-t * 12) * 0.8 + np.sin(2 * np.pi * 1000 * t) * (t < 0.06) * 0.4
+
+    # digital pet
+    t = t_(0.12)
+    fx["beep"] = S.square_wave(np.cumsum(np.full(len(t), 2093.0)) / SR) * 0.35 * (t < 0.1)
+    t = t_(0.25)
+    fx["beep2"] = S.square_wave(np.cumsum(np.where(t < 0.1, 1568.0, 2093.0)) / SR) * 0.35 * ((t < 0.09) | ((t > 0.12) & (t < 0.22)))
+    fx["digivolve"] = tone_seq([60, 64, 67, 72, 76, 79, 84, 88, 91, 96], "square", 0.055, 0.07)
+    t = t_(0.3)
+    fx["poop"] = sweep(500, 140, 0.3, "sine", 0.6) * np.exp(-t * 8) + lp(noise(len(t)), 600) * np.exp(-t * 25) * 0.4
+    t = t_(0.9)
+    fx["flush"] = bp(noise(len(t)), 300, 3000) * np.sin(np.pi * t / 0.9) * (0.6 + 0.4 * np.sin(2 * np.pi * 7 * t))
+
     for name, x in fx.items():
         if only and name not in only:
             continue

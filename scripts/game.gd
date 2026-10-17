@@ -6,11 +6,11 @@ const SAVE_PATH := "user://chumbo_birthday.cfg"
 const CANON_NAME := "I'm Chumbo"
 
 const GAMES := [
-	{"id": "cake", "title": "Cake Tower", "script": "res://scripts/games/cake.gd", "col": Color(0.98, 0.5, 0.7)},
-	{"id": "sheep", "title": "Sheepy Shepherd", "script": "res://scripts/games/sheep.gd", "col": Color(0.3, 0.72, 0.3)},
-	{"id": "blob", "title": "Baby Blob", "script": "res://scripts/games/blob.gd", "col": Color(0.58, 0.32, 0.78)},
+	{"id": "race", "title": "KNEAD FOR SPEED", "script": "res://scripts/games/race.gd", "col": Color(0.98, 0.5, 0.7)},
+	{"id": "skate", "title": "TONY HONK 2", "script": "res://scripts/games/skate.gd", "col": Color(0.3, 0.72, 0.3)},
+	{"id": "digi", "title": "DIJIMON", "script": "res://scripts/games/digi.gd", "col": Color(0.58, 0.32, 0.78)},
 	{"id": "cards", "title": "Card Checkpoint", "script": "res://scripts/games/cards.gd", "col": Color(0.22, 0.48, 0.9)},
-	{"id": "claw", "title": "Claw Machine", "script": "res://scripts/games/claw.gd", "col": Color(0.98, 0.55, 0.16)},
+	{"id": "duty", "title": "CALL OF BIRTHDAY", "script": "res://scripts/games/duty.gd", "col": Color(0.98, 0.55, 0.16)},
 	{"id": "royale", "title": "FORTNIGHT", "script": "res://scripts/games/royale.gd", "col": Color(0.4, 0.3, 0.9)},
 	{"id": "obby", "title": "ROBLOCKS", "script": "res://scripts/games/obby.gd", "col": Color(0.89, 0.2, 0.22)},
 	{"id": "poke", "title": "POKeMANS", "script": "res://scripts/games/poke.gd", "col": Color(1.0, 0.85, 0.2)},

@@ -15,11 +15,11 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 | # | Game | Genre | Music |
 |---|------|-------|-------|
-| 1 | Cake Tower | stacking | toy piano + glockenspiel |
-| 2 | Sheepy Shepherd | herding | bluegrass banjo + fiddle |
-| 3 | Baby Blob | virtual pet | music-box waltz |
+| 1 | KNEAD FOR SPEED: UNDERGROUND | night street racing + drag race | big beat (acid bass + distorted guitar) |
+| 2 | TONY HONK'S PRO SKATER 2 | skateboarding tricks + combos | ska punk (dub when it gets weird) |
+| 3 | DIJIMON | digital pet that dijivolves | music-box waltz |
 | 4 | Card Checkpoint | document inspection | bossa nova vibraphone |
-| 5 | Claw Machine | arcade claw | carnival calliope |
+| 5 | CALL OF BIRTHDAY: MODERN PARTYFARE | foam-dart shooting gallery + party zombies | epic orchestral |
 | 6 | FORTNIGHT: Birthday Royale | battle-royale build defence | EDM supersaws |
 | 7 | ROBLOCKS Birthday Obby | obstacle-course runner | tropical marimba + steel drum |
 | 8 | POKeMANS | creature-catching battles | Game Boy chiptune |
@@ -28,7 +28,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 **Secret (spoilers):** after the credits, the cake on the party table shows **???**. Tap it. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
 
-Every game has its own song with sung lyrics, plus a darker version of the song for when things get weird. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
+Every game has its own song with sung lyrics (two verses, a solo and the chorus twice), plus a darker version of the song for when things get weird. The dark versions have their own, much gloomier words: the party never ends. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
 
 Progress is saved in the browser, so he can stop and come back later.
 
@@ -62,7 +62,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=rocko` plays the secret game, `--bot=sheepfence` checks that sheep pushed against the fence find the gate, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```
@@ -71,4 +71,4 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
 
 - Fonts: *Finger Paint* (Ralph du Carrois) and *Gochi Hand* (Huerta Tipográfica), SIL Open Font License, see `assets/fonts/OFL.txt`.
 - Voices: generated with [eSpeak NG](https://github.com/espeak-ng/espeak-ng).
-- FORTNIGHT, ROBLOCKS and POKeMANS are affectionate parodies drawn from scratch; they are not affiliated with the real games.
+- KNEAD FOR SPEED, TONY HONK'S PRO SKATER, DIJIMON, CALL OF BIRTHDAY, FORTNIGHT, ROBLOCKS and POKeMANS are affectionate parodies drawn from scratch; they are not affiliated with the real games.

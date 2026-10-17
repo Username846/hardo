@@ -21,6 +21,9 @@ SAY_AS = [
     (r"\bpokemans\b", "pokey mans"), (r"\bpokémans\b", "pokey mans"), (r"\broblocks\b", "row blocks"),
     (r"\bchumbmon\b", "chumb mon"), (r"\bobby\b", "obbie"), (r"\bbaaa\b", "baaaa"), (r"\bshh\b", "shhh"),
     (r"\bi'm chumbo\b", "I'm chumbo"),
+    (r"\bdiji(mon|volve|vice|egg)", r"dih jee \1"), (r"\bblobmon\b", "blob mon"), (r"\bpartymon\b", "party mon"),
+    (r"\bfrostmon\b", "frost mon"), (r"\bgrrthdaymon\b", "grrrth day mon"), (r"\bcakemon\b", "cake mon"),
+    (r"\bchumbomon\b", "chumbo mon"), (r"\buab\b", "you ay bee"),
 ]
 
 

@@ -2,6 +2,10 @@ extends Screen
 ## Everyone came. Everyone will come back.
 
 const CFG := preload("res://scripts/config.gd")
+const Race := preload("res://scripts/games/race.gd")
+const Skate := preload("res://scripts/games/skate.gd")
+const Digi := preload("res://scripts/games/digi.gd")
+const Duty := preload("res://scripts/games/duty.gd")
 
 var light := 0.0
 var credits := false
@@ -67,18 +71,11 @@ func paint() -> void:
 	var mood := "wide" if not cheer else "happy"
 	Crayon.cake(pen, Vector2(640, floor_y), 260, 130, Crayon.PINK, 10, true, 2)
 	Host.draw(pen, Vector2(640, 250), 80, 0.5 if not cheer else 0.0, Narrator.is_active(), Vector2.ZERO, 3)
-	# sheep (standing up)
-	_sheep(Vector2(140, floor_y), true)
-	_sheep(Vector2(250, floor_y), false)
-	# blob
-	Crayon.ellipse(pen, Vector2(380, floor_y - 60), Vector2(70, 60), Crayon.INK, 5, Crayon.PURPLE, 10)
-	Crayon.face(pen, Vector2(380, floor_y - 70), 50, mood, Vector2.ZERO, 11)
-	# teddy plush
-	Crayon.circle(pen, Vector2(880, floor_y - 50), 46, Crayon.INK, 4, Crayon.BROWN, 20)
-	Crayon.circle(pen, Vector2(880, floor_y - 125), 36, Crayon.INK, 4, Crayon.BROWN, 21)
-	Crayon.circle(pen, Vector2(852, floor_y - 155), 13, Crayon.INK, 3, Crayon.BROWN, 22)
-	Crayon.circle(pen, Vector2(908, floor_y - 155), 13, Crayon.INK, 3, Crayon.BROWN, 23)
-	Crayon.face(pen, Vector2(880, floor_y - 125), 30, mood, Vector2.ZERO, 24)
+	# the street racer, Tony Honk, Partymon and a party guest from the zombie rounds
+	Race.draw_mascot(pen, Vector2(120, floor_y), 0.75, t)
+	Skate.draw_mascot(pen, Vector2(272, floor_y), 1.0, t, true)
+	Digi.draw_mascot(pen, Vector2(418, floor_y), 0.55, t)
+	Duty.draw_mascot(pen, Vector2(890, floor_y), 0.95, t)
 	# Chumbmon
 	Crayon.ellipse(pen, Vector2(1010, floor_y - 70), Vector2(60, 70), Crayon.INK, 5, Color(0.15, 0.1, 0.2), 30)
 	Crayon.face(pen, Vector2(1010, floor_y - 80), 50, "wide", Vector2.ZERO, 31, Crayon.WHITE)
@@ -89,21 +86,6 @@ func paint() -> void:
 	Crayon.person(pen, Vector2(770, floor_y), 150, Crayon.INK, mood, Crayon.BLUE, "up" if cheer else "stand", t * 2.0, 43)
 	if credits:
 		_credits()
-
-
-func _sheep(feet: Vector2, standing: bool) -> void:
-	if standing:
-		Crayon.line(pen, feet + Vector2(-12, 0), feet + Vector2(-8, -60), Crayon.INK, 6, 50)
-		Crayon.line(pen, feet + Vector2(12, 0), feet + Vector2(8, -60), Crayon.INK, 6, 51)
-		Crayon.ellipse(pen, feet + Vector2(0, -105), Vector2(42, 55), Crayon.INK, 4, Crayon.WHITE, 52)
-		Crayon.circle(pen, feet + Vector2(0, -175), 26, Crayon.INK, 4, Color(0.25, 0.22, 0.25), 53)
-		Crayon.face(pen, feet + Vector2(0, -175), 22, "wide", Vector2.ZERO, 54, Crayon.WHITE)
-	else:
-		for k in 4:
-			Crayon.line(pen, feet + Vector2(-30 + k * 20, 0), feet + Vector2(-30 + k * 20, -30), Crayon.INK, 5, 55 + k)
-		Crayon.ellipse(pen, feet + Vector2(0, -50), Vector2(55, 34), Crayon.INK, 4, Crayon.WHITE, 60)
-		Crayon.circle(pen, feet + Vector2(50, -66), 20, Crayon.INK, 4, Color(0.25, 0.22, 0.25), 61)
-		Crayon.party_hat(pen, feet + Vector2(50, -84), 16, Crayon.PINK, 62)
 
 
 func _credits() -> void:

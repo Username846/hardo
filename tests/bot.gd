@@ -56,6 +56,19 @@ func _ready() -> void:
 		await _sync_probe()
 		get_tree().quit()
 		return
+	if which == "finale":
+		# the credits scene with the whole cast (one mascot from each present)
+		Game.main._open("finale", null)
+		var f: Node = Game.main.current
+		var t0 := Time.get_ticks_msec()
+		while is_instance_valid(f) and not f.cheer and Time.get_ticks_msec() - t0 < 60000:
+			await get_tree().process_frame
+			_skip_narration()
+		await get_tree().create_timer(1.0).timeout
+		await _snap("finale_cast")
+		print("FINALE cheer=", is_instance_valid(f) and f.cheer)
+		get_tree().quit()
+		return
 	if which == "rockoshots":
 		await _rocko_shots()
 		get_tree().quit()
@@ -63,10 +76,6 @@ func _ready() -> void:
 	if which == "rocko":
 		await _rocko()
 		print("BOT RESULTS ", results)
-		get_tree().quit()
-		return
-	if which == "sheepfence":
-		await _sheep_fence()
 		get_tree().quit()
 		return
 	if which == "name" or which == "all":
@@ -86,7 +95,7 @@ func _play(i: int) -> void:
 	tmr = 0.0
 	stuck = 0.0
 	var t0 := Time.get_ticks_msec()
-	var limit := 12500 if profile else (400000 if realtime else 150000)
+	var limit := 12500 if profile else (600000 if realtime else 420000)
 	while Time.get_ticks_msec() - t0 < limit:
 		await get_tree().process_frame
 		if Narrator.is_active() and Narrator._blocking and Narrator._elapsed > 0.4:
@@ -278,53 +287,6 @@ func _dodge() -> void:
 			return
 
 
-## Sheep pinned against the pen fence (above and below the gate) with the puppy pushing
-## them straight at it: they should still find the gate.
-func _sheep_fence() -> void:
-	Game.main._open("game", 1)
-	var sg: Node = Game.main.current
-	await get_tree().process_frame
-	for k in 4:
-		var t0 := Time.get_ticks_msec()
-		while sg.sheep.size() == 0 or not sg.playing:
-			_skip_narration()
-			await get_tree().process_frame
-		var spots := [Vector2(970, 250), Vector2(970, 290), Vector2(970, 480), Vector2(970, 520), Vector2(965, 300)]
-		for j in sg.sheep.size():
-			var sh: Dictionary = sg.sheep[j]
-			sh.pos = spots[j % spots.size()]
-			sh.vel = Vector2.ZERO
-		var stuck_t := 0.0
-		var start_home: int = sg.penned
-		while stuck_t < 20.0 and sg.penned < sg.sheep.size():
-			await get_tree().process_frame
-			stuck_t += get_process_delta_time()
-			_skip_narration()
-			# puppy pushes the nearest free sheep straight east (at the fence)
-			var tgt: Dictionary = {}
-			for sh in sg.sheep:
-				if not sh.home:
-					tgt = sh
-					break
-			if tgt.is_empty():
-				break
-			sg.dog_moving = true
-			sg.dog_target = tgt.pos + Vector2(-70, 0)
-		var left: Array = []
-		for sh in sg.sheep:
-			if not sh.home:
-				left.append(Vector2i(sh.pos))
-		print("SHEEPFENCE round ", k, " home=", sg.penned, "/", sg.sheep.size(), " in ", snappedf(stuck_t, 0.1), "s game time; still out at ", left)
-		if sg.penned < sg.sheep.size():
-			for sh in sg.sheep:
-				if not sh.home:
-					sh.pos = Vector2(sg.PEN.position.x - 6, (sg.GATE_Y0 + sg.GATE_Y1) * 0.5)
-					sh.vel = Vector2(400, 0)
-		await get_tree().create_timer(1.0).timeout
-		if not is_instance_valid(sg) or sg.round_i >= 3 and not sg.playing:
-			break
-
-
 func _skip_narration() -> void:
 	if Narrator.is_active() and Narrator._blocking and Narrator._elapsed > 0.4:
 		Narrator._shown = Narrator._text.length()
@@ -385,12 +347,23 @@ func _name_flow() -> void:
 	await _snap("hub_after_intro")
 
 
+var _bots := {}
+
+
+## Games with their own autopilot in tests/bots/<id>.gd (drive(bot, game, dt), optional dbg(game)).
+func _game_bot(i: int) -> Object:
+	var id: String = Game.GAMES[i].id
+	if not _bots.has(id):
+		var p := "res://tests/bots/%s.gd" % id
+		_bots[id] = load(p).new() if ResourceLoader.exists(p) else null
+	return _bots[id]
+
+
 func _dbg(i: int) -> String:
+	var b := _game_bot(i)
+	if b != null:
+		return b.dbg(g) if b.has_method("dbg") else ""
 	match i:
-		0:
-			return "started=%s locked=%s layers=%d falling=%s ended=%s" % [g.started, g.locked, g.layers.size(), g.falling, g.ended]
-		2:
-			return "stage=%d locked=%s busy=%s meters=%s choice=%s btns=%s" % [g.stage, g.locked, g.busy, g.meters, g.choice, g.buttons.map(func(b): return [b.id, b.visible])]
 		8:
 			return "phase=%s playing=%s found=%d light=%s locked=%s" % [g.phase, g.playing, g.found, g.light, g.locked]
 		9:
@@ -410,50 +383,14 @@ func _btn(id: String) -> bool:
 
 func _drive(i: int, dt: float) -> void:
 	tmr += dt
+	var bot := _game_bot(i)
+	if bot != null:
+		bot.drive(self, g, dt)
+		return
 	match i:
-		0:
-			if g.started and not g.falling and not g.ended and not g.locked:
-				var top: Dictionary = g._top()
-				if absf(g.cur_x - float(top.x)) < 30.0:
-					g.press(Vector2.ZERO)
-		1:
-			if g.playing and tmr > 0.25:
-				tmr = 0.0
-				for s in g.sheep:
-					if not s.home:
-						s.pos = Vector2(g.PEN.position.x - 6, (g.GATE_Y0 + g.GATE_Y1) * 0.5)
-						s.vel = Vector2(400, 0)
-						break
-		2:
-			if g.choice and not g.locked:
-				_btn("c1")
-				return
-			if g.locked or g.busy:
-				return
-			if g.stage == 0 and tmr > 0.15:
-				tmr = 0.0
-				g.press(g.CENTER)
-			elif g.choice:
-				_btn("c1")
-			elif tmr > 0.3:
-				tmr = 0.0
-				if g.stage >= 4:
-					_btn("feed")
-				else:
-					var m: Array = g.meters
-					var lo := 0
-					for k in 3:
-						if m[k] < m[lo]:
-							lo = k
-					_btn(["feed", "play", "pet"][lo])
 		3:
 			if not g.busy and g.i >= 0 and g.i < g.cards.size() and not g.locked:
 				_btn("yay" if g.cards[g.i].ok else "nope")
-		4:
-			if g.armed and g.state == "idle" and not g.locked and tmr > 0.3:
-				tmr = 0.0
-				if g.prizes.size() > 0:
-					g.press(Vector2(g.prizes[0].x, 450))
 		5:
 			if g.phase == "bus" and tmr > 0.5:
 				g.press(Vector2(640, 400))

@@ -430,6 +430,61 @@ def inst_bell(f, d, v):
     return x * env_exp(n, 1.2) * v * 0.25
 
 
+def _res_lp_sweep(x, f_from, f_to, tau, q=4.0, chunk=128):
+    """2-pole resonant low-pass whose cutoff glides from f_from to f_to (time constant tau)."""
+    y = np.zeros_like(x)
+    zi = np.zeros(2)
+    for i in range(0, len(x), chunk):
+        fc = f_to + (f_from - f_to) * np.exp(-(i / SR) / tau)
+        w0 = 2 * np.pi * min(fc, SR * 0.45) / SR
+        alpha = np.sin(w0) / (2 * q)
+        cw = np.cos(w0)
+        b = np.array([(1 - cw) / 2, 1 - cw, (1 - cw) / 2])
+        a = np.array([1 + alpha, -2 * cw, 1 - alpha])
+        y[i:i + chunk], zi = signal.lfilter(b / a[0], a / a[0], x[i:i + chunk], zi=zi)
+    return y
+
+
+def inst_acid(f, d, v):
+    """Squelchy 303-style bass: saw through a resonant filter that snaps shut."""
+    n = int((d + 0.05) * SR)
+    ph = phase(f, n)
+    x = saw_wave(ph)
+    y = _res_lp_sweep(x, 2600 * (0.7 + 0.6 * v), 260, 0.07, 6.0)
+    y = np.tanh(y * 1.8)
+    return y * env_adsr(n, 0.003, 0.08, 0.75, 0.03) * v * 0.32
+
+
+def inst_dist_guitar(f, d, v):
+    y = karplus(f, d, v, decay=0.998, bright=0.85, tail=0.12)
+    y = np.tanh(y * 9.0) * 0.5
+    y = hp(lp(y, 3200), 90)
+    return y * 0.55
+
+
+def inst_skank(f, d, v):
+    """Ska up-stroke: a short, choked chord chop."""
+    y = karplus(f, min(d, 0.11), v, decay=0.99, bright=0.9, tail=0.04)
+    y = np.tanh(y * 3.0) * 0.6
+    return hp(lp(y, 4800), 280)
+
+
+def inst_pick_bass(f, d, v):
+    y = karplus(f, d, v, decay=0.995, bright=0.7, tail=0.1)
+    return lp(np.tanh(y * 2.0), 1700) * 1.1
+
+
+def inst_spiccato(f, d, v):
+    """Short bowed strings for galloping orchestral ostinatos."""
+    dd = min(d, 0.22)
+    n = int((dd + 0.18) * SR)
+    x = np.zeros(n)
+    for det in (-0.08, 0.0, 0.07):
+        x += saw_wave(phase(f * 2 ** (det / 12), n) + RNG.uniform())
+    x = lp(x, 3200)
+    return x * env_adsr(n, 0.006, 0.07, 0.35, 0.12) * v * 0.11
+
+
 INSTRUMENTS = {
     "toy_piano": inst_toy_piano, "glock": inst_glock, "music_box": inst_music_box, "kalimba": inst_kalimba,
     "marimba": inst_marimba, "vibes": inst_vibes, "steel_drum": inst_steel_drum, "celesta": inst_celesta,
@@ -440,7 +495,8 @@ INSTRUMENTS = {
     "organ": inst_organ, "calliope": inst_calliope, "accordion": inst_accordion, "harmonica": inst_harmonica,
     "fiddle": inst_fiddle, "kazoo": inst_kazoo, "whistle": inst_whistle, "strings": inst_strings,
     "brass": inst_brass, "clav": inst_clav, "pad": inst_pad, "choir": inst_choir, "theremin": inst_theremin,
-    "bell": inst_bell,
+    "bell": inst_bell, "acid": inst_acid, "dist_guitar": inst_dist_guitar, "skank": inst_skank,
+    "pick_bass": inst_pick_bass, "spiccato": inst_spiccato,
 }
 
 
@@ -580,11 +636,19 @@ def dr_heart(v=1.0):
     return lp(x, 200) * v * 1.2
 
 
+def dr_taiko(v=1.0):
+    n = int(0.8 * SR)
+    t = np.arange(n) / SR
+    x = np.sin(2 * np.pi * np.cumsum(52 + 70 * np.exp(-t * 18)) / SR) * np.exp(-t * 5)
+    x += lp(noise(n), 350) * np.exp(-t * 22) * 0.7
+    return x * v * 0.95
+
+
 DRUMS = {
     "kick": dr_kick, "snare": dr_snare, "clap": dr_clap, "hat": dr_hat, "ohat": lambda v=1.0: dr_hat(v, True),
     "shaker": dr_shaker, "brush": dr_brush, "rim": dr_rim, "wood": dr_wood, "cowbell": dr_cowbell,
     "tamb": dr_tamb, "crash": dr_crash, "washboard": dr_washboard, "nsnare": dr_noise_snare,
-    "nhat": dr_noise_hat, "nkick": dr_noise_kick, "timpani": dr_timpani, "heart": dr_heart,
+    "nhat": dr_noise_hat, "nkick": dr_noise_kick, "timpani": dr_timpani, "heart": dr_heart, "taiko": dr_taiko,
 }
 
 

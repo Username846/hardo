@@ -12,7 +12,12 @@ const WILD := [
 	{"name": "FROSTLE", "kind": "frostle"},
 	{"name": "CAKEMANDER", "kind": "cakemander"},
 	{"name": "CANDLEPUFF", "kind": "puff"},
+	{"name": "PRESENTOAD", "kind": "presentoad"},
+	{"name": "PINYATTA", "kind": "pinyatta"},
 ]
+## Catches before the grass grows tall, and before ??? shows up.
+const DARK_AT := 4
+const CATCH_ALL := 6
 
 var mode := "intro"   # intro, walk, battle, end
 var me := Vector2(640, 430)
@@ -93,9 +98,9 @@ func _encounter() -> void:
 	mode = "trans"
 	locked = true
 	encounter_flash = 1.0
-	Audio.sfx("glitch" if caught.size() >= 3 else "run", -4)
+	Audio.sfx("glitch" if caught.size() >= CATCH_ALL else "run", -4)
 	await wait(1.0)
-	if caught.size() >= 3:
+	if caught.size() >= CATCH_ALL:
 		foe = {"name": "???", "kind": "chumbmon"}
 	else:
 		foe = WILD[next_wild % WILD.size()]
@@ -106,6 +111,8 @@ func _encounter() -> void:
 	shakes = 0
 	ball_t = -1.0
 	await _msg("A wild %s appeared!" % foe.name)
+	if dark and foe.kind != "chumbmon":
+		await _msg("It looks very tired. It has been in the grass a long time.")
 	if foe.kind == "chumbmon":
 		await say("That's not a Pokemans. It's smiling at you. It knows your name.", Narrator.DARK)
 	_main_menu()
@@ -165,10 +172,15 @@ func _use_move(move: String) -> void:
 	if randf() < 0.5:
 		await _msg("It's super effective!")
 	var attacks := ["HUG", "GIGGLE", "BIRTHDAY WISH", "SPRINKLE"]
+	if dark:
+		attacks = ["STAY", "ONE MORE CANDLE", "FORGET", "BIRTHDAY AGAIN"]
 	await _msg("Wild %s used %s!" % [foe.name, attacks[randi() % attacks.size()]], 0.3)
 	Audio.sfx("boing", -6)
 	my_hp = maxf(0.3, my_hp - 0.1)
-	await _msg("It's not very effective. It just wants to party.")
+	if dark:
+		await _msg("It's very effective. You feel a little older.")
+	else:
+		await _msg("It's not very effective. It just wants to party.")
 	_main_menu()
 	locked = false
 
@@ -223,9 +235,15 @@ func _after_catch() -> void:
 		2:
 			say_bg("Two Pokemans! You're a real Pokemans trainer!")
 		3:
+			say_bg("Three! Your party ball shelf is filling up!")
+		DARK_AT:
 			dark = true
 			Audio.play_music("poke_dark", 2.0)
 			await say("The grass is getting taller. Something is moving in it. Keep walking.", Narrator.DARK)
+		5:
+			say_bg("This route never ends. You've walked past that sign a hundred times.", Narrator.DARK)
+		CATCH_ALL:
+			say_bg("Six. The grass is taller than you now. Something is waiting in it.", Narrator.DARK)
 
 
 func _run_away() -> void:
@@ -418,6 +436,26 @@ func _creature(kind: String, p: Vector2, s: float) -> void:
 			Crayon.rect(pen, Rect2(p + Vector2(-6, -90), Vector2(12, 40)), GB3, 3, Crayon.BLUE, 101)
 			Crayon.flame(pen, p + Vector2(0, -100), 12, 102)
 			Crayon.face(pen, p, 34, "happy", Vector2(-1, 0), 103)
+		"presentoad":
+			Crayon.rect(pen, Rect2(p + Vector2(-60, -20), Vector2(120, 80)), GB3, 4, Crayon.GREEN, 107)
+			Crayon.line(pen, p + Vector2(0, -20), p + Vector2(0, 60), Crayon.YELLOW, 10, 108)
+			Crayon.circle(pen, p + Vector2(-26, -40), 20, GB3, 4, Crayon.GREEN.lightened(0.2), 109)
+			Crayon.circle(pen, p + Vector2(26, -40), 20, GB3, 4, Crayon.GREEN.lightened(0.2), 110)
+			Crayon.disc(pen, p + Vector2(-26, -40), 8, GB3)
+			Crayon.disc(pen, p + Vector2(26, -40), 8, GB3)
+			Crayon.line(pen, p + Vector2(-34, 6), p + Vector2(34, 6), GB3, 4, 111)
+			Crayon.ellipse(pen, p + Vector2(-20, -66), Vector2(18, 10), GB3, 3, Crayon.YELLOW, 112)
+			Crayon.ellipse(pen, p + Vector2(20, -66), Vector2(18, 10), GB3, 3, Crayon.YELLOW, 113)
+		"pinyatta":
+			for k in 4:
+				Crayon.line(pen, p + Vector2(-44 + k * 26, 30), p + Vector2(-44 + k * 26, 76), GB3, 8, 114 + k)
+			Crayon.rect(pen, Rect2(p + Vector2(-64, -20), Vector2(120, 56)), GB3, 4, Crayon.PINK, 118)
+			for k in 4:
+				pen.draw_rect(Rect2(p + Vector2(-54 + k * 28, -14), Vector2(12, 44)), Crayon.RAINBOW[(k * 2) % 7])
+			Crayon.rect(pen, Rect2(p + Vector2(-90, -84), Vector2(34, 70)), GB3, 4, Crayon.YELLOW, 119)
+			Crayon.rect(pen, Rect2(p + Vector2(-120, -100), Vector2(64, 34)), GB3, 4, Crayon.YELLOW, 120)
+			Crayon.face(pen, p + Vector2(-92, -84), 20, "happy", Vector2(-1, 0), 121)
+			Crayon.line(pen, p + Vector2(-70, -100), p + Vector2(-66, -124), GB3, 5, 122)
 		"chumbmon":
 			var pts := PackedVector2Array()
 			for k in 30:

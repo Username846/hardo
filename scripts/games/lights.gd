@@ -15,6 +15,12 @@ var phase := "hide"      # hide, extra, final, lit
 var lit := 0.0
 var idle_t := 0.0
 var final_fig := 0.0
+var round_i := 1
+## Round 2 spots: everybody hides again somewhere new.
+const SPOTS2 := [
+	["couch", Vector2(470, 392)], ["closet", Vector2(118, 470)], ["table", Vector2(700, 530)], ["curtain", Vector2(972, 506)],
+	["shelf", Vector2(1222, 322)], ["rug", Vector2(540, 642)], ["plant", Vector2(636, 452)], ["table", Vector2(835, 530)],
+]
 
 
 var _baked_key := ""
@@ -94,10 +100,36 @@ func _found(g: Dictionary) -> void:
 	Audio.sfx("surprise", -2)
 	Audio.sfx("pop", -6)
 	confetti_burst(g.pos, 30)
-	if found == 4:
+	if found == 4 and round_i == 1:
 		say_bg("Four more! Where could they be?")
+	elif found == 4:
+		say_bg("Halfway there! They're really good at hiding.")
 	if found == total:
-		_twist()
+		if round_i == 1:
+			_round_two()
+		else:
+			_twist()
+
+
+func _round_two() -> void:
+	playing = false
+	locked = true
+	Audio.sfx("cheer", -6)
+	await say("You found everybody! Again! Again! Everybody hide again!")
+	Audio.sfx("switch")
+	await wait(0.4)
+	Audio.sfx("giggle", -4)
+	Audio.sfx("run", -8)
+	round_i = 2
+	found = 0
+	guests.clear()
+	for k in SPOTS2.size():
+		guests.append({"spot": SPOTS2[k][0], "pos": SPOTS2[k][1], "seen": 0.0, "found": false, "col": Crayon.RAINBOW[(k + 3) % 7], "seed": 900 + k * 13})
+	await wait(1.0)
+	await say("Round two! They found better hiding spots this time.")
+	idle_t = 0.0
+	playing = true
+	locked = false
 
 
 func _twist() -> void:
@@ -111,7 +143,7 @@ func _twist() -> void:
 	await wait(0.6)
 	Audio.play_music("lights_dark", 2.0)
 	await say("The lights won't turn on. And somebody is still hiding.", Narrator.DARK)
-	for p in [Vector2(250, 190), Vector2(720, 150), Vector2(880, 640), Vector2(1170, 650)]:
+	for p in [Vector2(250, 190), Vector2(720, 150), Vector2(880, 640), Vector2(1170, 650), Vector2(420, 300), Vector2(1080, 380)]:
 		extras.append({"pos": p, "gone": false})
 	phase = "extra"
 	playing = true
@@ -146,7 +178,7 @@ func _key() -> String:
 	for g in guests:
 		if g.found:
 			f += 1
-	return "%d/%s" % [f, lit > 0.5]
+	return "%d/%d/%s" % [round_i, f, lit > 0.5]
 
 
 func paint_back() -> void:
@@ -200,7 +232,7 @@ func paint() -> void:
 func paint_top() -> void:
 	var col := Crayon.WHITE if lit < 0.5 else Crayon.INK
 	if found > 0 or playing:
-		hud("FOUND: %d / %d" % [found, total], col if found <= total else Crayon.RED)
+		hud(("ROUND 2   " if round_i == 2 else "") + "FOUND: %d / %d" % [found, total], col if found <= total else Crayon.RED)
 	if playing and found == 0 and t < 25.0:
 		Crayon.text(pen, Vector2(640, 120), "DRAG THE FLASHLIGHT!", 44, Crayon.YELLOW, 1, 20, Crayon.title_font())
 

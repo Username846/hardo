@@ -12,6 +12,7 @@ SCALES = {
     "nat_minor": [0, 2, 3, 5, 7, 8, 10],
     "phrygian": [0, 1, 3, 5, 7, 8, 10],
     "locrian_ish": [0, 1, 3, 5, 6, 8, 10],
+    "dorian": [0, 2, 3, 5, 7, 9, 10],
 }
 
 ROMAN = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7}
@@ -182,7 +183,9 @@ def build_timeline(song, ctx):
         vocal = opt.get("vocal", True)
         syls = None
         if vocal:
-            text = sec.get(lyr_key) or sec["lyrics"]
+            # second time round a section sings its "lyrics2"/"dark2" words (else repeats)
+            v = "" if opt.get("lyr", 1) == 1 else str(opt["lyr"])
+            text = sec.get(lyr_key + v) or sec.get(lyr_key) or sec.get("lyrics" + v) or sec["lyrics"]
             syls, disp_lines = parse_lyrics(text)
             n_notes = sum(1 for bar in mel for n in bar if n[2] is not None)
             if n_notes != len(syls):
@@ -489,6 +492,8 @@ def render_song(song, dark=False):
     # master chain
     if fx.get("radio"):
         mix = np.stack([S.bp(ch, 250, 3500) for ch in mix]) * 1.6
+    if fx.get("echo"):
+        mix = np.stack([S.echo(ch, fx["echo"], 0.45, 0.35) for ch in mix])
     if fx.get("crush"):
         mix = np.stack([S.bitcrush(ch, 8, 2) * 0.5 + ch * 0.5 for ch in mix])
     rev = fx.get("reverb", 0.2)

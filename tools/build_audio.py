@@ -28,7 +28,7 @@ def _render_one(args):
     song = [s for s in songs.SONGS if s["id"] == sid][0]
     x, meta = music.render_song(song, dark)
     name = sid + ("_dark" if dark else "")
-    S.write_ogg(os.path.join(MUSIC_DIR, name + ".ogg"), x, quality=1)
+    S.write_ogg(os.path.join(MUSIC_DIR, name + ".ogg"), x, quality=0)
     return name, meta
 
 
@@ -45,6 +45,9 @@ def build_music(only=None):
     if os.path.exists(meta_path):
         with open(meta_path) as fh:
             all_meta = json.load(fh)
+    # forget songs that no longer exist
+    valid = {s["id"] + sfx for s in songs.SONGS for sfx in ("", "_dark")}
+    all_meta = {k: v for k, v in all_meta.items() if k in valid}
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as ex:
         for name, meta in ex.map(_render_one, jobs):
             print("  music", name, meta["length"], "s")

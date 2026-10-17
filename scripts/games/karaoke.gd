@@ -231,6 +231,15 @@ func paint() -> void:
 				col = Crayon.GREY
 			Crayon.circle(pen, Vector2(x, LANE_Y), 30, Crayon.INK, 3, col, 50 + i % 40)
 			Crayon.text(pen, Vector2(x, LANE_Y), String(chart[i][2]), 22, Crayon.WHITE, 1, 100 + i % 50, null, 0.3, false)
+		# the long instrumental bit in the middle of the song: nothing to tap, so dance
+		var nxt := INF
+		for c in chart:
+			if float(c[0]) > now:
+				nxt = float(c[0])
+				break
+		if nxt - now > 3.0 and now > float(chart[0][0]):
+			var solo := "♪ SOLO! DANCE! ♪" if not dark else "♪ the music never stops ♪"
+			Crayon.text(pen, Vector2(640, LANE_Y - 90), solo, 44, Crayon.YELLOW if not dark else Color(0.85, 0.3, 0.3), 1, 160, Crayon.title_font())
 	# the crowd (they creep closer in the dark verse)
 	var n := 9
 	for k in n:
