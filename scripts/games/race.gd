@@ -830,11 +830,11 @@ func _on_lap(lp: int) -> void:
 			Audio.play_music("race_dark", 2.0)
 			Audio.sfx("glitch")
 			flash = 0.6
-			say_bg("Lap four of three? That's not a real number. Keep driving, Chumbo.", Narrator.DARK)
+			say_bg("Lap four of three? That's not a real number. Keep driving, Chumbo.", Narrator.HYPE_DARK)
 		5:
-			say_bg("Lap five of three. Nobody finishes this race. They just keep driving.", Narrator.DARK)
+			say_bg("Lap five of three. Nobody finishes this race. They just keep driving.", Narrator.HYPE_DARK)
 		6:
-			say_bg("Last lap. It's always the last lap.", Narrator.DARK)
+			say_bg("Last lap. It's always the last lap.", Narrator.HYPE_DARK)
 		LAPS_REAL + 1:
 			race_over = true
 			phase = "coast"

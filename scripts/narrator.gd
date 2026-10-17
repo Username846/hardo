@@ -3,14 +3,14 @@ extends CanvasLayer
 ## voice clip (tools/voices.py renders one clip per say() line found in the scripts).
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
-## Who is talking decides the voice (tools/voices.py) and the name on the box: CUTE, DARK and
-## WHISPER are all the party host (one voice, the mood only changes the box). HYPE is the race
-## announcer, SARGE is Sgt. Sprinkles, CREEPY is "everyone" (the guests speaking together),
-## CRITTER and MONSTER are the Dijimon (baby and grown, one voice), HONK is Tony Honk.
-enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN, SARGE }
+## Who is talking decides the voice (tools/voices.py) and the name on the box. The party host
+## has a good voice (CUTE) and an evil voice (DARK, and WHISPER for its quiet spooky lines); the
+## announcer too (HYPE good, HYPE_DARK evil). SARGE is Sgt. Sprinkles, CREEPY is "everyone" (the
+## guests speaking together), CRITTER and MONSTER are the Dijimon (one voice), HONK is Tony Honk.
+enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN, SARGE, HYPE_DARK }
 
 ## Must match VOICE_VERSION in tools/voices.py (it is part of every clip's file name).
-const VOICE_VERSION := 2
+const VOICE_VERSION := 3
 
 const BOX_W := 900.0
 
@@ -122,8 +122,8 @@ func _process(delta: float) -> void:
 	if _voice_len <= 0.0 and int(_shown) != before:
 		_blip_acc += 1
 		if _blip_acc % 3 == 0 and _text.substr(int(_shown) - 1, 1) != " ":
-			var pitch: float = {CUTE: 1.0, DARK: 0.75, WHISPER: 0.85, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45,
-				MONSTER: 0.9, HONK: 1.3, PIP: 1.1, TAXMAN: 0.6, SARGE: 0.75}[_mood]
+			var pitch: float = {CUTE: 1.0, DARK: 0.55, WHISPER: 0.6, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45,
+				MONSTER: 0.9, HONK: 1.3, PIP: 1.1, TAXMAN: 0.6, SARGE: 0.75, HYPE_DARK: 0.5}[_mood]
 			Audio.sfx("blip" if _blip_acc % 2 == 0 else "blip2", -16.0, pitch * randf_range(0.9, 1.1))
 	if _shown >= _text.length() and _done_typing_at < 0.0:
 		_done_typing_at = _elapsed
@@ -177,6 +177,8 @@ func _style() -> Dictionary:
 			return {"bg": Color(0.1, 0.16, 0.1, 0.96), "ink": Color(1.0, 0.85, 0.3), "edge": Color(0.75, 0.6, 0.15), "wob": 1.3, "name": "TAXMAN"}
 		HYPE:
 			return {"bg": Color(0.2, 0.85, 1.0, 0.97), "ink": Color(0.1, 0.05, 0.3), "edge": Color(0.95, 0.2, 0.6), "wob": 1.0, "name": "ANNOUNCER"}
+		HYPE_DARK:
+			return {"bg": Color(0.08, 0.02, 0.1, 0.96), "ink": Color(1.0, 0.3, 0.6), "edge": Color(0.55, 0.05, 0.3), "wob": 1.7, "name": "ANNOUNCER"}
 		SARGE:
 			return {"bg": Color(0.62, 0.7, 0.45, 0.97), "ink": Color(0.12, 0.15, 0.05), "edge": Color(0.3, 0.38, 0.15), "wob": 1.0, "name": "SGT. SPRINKLES"}
 		CHUMBO:

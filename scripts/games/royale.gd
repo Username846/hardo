@@ -237,13 +237,13 @@ func _final() -> void:
 	left = 1
 	Audio.sfx("levelup")
 	await wait(1.5)
-	await say("One player left. Just you.", Narrator.DARK)
+	await say("One player left. Just you.", Narrator.HYPE_DARK)
 	await wait(0.6)
 	Audio.sfx("glitch")
 	left = 2
 	_feed("??? joined the party")
 	await wait(1.0)
-	await say("Wait. Two players left.", Narrator.DARK)
+	await say("Wait. Two players left.", Narrator.HYPE_DARK)
 	Audio.sfx("giggle_low")
 	await wait(1.5)
 	phase = "win"

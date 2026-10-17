@@ -385,19 +385,19 @@ func _next_round() -> void:
 	Audio.sfx("zombie", -8, 0.7)
 	match round_i:
 		0:
-			say_bg("Round one. They just want to sing to you.", Narrator.DARK)
+			say_bg("Round one. They just want to sing to you.", Narrator.HYPE_DARK)
 		1:
-			say_bg("Round two. There are always more guests.", Narrator.DARK)
+			say_bg("Round two. There are always more guests.", Narrator.HYPE_DARK)
 		2:
-			say_bg("Round three. Don't you want to stay?", Narrator.DARK)
+			say_bg("Round three. Don't you want to stay?", Narrator.HYPE_DARK)
 		3:
-			say_bg("Round eight. You don't remember rounds four to seven. Nobody does.", Narrator.DARK)
+			say_bg("Round eight. You don't remember rounds four to seven. Nobody does.", Narrator.HYPE_DARK)
 		4:
-			say_bg("Round twenty three. The cake is still warm. It is always warm.", Narrator.DARK)
+			say_bg("Round twenty three. The cake is still warm. It is always warm.", Narrator.HYPE_DARK)
 		5:
-			say_bg("Round ninety nine. Nobody ever leaves this party.", Narrator.DARK)
+			say_bg("Round ninety nine. Nobody ever leaves this party.", Narrator.HYPE_DARK)
 		6:
-			say_bg("Round forever.", Narrator.CREEPY)
+			say_bg("Round forever.", Narrator.HYPE_DARK)
 	await wait(2.6)
 	round_left = r[1]
 	spawn_t = 0.3

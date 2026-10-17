@@ -12,7 +12,7 @@ import numpy as np
 import synth as S
 
 MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5, "CHUMBO": 6, "ROCKO": 7,
-         "MONSTER": 8, "HONK": 9, "PIP": 10, "TAXMAN": 11, "SARGE": 12}
+         "MONSTER": 8, "HONK": 9, "PIP": 10, "TAXMAN": 11, "SARGE": 12, "HYPE_DARK": 13}
 
 STR = r'"((?:[^"\\]|\\.)*)"'
 SAY_RE = re.compile(r"\bsay(?:_bg)?\(\s*" + STR + r"\s*(?:,\s*Narrator\.(\w+))?")
@@ -84,7 +84,7 @@ def write_index(root):
 
 # Bumped when every clip is re-recorded, so the new files get new names (nothing old can be
 # picked up from an import cache or a browser cache). Must match Narrator.VOICE_VERSION.
-VOICE_VERSION = 2
+VOICE_VERSION = 3
 
 
 def key_for(mood, text):
@@ -99,11 +99,14 @@ def tts_text(text):
     return t
 
 
-# Every character always speaks with exactly the same voice. Moods (cute / dark / whisper) only
-# change the subtitle box, never the voice, so the party host sounds the same in every line.
+# Every character always speaks with exactly the same voice. The party host and the announcer
+# have two each - a good one and an evil one - and every one of their spooky lines uses the evil
+# one, so there are never more than those two.
 CHARACTERS = {
     "host": dict(timbre="lady", pitch=178, speed=152, range=120),
+    "host_evil": dict(timbre="deep", pitch=64, speed=118, range=28),
     "announcer": dict(timbre="guy", pitch=128, speed=178, range=130),
+    "announcer_evil": dict(timbre="guy", pitch=84, speed=132, range=40),
     "sarge": dict(timbre="deep", pitch=100, speed=172, range=100),
     "chumbo": dict(timbre="guy", pitch=108, speed=158, range=45),
     "diji": dict(timbre="kid", pitch=320, speed=175, range=110),
@@ -112,9 +115,9 @@ CHARACTERS = {
     "taxman": dict(timbre="deep", pitch=84, speed=142, range=35),
 }
 
-# Narrator mood -> who is talking
-MOOD_VOICE = {0: "host", 1: "host", 2: "host", 3: "diji", 4: "everyone", 5: "announcer", 6: "chumbo",
-              7: "rocko", 8: "diji", 9: "honk", 10: "pip", 11: "taxman", 12: "sarge"}
+# Narrator mood -> whose voice
+MOOD_VOICE = {0: "host", 1: "host_evil", 2: "host_evil", 3: "diji", 4: "everyone", 5: "announcer", 6: "chumbo",
+              7: "rocko", 8: "diji", 9: "honk", 10: "pip", 11: "taxman", 12: "sarge", 13: "announcer_evil"}
 
 
 def _base(who, t):
@@ -154,6 +157,14 @@ def voice(who, text):
         x = S.lp(S.resample(x, 1.1), 3800)
         return x, S.reverb(x, 0.45, 1.5)
     x = _base(who, t)
+    if who == "host_evil":
+        # slow, low and smooth, in a big dark room
+        x = S.lp(S.resample(x, 1.08), 4200)
+        return x, S.reverb(x, 0.35, 1.3)
+    if who == "announcer_evil":
+        # the same stadium PA, slowed down and broken, echoing round an empty arena
+        x = np.tanh(S.bp(S.resample(x, 1.05), 220, 3600) * 2.2) * 0.8
+        return x, S.reverb(x, 0.35, 1.6)
     if who == "diji":
         x = S.resample(x, 1 / 1.12)
     elif who == "honk":
