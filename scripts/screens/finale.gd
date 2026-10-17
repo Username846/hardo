@@ -45,8 +45,11 @@ func _run() -> void:
 	Game.finale_seen = true
 	Game.save_game()
 	credits = true
+	# sing along: the lyric bar sits between the rolling credits and the button
+	lyrics_y = 590.0
 	await wait(1.0)
-	add_button("back", Rect2(W * 0.5 - 200, H - 92, 400, 72), "back to the party", func(): Game.goto("hub"), Crayon.GREEN, 36)
+	# "back to the party"... which is a game on Chumbo's phone. The secret game starts right away.
+	add_button("back", Rect2(W * 0.5 - 200, H - 92, 400, 72), "back to the party", func(): Game.goto("rocko"), Crayon.GREEN, 36)
 	locked = false
 
 

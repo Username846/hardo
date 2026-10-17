@@ -67,6 +67,25 @@ func _ready() -> void:
 		await get_tree().create_timer(1.0).timeout
 		await _snap("finale_cast")
 		print("FINALE cheer=", is_instance_valid(f) and f.cheer)
+		# the credits roll with the song's lyrics, then "back to the party" starts the secret game
+		while is_instance_valid(f) and f.get_button("back").is_empty() and Time.get_ticks_msec() - t0 < 90000:
+			await get_tree().process_frame
+		# wait for a sung line to be part-way through, so the lyric bar is on screen
+		var t2 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t2 < 40000 and (Audio.lyric_state().is_empty() or Audio.lyric_state().sung < 3 or Time.get_ticks_msec() - t2 < 6000):
+			await get_tree().process_frame
+		await _snap("finale_credits")
+		var ls := Audio.lyric_state()
+		print("FINALE credits=", is_instance_valid(f) and f.credits, " lyrics_y=", f.lyrics_y if is_instance_valid(f) else -1.0, " line=", " ".join(ls.get("parts", PackedStringArray())))
+		g = f
+		_btn("back")
+		var t1 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t1 < 10000 and (Game.main.current == f or Game.main.current == null):
+			await get_tree().process_frame
+		await get_tree().create_timer(2.0).timeout
+		await _snap("finale_secret")
+		var cur: Node = Game.main.current
+		print("FINALE secret=", cur != null and cur.get_script() != null and String(cur.get_script().resource_path).ends_with("rocko.gd"))
 		get_tree().quit()
 		return
 	if which == "rockoshots":

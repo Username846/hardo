@@ -2,7 +2,9 @@ extends Screen
 ## Present 9: R.E.P.O. - Retrieve Every Party Object (haul-the-valuables game).
 ## Chumbo is a little robot with a grab beam. Carry the birthday valuables through the dark
 ## house to the party truck without bumping them, reach the quota, extract. Then the house
-## fills up with Chumbo's own things, the quota keeps going up... and the last valuable is him.
+## fills up with Chumbo's own things and the Taxman buys them all (price tags, a WE BUY YOUR STUFF
+## truck, SOLD! stamps, a count of what he still owns), the quota keeps going up... and the last
+## valuable is him.
 
 const IDX := 8
 const MAP := Rect2(40, 96, 1200, 540)
@@ -225,6 +227,10 @@ func _grab(it: Dictionary) -> void:
 				say_bg("A photo of you and... somebody. You can't remember who.", Narrator.DARK)
 			"namehat":
 				say_bg("It has your name on it. Everything in this house has your name on it.", Narrator.DARK)
+			"teddy":
+				say_bg("Your teddy. He's been with you since you were little. Sell him anyway.", Narrator.DARK)
+			"presents":
+				say_bg("Every present you ever got. All of it, going to the Taxman.", Narrator.DARK)
 
 
 func _drop() -> void:
@@ -438,8 +444,8 @@ func _spawn_loot(list: Array) -> void:
 		items.append({"name": e[0], "kind": e[1], "base": e[2], "value": e[2], "frag": e[3], "pos": e[4], "vel": Vector2.ZERO, "state": "free", "cool": 0.0})
 
 
-func _pop(p: Vector2, txt: String, col: Color) -> void:
-	pops.append({"p": p, "txt": txt, "col": col, "t": 1.3})
+func _pop(p: Vector2, txt: String, col: Color, size: int = 30, life: float = 1.3) -> void:
+	pops.append({"p": p, "txt": txt, "col": col, "t": life, "s": size})
 
 
 # ---------------------------------------------------------------- hauling
@@ -451,6 +457,9 @@ func _deposit(it: Dictionary) -> void:
 	deposited += 1
 	Audio.sfx("cash", -2)
 	_pop(ZONE + Vector2(0, -60), "+$%d" % it.value, Crayon.GREEN.lightened(0.3))
+	if run == 2:
+		# it's a sale: stamp it so nobody can miss whose stuff just went in the truck
+		_pop(ZONE + Vector2(0, -110), "SOLD: %s" % it.name, Color(1.0, 0.45, 0.5), 28, 2.4)
 	var left := items.filter(func(x): return x.state != "gone").size()
 	if run == 1:
 		match deposited:
@@ -470,18 +479,24 @@ func _deposit(it: Dictionary) -> void:
 			add_button("extract", Rect2(1000, 642, 260, 70), "EXTRACT!", _extract, Crayon.GREEN, 40)
 	else:
 		match deposited:
+			1:
+				say_bg("Sold! That's mine now, kid. What else have you got?", Narrator.TAXMAN)
 			2:
 				quota = QUOTA2[1]
 				banner = "QUOTA: $400,000"
 				banner_t = 2.5
 				Audio.sfx("glitch", -4)
 				say_bg("The quota went up. It always goes up.", Narrator.DARK)
+			3:
+				say_bg("You're selling everything you own, Chumbo. Just to keep the party going.", Narrator.DARK)
 			4:
 				quota = QUOTA2[2]
 				banner = "QUOTA: $9,999,999"
 				banner_t = 2.5
 				Audio.sfx("glitch", -4)
 				say_bg("Nine million dollars. It's never enough, kid. It's never enough.", Narrator.TAXMAN)
+			5:
+				say_bg("Almost nothing left that's yours.", Narrator.DARK)
 		if left == 0:
 			_final()
 
@@ -553,7 +568,12 @@ func _twist() -> void:
 	_spawn_gnomes(3)
 	duck = {"pos": START + Vector2(-80, 30), "state": "cute", "t": 0.0, "k": 1.0, "quack": 5.0}
 	await say("Run two. Same house. But these aren't party things anymore, Chumbo.", Narrator.DARK)
-	await say("These are your things.", Narrator.DARK)
+	await say("These are your things. Your teddy. Your cake. Your name.", Narrator.DARK)
+	tv_on = true
+	Audio.sfx("cash", -4)
+	banner = "WE BUY YOUR STUFF!"
+	banner_t = 3.5
+	await say("I'm buying, kid. Put your stuff in my truck and I'll pay cash. Every last thing you own.", Narrator.TAXMAN)
 	await say("New quota: forty thousand dollars. Happy birthday, kid.", Narrator.TAXMAN)
 	tv_on = false
 	phase = "run2"
@@ -641,7 +661,7 @@ func paint_back() -> void:
 			else:
 				for k in 8:
 					pen.draw_line(Vector2(r.position.x, r.position.y + 18 + k * 34), Vector2(r.end.x, r.position.y + 18 + k * 34), lc, 3.0)
-			Crayon.text(pen, r.position + Vector2(r.size.x * 0.5, 22), ROOMS[ry][rx], 22, Color(Crayon.INK, 0.55), 1, 30 + rx + ry * 3, null, 0.4, false)
+			Crayon.text(pen, r.position + Vector2(r.size.x * 0.5, 22), ("YOUR " if dark else "") + ROOMS[ry][rx], 22, Color(Crayon.INK, 0.55), 1, 30 + rx + ry * 3, null, 0.4, false)
 	_furniture(dark)
 	for w in _walls:
 		pen.draw_rect(w, Color(0.2, 0.16, 0.2) if not dark else Color(0.12, 0.05, 0.1))
@@ -689,8 +709,10 @@ func _truck_back(dark: bool) -> void:
 	Crayon.rect(pen, body, Crayon.INK, 5, Color(0.95, 0.55, 0.7) if not dark else Color(0.45, 0.2, 0.3), 260)
 	for i in 5:
 		pen.draw_rect(Rect2(body.position + Vector2(12 + i * 42, 62), Vector2(24, 10)), Crayon.RAINBOW[i])
-	Crayon.text(pen, body.position + Vector2(176, 30), "PARTY", 18, Crayon.WHITE, 1, 261, null, 0.5, false)
-	Crayon.text(pen, body.position + Vector2(176, 52), "TRUCK", 18, Crayon.WHITE, 1, 262, null, 0.5, false)
+	if not dark:
+		Crayon.text(pen, body.position + Vector2(176, 30), "PARTY", 18, Crayon.WHITE, 1, 261, null, 0.5, false)
+		Crayon.text(pen, body.position + Vector2(176, 52), "TRUCK", 18, Crayon.WHITE, 1, 262, null, 0.5, false)
+	# (run two: the party truck is a pawn truck now - its lit-up sign is drawn in paint_top)
 	Crayon.rect(pen, TV, Crayon.INK, 4, Color(0.15, 0.18, 0.15), 263)
 
 
@@ -772,16 +794,26 @@ func paint_top() -> void:
 	# things you can always see in the dark: the truck light, the eye, sparkly valuables
 	Crayon.ellipse(pen, ZONE, ZONE_R + Vector2(6, 4), Color(0.4, 1.0, 0.55, 0.55 + 0.25 * sin(t * 4.0)), 3, Color(0, 0, 0, 0), 330)
 	if phase in ["run1", "run2"] and not carried.is_empty():
-		Crayon.text(pen, ZONE + Vector2(0, 0), "TRUCK", 22, Color(0.6, 1.0, 0.7, 0.8), 1, 331, null, 0.4, false)
+		Crayon.text(pen, ZONE + Vector2(0, 0), "TRUCK" if run == 1 else "SELL IT", 22, Color(0.6, 1.0, 0.7, 0.8), 1, 331, null, 0.4, false)
 	_peeper()
 	for it in items:
 		if it.state == "free" and it.pos.distance_to(bot_pos) > (230.0 if run == 1 else 175.0):
 			var tw := 0.5 + 0.5 * sin(t * 3.0 + it.pos.x)
 			Crayon.star(pen, it.pos + Vector2(10, -16), 7 + tw * 3, Color(1, 1, 0.7, 0.8), Color(1, 0.95, 0.4, 0.5 + tw * 0.4), int(it.pos.x) % 97)
+		# run two: every one of Chumbo's things has a price tag on it, even in the dark
+		if run == 2 and it.state == "free":
+			_price_tag(it)
 	if tv_on or phase == "run2" or phase == "twist" or phase == "final":
 		_taxman(TV)
+	if run == 2:
+		# a lit-up sign on the truck, so it reads even in the dark
+		var glow := Color(1.0, 0.9, 0.35, 0.8 + 0.2 * sin(t * 5.0))
+		Crayon.text(pen, Vector2(566, 578), "WE", 20, glow, 1, 261, null, 0.5, false)
+		Crayon.text(pen, Vector2(566, 600), "BUY", 20, glow, 1, 262, null, 0.5, false)
+		Crayon.text(pen, Vector2(715, 578), "YOUR", 20, glow, 1, 264, null, 0.5, false)
+		Crayon.text(pen, Vector2(715, 600), "STUFF", 20, glow, 1, 265, null, 0.5, false)
 	for pp in pops:
-		Crayon.text(pen, pp.p, pp.txt, 30, Color(pp.col, clampf(pp.t * 1.5, 0.0, 1.0)), 1, 340, Crayon.title_font())
+		Crayon.text(pen, pp.p, pp.txt, pp.s, Color(pp.col, clampf(pp.t * 1.5, 0.0, 1.0)), 1, 340, Crayon.title_font())
 	_hud()
 	if count_t >= 0.0 and phase == "extract":
 		Crayon.text(pen, Vector2(W * 0.5, 300), "EXTRACTING... %d" % int(ceil(count_t)), 64, Crayon.GREEN.lightened(0.3), 1, 350, Crayon.title_font())
@@ -806,11 +838,17 @@ func _hud() -> void:
 	var sub := "R.E.P.O.  -  RUN %d" % run
 	if phase == "run1" and deposited == 0 and carried.is_empty():
 		sub = "TAP TO WALK  -  TAP A VALUABLE TO GRAB IT"
-	elif phase in ["run1", "run2"] and not carried.is_empty():
+	elif phase == "run1" and not carried.is_empty():
 		sub = "BRING IT TO THE TRUCK!"
+	elif phase == "run2":
+		sub = "SELL YOUR STUFF TO THE TAXMAN!" if carried.is_empty() else "SELL IT! BRING IT TO THE TRUCK!"
 	Crayon.text(pen, Vector2(bar.get_center().x, bar.end.y + 22), sub, 20, Color(1, 1, 0.6, 0.9) if sub != "R.E.P.O.  -  RUN %d" % run else Color(1, 1, 1, 0.7), 1, 363, null, 0.3, false)
 	if not carried.is_empty() and get_button("extract").is_empty():
-		Crayon.text(pen, Vector2(W - 24, y + 20), "%s  $%d" % [carried.name, carried.value], 22, Crayon.SKY, 2, 364, null, 0.3, false)
+		Crayon.text(pen, Vector2(W - 24, y + 20), ("%s  $%d" if run == 1 else "SELLING: %s  $%d") % [carried.name, carried.value], 22, Crayon.SKY, 2, 364, null, 0.3, false)
+	if run == 2:
+		# what Chumbo has left: it only ever goes down
+		var own := items.filter(func(x): return x.state != "gone").size()
+		Crayon.text(pen, Vector2(48, 676), "THINGS YOU STILL OWN: %d" % own, 28, Color(1.0, 0.55, 0.6) if own > 0 else Crayon.RED, 0, 365, Crayon.title_font())
 
 
 static func _bot(ci: CanvasItem, feet: Vector2, sc: float, tm: float, look: Vector2, dizzy: float, stunned: bool) -> void:
@@ -896,6 +934,14 @@ func _draw_item(it: Dictionary, p: Vector2) -> void:
 			Crayon.rect(pen, Rect2(p + Vector2(-24, -14), Vector2(48, 28)), ink, 3, Crayon.WHITE, sd)
 			pen.draw_rect(Rect2(p + Vector2(-23, -13), Vector2(46, 8)), Crayon.RED)
 			Crayon.text(pen, p + Vector2(0, 5), "CHUMBO", 11, ink, 1, sd + 1, null, 0.2, false)
+
+
+## A little FOR SALE tag hanging off one of Chumbo's things.
+func _price_tag(it: Dictionary) -> void:
+	var p: Vector2 = it.pos + Vector2(30, -30)
+	Crayon.line(pen, it.pos + Vector2(10, -12), p + Vector2(-20, 6), Crayon.INK, 2, 640)
+	Crayon.rect(pen, Rect2(p + Vector2(-22, -11), Vector2(56, 22)), Crayon.INK, 2, Color(1.0, 0.95, 0.75), 641)
+	Crayon.text(pen, p + Vector2(6, 0), "$%d" % it.value, 15, Crayon.RED.darkened(0.2), 1, 642, null, 0.2, false)
 
 
 func _peeper() -> void:

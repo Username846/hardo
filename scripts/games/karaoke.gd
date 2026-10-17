@@ -22,7 +22,7 @@ const LYRIC_Y := 588.0
 var chart: Array = []
 var hits := {}
 var song := ""
-var phase := "intro"   # intro, cute, dark, candles_wait, candles, wish
+var phase := "intro"   # intro, cute, dark, malfunction, candles_wait, candles, wish
 var score := 0
 var combo := 0
 var best := 0
@@ -38,6 +38,14 @@ var pops: Array = []       # {p, t, txt, col}
 var bursts: Array = []     # {p, t, col}
 var bounce := 0.0
 var dark_solo_said := false
+## Mikake breaking down after the last song: glitching (0..1), switched off (0..1), the beat
+## she froze on, what the stage screens say, and the sparks and smoke coming off her.
+var mal_glitch := 0.0
+var broken := 0.0
+var frozen_beat := 0.0
+var err_text := ""
+var sparks: Array = []      # {p, v, t}
+var smoke: Array = []       # {p, t}
 
 # per note: target position, flying icon start, symbol
 var _pos := PackedVector2Array()
@@ -182,6 +190,17 @@ func tick(dt: float) -> void:
 	for b in bursts:
 		b.t += dt
 	bursts = bursts.filter(func(b): return b.t < 0.35)
+	for sp in sparks:
+		sp.t += dt
+		sp.v.y += 900.0 * dt
+		sp.p += sp.v * dt
+	sparks = sparks.filter(func(sp): return sp.t < 0.8)
+	for sm in smoke:
+		sm.t += dt
+		sm.p += Vector2(sin(sm.t * 3.0 + sm.p.x) * 12.0, -40.0) * dt
+	smoke = smoke.filter(func(sm): return sm.t < 3.0)
+	if broken > 0.6 and randf() < dt * 3.0:
+		smoke.append({"p": MIKAKE_FEET + Vector2(randf_range(-30, 30), -330.0 * 0.8), "t": 0.0})
 	if phase == "cute" or phase == "dark":
 		var now: float = Audio.song_pos
 		for i in range(_lo, chart.size()):
@@ -201,7 +220,7 @@ func tick(dt: float) -> void:
 				_start("karaoke_dark")
 				say_bg("Wait. Those aren't the words.", Narrator.DARK)
 			else:
-				_candles()
+				_malfunction()
 	if phase == "dark":
 		crowd_k = minf(1.0, crowd_k + dt * 0.03)
 		# the instrumental bit in the middle of the dark verse
@@ -210,12 +229,51 @@ func tick(dt: float) -> void:
 			say_bg("The song is starting over. It always starts over.", Narrator.DARK)
 
 
+## The song never ends... until the singer can't take it any more. Mikake glitches, throws
+## sparks, winds down with the music and switches off, right there on the stage.
+func _malfunction() -> void:
+	frozen_beat = _beat()
+	phase = "malfunction"
+	locked = true
+	mal_glitch = 0.75
+	err_text = "ERROR"
+	Audio.music_pitch(0.6, 2.5)
+	for k in 7:
+		Audio.sfx("glitch", -3, randf_range(0.7, 1.3))
+		if k % 2 == 0:
+			Audio.sfx("static", -10)
+		_spark_burst(14)
+		await wait(0.32)
+	err_text = "FATAL\nERROR"
+	await say("Mikake? Mikake, are you okay?", Narrator.DARK)
+	err_text = "SINGER.EXE\nHAS\nSTOPPED"
+	Audio.music_pitch(0.2, 1.6)
+	Audio.sfx("slide_down", -1, 0.55)
+	mal_glitch = 0.0
+	var tw := create_tween()
+	tw.tween_property(self, "broken", 1.0, 1.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	_spark_burst(30)
+	await wait(1.2)
+	Audio.stop_music(0.4)
+	Audio.sfx("thud", -2, 0.7)
+	Audio.sfx("switch", -4, 0.6)
+	await wait(1.0)
+	err_text = "NO\nSIGNAL"
+	await say("The singer has stopped working. The birthday song will go on without her.", Narrator.HYPE_DARK)
+	await say("She sang your birthday song so many times that she broke.", Narrator.DARK)
+	_candles()
+
+
+func _spark_burst(n: int) -> void:
+	var head := MIKAKE_FEET + Vector2(0, -330.0 * 0.86)
+	for k in n:
+		var a := randf_range(-PI, 0.0)
+		sparks.append({"p": head + Vector2(randf_range(-40, 40), randf_range(-30, 20)), "v": Vector2(cos(a), sin(a)) * randf_range(150, 420), "t": randf() * 0.2})
+
+
 func _candles() -> void:
 	phase = "candles_wait"
 	locked = true
-	Audio.music_pitch(0.4, 2.5)
-	await wait(2.5)
-	Audio.stop_music(0.8)
 	var tw := create_tween()
 	tw.tween_property(self, "cake_in", 1.0, 1.0)
 	await wait(1.0)
@@ -274,6 +332,9 @@ func _is_dark() -> bool:
 func _beat() -> float:
 	if phase == "cute" or phase == "dark":
 		return Audio.song_pos * bpm / 60.0
+	if phase != "intro":
+		# Mikake has stopped dancing (with a little twitch while she glitches)
+		return frozen_beat + (randf_range(-0.15, 0.15) if mal_glitch > 0.0 else 0.0)
 	return t * 2.0
 
 
@@ -324,7 +385,16 @@ func paint() -> void:
 				sing = true
 				break
 	var dk := 1.0 if dark else 0.0
-	draw_mikake(pen, Vector2(640, 540), 330.0, beat, dk, sing, 600, 0.18 if phase == "dark" else 0.0)
+	var feet := MIKAKE_FEET
+	if mal_glitch > 0.0:
+		feet += Vector2(randf_range(-8, 8), randf_range(-3, 3)) * mal_glitch
+	var glitch := 0.18 if phase == "dark" else mal_glitch
+	draw_mikake(pen, feet, 330.0, beat, dk, sing, 600, glitch, broken)
+	for sm in smoke:
+		Crayon.disc(pen, sm.p, 14.0 + sm.t * 10.0, Color(0.55, 0.55, 0.6, 0.35 * (1.0 - sm.t / 3.0)))
+	for sp in sparks:
+		var c := Color(1, 0.95, 0.5) if int(sp.t * 20.0) % 2 == 0 else Color(0.6, 0.95, 1.0)
+		pen.draw_rect(Rect2(sp.p - Vector2(2.5, 2.5), Vector2(5, 5)), c)
 	# birthday cake for the wish (a leek cake, of course)
 	if cake_in > 0.0:
 		_cake()
@@ -379,6 +449,9 @@ func _voltage(dark: bool) -> void:
 
 ## Spotlight beams swinging to the beat (cheap: one quad each).
 func _lights(beat: float, dark: bool) -> void:
+	if broken > 0.5:
+		# the stage lights went out with her
+		return
 	for k in 4:
 		var top := Vector2(220.0 + k * 280.0, 70)
 		var sw := sin(beat * PI * 0.5 + k * 1.3) * 160.0
@@ -397,6 +470,22 @@ func _lights(beat: float, dark: bool) -> void:
 func _screens(beat: float, dark: bool) -> void:
 	for sx in [40.0, 990.0]:
 		var r := Rect2(sx + 12, 122, 226, 276)
+		if err_text != "":
+			for k in 9:
+				var y := r.position.y + fmod(k * 37.0 + t * 140.0, r.size.y - 10.0)
+				pen.draw_rect(Rect2(r.position.x, y, r.size.x, 4), Color(0.5, 0.5, 0.55, 0.35))
+			var blink := not err_text.begins_with("NO") and fmod(t * 4.0, 1.0) < 0.25
+			if not blink:
+				# same bold screen font as AGAIN, and no backwards crayon letters on an error screen
+				var rows := err_text.split("\n")
+				var big := 0
+				for row in rows:
+					big = maxi(big, row.length())
+				var fs := 46 if big <= 6 else 34
+				for i in rows.size():
+					var ry := r.get_center().y + (i - (rows.size() - 1) * 0.5) * fs * 1.1
+					Crayon.text(pen, Vector2(r.get_center().x, ry), rows[i], fs, Color(1, 0.3, 0.3), 1, 4420 + int(sx) + i, Crayon.title_font(), 0.5, false)
+			continue
 		if not dark:
 			for k in 9:
 				var hgt := (0.3 + 0.7 * absf(sin(beat * PI * 0.5 + k * 0.9 + sx))) * 150.0
@@ -534,6 +623,9 @@ func _lyrics(now: float) -> void:
 		x += w
 
 
+const MIKAKE_FEET := Vector2(640, 540)
+
+
 ## For the finale cast.
 static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float) -> void:
 	draw_mikake(ci, feet, 210.0 * sc, tm * 2.0, 0.0, false, 9100)
@@ -541,13 +633,14 @@ static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float) -> 
 
 ## Hatsune Mikake: teal twin-tails down to the floor, headset, grey top, teal tie, a leek.
 ## h = height from feet to the top of her head, beat = dance phase (in beats), dark 0..1,
-## glitch = how often her hair and leek jump around (dark verse).
-static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0) -> void:
-	var lively := 1.0 - dark * 0.85
+## glitch = how often her hair and leek jump around (dark verse), broken = switched off
+## (0..1: she slumps over, arms hanging, X eyes).
+static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0, broken: float = 0.0) -> void:
+	var lively := (1.0 - dark * 0.85) * (1.0 - broken)
 	var bob := absf(sin(beat * PI)) * h * 0.025 * lively
 	var sway := sin(beat * PI * 0.5) * 0.06 * lively
 	var glitching := glitch > 0.0 and fmod(beat * 1.37, 1.0) < glitch
-	ci.draw_set_transform(feet, sway, Vector2.ONE)
+	ci.draw_set_transform(feet + Vector2(0, h * 0.05 * broken), sway + 0.32 * broken, Vector2.ONE)
 	var ink := Crayon.INK
 	var hair := TEAL.lerp(Color(0.3, 0.4, 0.42), dark * 0.5)
 	var hr := h * 0.115
@@ -591,6 +684,9 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 	var up := sin(beat * PI) * lively
 	var hand_l := sh_l + Vector2(-h * 0.1, h * 0.12 - absf(up) * h * 0.06)
 	var hand_r := sh_r + Vector2(h * 0.13, -h * 0.1 - up * h * 0.08)
+	# switched off: both arms just hang
+	hand_l = hand_l.lerp(sh_l + Vector2(-h * 0.03, h * 0.24), broken)
+	hand_r = hand_r.lerp(sh_r + Vector2(h * 0.04, h * 0.24), broken)
 	for arm in [[sh_l, hand_l], [sh_r, hand_r]]:
 		var s0: Vector2 = arm[0]
 		var s1: Vector2 = arm[1]
@@ -603,6 +699,7 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 	var la := -1.25 + up * 0.5
 	if glitching:
 		la += 1.6
+	la = lerpf(la, 1.35, broken)
 	var ldir := Vector2(cos(la), sin(la))
 	var leek_top := hand_r + ldir * h * 0.24
 	var white := Color(0.97, 0.97, 0.92).lerp(Color(0.6, 0.6, 0.55), dark * 0.5)
@@ -630,14 +727,19 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 	# face: big anime eyes (blank in the dark verse)
 	for side in [-1.0, 1.0]:
 		var e := head + Vector2(side * hr * 0.4, hr * 0.18)
-		if dark > 0.5:
+		if broken > 0.5:
+			# X X
+			var d := hr * 0.15
+			Crayon.line(ci, e + Vector2(-d, -d), e + Vector2(d, d), ink, 3, sd + 56 + int(side + 1), 0.3)
+			Crayon.line(ci, e + Vector2(d, -d), e + Vector2(-d, d), ink, 3, sd + 58 + int(side + 1), 0.3)
+		elif dark > 0.5:
 			Crayon.ellipse(ci, e, Vector2(hr * 0.17, hr * 0.22), ink, 2, Crayon.WHITE, sd + 54 + int(side + 1))
 		else:
 			Crayon.oval(ci, e, Vector2(hr * 0.17, hr * 0.23), TEAL_DK)
 			Crayon.disc(ci, e + Vector2(-hr * 0.05, -hr * 0.08), hr * 0.07, Crayon.WHITE)
 			Crayon.disc(ci, head + Vector2(side * hr * 0.55, hr * 0.48), hr * 0.12, Color(1, 0.5, 0.6, 0.35))
 	var m := head + Vector2(0, hr * 0.58)
-	if dark > 0.5:
+	if dark > 0.5 or broken > 0.5:
 		Crayon.line(ci, m + Vector2(-hr * 0.15, 0), m + Vector2(hr * 0.15, 0), ink, 3, sd + 60, 0.3)
 	elif sing:
 		Crayon.oval(ci, m, Vector2(hr * 0.12, hr * 0.15), Color(0.6, 0.15, 0.2))

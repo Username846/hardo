@@ -23,10 +23,12 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | 6 | FORTNIGHT: Birthday Royale | battle-royale build defence | EDM supersaws |
 | 7 | ROBLOCKS Birthday Obby | obstacle-course runner | tropical marimba + steel drum |
 | 8 | POKeMANS | creature-catching battles | Game Boy chiptune |
-| 9 | R.E.P.O. (Retrieve Every Party Object) | robot hauling valuables to the extraction truck | sea shanty |
-| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake | Vocaloid J-pop |
+| 9 | R.E.P.O. (Retrieve Every Party Object) | robot hauling valuables to the extraction truck (then selling all of Chumbo's own things to the Taxman) | sea shanty |
+| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake (who malfunctions on stage at the end) | Vocaloid J-pop |
 
-**Secret (spoilers):** after the credits, the cake on the party table shows **???**. Tap it. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
+The end credits roll with the karaoke song, and its lyrics show at the bottom so you can sing along.
+
+**Secret (spoilers):** pressing **back to the party** after the credits starts the secret game right away (and later the cake on the party table shows **???** so you can play it again). Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
 
 Every line of dialogue shows who is talking (PARTY HOST, ANNOUNCER, SGT. SPRINKLES, CHUMBO, ROCKO, DIJIMON, TONY HONK, PIP, TAXMAN or EVERYONE, the guests speaking together), and every character keeps the same voice all game. The party host has three (a good voice, an evil voice and a whisper for its grey lines) and the announcer two (good and evil). Every song is sung by the same two singers, and every dark version by the same two spooky ones.
 
@@ -65,7 +67,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits and that they lead into the secret game, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```
