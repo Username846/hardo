@@ -28,7 +28,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 **Secret (spoilers):** after the credits, the cake on the party table shows **???**. Tap it. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
 
-Every character keeps one voice all game (the party host, the announcer, Chumbo, Rocko, the Dijimon, Tony Honk, Pip, the Taxman and "everyone", the guests speaking together); the host's dark lines are the same voice, just slower and lower. Every song is sung by the same two singers, and every dark version by the same two spooky ones.
+Every line of dialogue shows who is talking (PARTY HOST, ANNOUNCER, SGT. SPRINKLES, CHUMBO, ROCKO, DIJIMON, TONY HONK, PIP, TAXMAN or EVERYONE, the guests speaking together), and every character keeps exactly one voice all game; a spooky mood only changes the colour of the box. Every song is sung by the same two singers, and every dark version by the same two spooky ones.
 
 Every game has its own song with sung lyrics (two verses, a solo and the chorus twice), plus a darker version of the song for when things get weird. The dark versions have their own, much gloomier words: the party never ends. The lyrics show in a bar on screen and light up word by word as they're sung. Everything is drawn in code to look like crayon art by a five-year-old, including lines that wobble and the odd backwards letter.
 

@@ -84,7 +84,7 @@ func _run() -> void:
 	locked = true
 	await wait(0.4)
 	await say("Present number five! It's CALL OF BIRTHDAY! Here's your foam dart blaster. Tap anywhere to shoot!")
-	await say("Listen up, recruit! Knock down sixteen cardboard party crashers. Do NOT shoot Grandma!", Narrator.HYPE)
+	await say("Listen up, recruit! Knock down sixteen cardboard party crashers. Do NOT shoot Grandma!", Narrator.SARGE)
 	_banner("MISSION 1", "BOOT CAMP", Crayon.YELLOW, 2.5)
 	Audio.sfx("horn", -6)
 	phase = "m1"
@@ -134,7 +134,7 @@ func _fire(p: Vector2) -> void:
 			failed_joke = true
 			_banner("MISSION FAILED", "...just kidding!", Crayon.RED, 2.5)
 			Audio.sfx("wrong", -4)
-			say_bg("Mission failed. Just kidding! We'll get 'em next time!", Narrator.HYPE)
+			say_bg("Mission failed. Just kidding! We'll get 'em next time!", Narrator.SARGE)
 	else:
 		misses_row = 0
 		_on_hit(h, p)
@@ -225,20 +225,20 @@ func _downed() -> void:
 			uab = 10.0
 			Audio.sfx("streak")
 			_banner("3 STREAK", "UAB ONLINE", Crayon.SKY, 2.0)
-			say_bg("Spy balloon online!", Narrator.HYPE)
+			say_bg("Spy balloon online!", Narrator.SARGE)
 		5:
 			Audio.sfx("streak")
 			Audio.sfx("radio", -6)
 			_banner("5 STREAK", "CARE PACKAGE", Crayon.GREEN, 2.0)
 			care = {"pos": Vector2(randf_range(330, 900), -80), "landed": false, "t": 0.0}
-			say_bg("Care package inbound! Tap the present!", Narrator.HYPE)
+			say_bg("Care package inbound! Tap the present!", Narrator.SARGE)
 		7:
 			Audio.sfx("streak")
 			Audio.sfx("radio", -6)
 			_banner("7 STREAK", "CAKE STRIKE", Crayon.PINK, 2.0)
 			strike = 0.0
 			streak = 0
-			say_bg("Cake strike inbound!", Narrator.HYPE)
+			say_bg("Cake strike inbound!", Narrator.SARGE)
 	if downed >= goal:
 		_mission_done()
 
@@ -254,9 +254,9 @@ func _friendly_fire(o: Dictionary) -> void:
 	Audio.sfx("wrong", -4)
 	Audio.sfx("oof", -8, 1.5)
 	if grandma_hits == 1:
-		say_bg("FRIENDLY FIRE! That's Grandma, soldier! She brought snacks!", Narrator.HYPE)
+		say_bg("FRIENDLY FIRE! That's Grandma, soldier! She brought snacks!", Narrator.SARGE)
 	elif grandma_hits == 3:
-		say_bg("Grandma again?! She's knitting you a sweater!", Narrator.HYPE)
+		say_bg("Grandma again?! She's knitting you a sweater!", Narrator.SARGE)
 
 
 func _pop_drone(d: Dictionary, p: Vector2) -> void:
@@ -332,10 +332,10 @@ func _clear_field() -> void:
 
 func _mission2() -> void:
 	await wait(1.2)
-	await say("Mission complete! Outstanding work, recruit!", Narrator.HYPE)
+	await say("Mission complete! Outstanding work, recruit!", Narrator.SARGE)
 	night = false
 	refresh_back()
-	await say("Mission two: capture the cake! The crashers want the birthday cake. Pop the balloon drones before they grab a slice!", Narrator.HYPE)
+	await say("Mission two: capture the cake! The crashers want the birthday cake. Pop the balloon drones before they grab a slice!", Narrator.SARGE)
 	_banner("MISSION 2", "CAPTURE THE CAKE", Crayon.YELLOW, 2.5)
 	Audio.sfx("horn", -6)
 	ammo = MAG
@@ -351,7 +351,7 @@ func _twist() -> void:
 	Audio.sfx("tada")
 	Audio.sfx("cheer", -8)
 	await wait(1.2)
-	await say("Mission complete! The cake is safe! You're a birthday hero!", Narrator.HYPE)
+	await say("Mission complete! The cake is safe! You're a birthday hero!", Narrator.SARGE)
 	loading = 0.0
 	var tw := create_tween()
 	tw.tween_property(self, "loading", 0.72, 2.2)

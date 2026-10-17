@@ -3,11 +3,14 @@ extends CanvasLayer
 ## voice clip (tools/voices.py renders one clip per say() line found in the scripts).
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
-## Who is talking decides the voice (tools/voices.py): CUTE, DARK and WHISPER are all the party
-## host (same voice, different mood). HYPE is the announcer, CREEPY is "everyone" (the guests
-## speaking together), CRITTER and MONSTER are the Dijimon (baby and grown), HONK is Tony Honk.
-## Characters get their name on the box.
-enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN }
+## Who is talking decides the voice (tools/voices.py) and the name on the box: CUTE, DARK and
+## WHISPER are all the party host (one voice, the mood only changes the box). HYPE is the race
+## announcer, SARGE is Sgt. Sprinkles, CREEPY is "everyone" (the guests speaking together),
+## CRITTER and MONSTER are the Dijimon (baby and grown, one voice), HONK is Tony Honk.
+enum { CUTE, DARK, WHISPER, CRITTER, CREEPY, HYPE, CHUMBO, ROCKO, MONSTER, HONK, PIP, TAXMAN, SARGE }
+
+## Must match VOICE_VERSION in tools/voices.py (it is part of every clip's file name).
+const VOICE_VERSION := 2
 
 const BOX_W := 900.0
 
@@ -45,7 +48,7 @@ func is_active() -> bool:
 
 
 static func key_for(text: String, mood: int) -> String:
-	return (str(mood) + "|" + text).md5_text().substr(0, 12)
+	return ("v%d|%d|%s" % [VOICE_VERSION, mood, text]).md5_text().substr(0, 12)
 
 
 ## Called by Screen.say(). ticket gets a "done" signal emitted when the line finishes.
@@ -120,7 +123,7 @@ func _process(delta: float) -> void:
 		_blip_acc += 1
 		if _blip_acc % 3 == 0 and _text.substr(int(_shown) - 1, 1) != " ":
 			var pitch: float = {CUTE: 1.0, DARK: 0.75, WHISPER: 0.85, CRITTER: 1.5, CREEPY: 0.5, HYPE: 1.2, CHUMBO: 0.8, ROCKO: 0.45,
-				MONSTER: 0.9, HONK: 1.3, PIP: 1.1, TAXMAN: 0.6}[_mood]
+				MONSTER: 0.9, HONK: 1.3, PIP: 1.1, TAXMAN: 0.6, SARGE: 0.75}[_mood]
 			Audio.sfx("blip" if _blip_acc % 2 == 0 else "blip2", -16.0, pitch * randf_range(0.9, 1.1))
 	if _shown >= _text.length() and _done_typing_at < 0.0:
 		_done_typing_at = _elapsed
@@ -157,9 +160,9 @@ func _unhandled_input(e: InputEvent) -> void:
 func _style() -> Dictionary:
 	match _mood:
 		DARK:
-			return {"bg": Color(0.09, 0.04, 0.07, 0.95), "ink": Color(0.95, 0.25, 0.3), "edge": Color(0.5, 0.05, 0.1), "wob": 1.6}
+			return {"bg": Color(0.09, 0.04, 0.07, 0.95), "ink": Color(0.95, 0.25, 0.3), "edge": Color(0.5, 0.05, 0.1), "wob": 1.6, "name": "PARTY HOST"}
 		WHISPER:
-			return {"bg": Color(0.2, 0.2, 0.24, 0.8), "ink": Color(0.85, 0.85, 0.9), "edge": Color(0.45, 0.45, 0.5), "wob": 1.3}
+			return {"bg": Color(0.2, 0.2, 0.24, 0.8), "ink": Color(0.85, 0.85, 0.9), "edge": Color(0.45, 0.45, 0.5), "wob": 1.3, "name": "PARTY HOST"}
 		CRITTER:
 			return {"bg": Color(1.0, 0.85, 0.95, 0.97), "ink": Color(0.45, 0.15, 0.55), "edge": Color(0.6, 0.25, 0.7), "wob": 1.2, "name": "DIJIMON"}
 		MONSTER:
@@ -173,12 +176,14 @@ func _style() -> Dictionary:
 		TAXMAN:
 			return {"bg": Color(0.1, 0.16, 0.1, 0.96), "ink": Color(1.0, 0.85, 0.3), "edge": Color(0.75, 0.6, 0.15), "wob": 1.3, "name": "TAXMAN"}
 		HYPE:
-			return {"bg": Color(0.2, 0.85, 1.0, 0.97), "ink": Color(0.1, 0.05, 0.3), "edge": Color(0.95, 0.2, 0.6), "wob": 1.0}
+			return {"bg": Color(0.2, 0.85, 1.0, 0.97), "ink": Color(0.1, 0.05, 0.3), "edge": Color(0.95, 0.2, 0.6), "wob": 1.0, "name": "ANNOUNCER"}
+		SARGE:
+			return {"bg": Color(0.62, 0.7, 0.45, 0.97), "ink": Color(0.12, 0.15, 0.05), "edge": Color(0.3, 0.38, 0.15), "wob": 1.0, "name": "SGT. SPRINKLES"}
 		CHUMBO:
 			return {"bg": Color(0.82, 0.96, 0.78, 0.97), "ink": Crayon.INK, "edge": Color(0.2, 0.6, 0.25), "wob": 1.0, "name": "CHUMBO"}
 		ROCKO:
 			return {"bg": Color(0.12, 0.02, 0.03, 0.96), "ink": Color(1.0, 0.62, 0.15), "edge": Color(0.7, 0.08, 0.05), "wob": 2.0, "name": "ROCKO"}
-	return {"bg": Color(1.0, 0.95, 0.62, 0.97), "ink": Crayon.INK, "edge": Color(0.95, 0.55, 0.15), "wob": 1.0}
+	return {"bg": Color(1.0, 0.95, 0.62, 0.97), "ink": Crayon.INK, "edge": Color(0.95, 0.55, 0.15), "wob": 1.0, "name": "PARTY HOST"}
 
 
 func _draw_panel() -> void:
@@ -195,8 +200,9 @@ func _draw_panel() -> void:
 		r.position.y += (1.0 - appear) * (-40.0 if top else 40.0)
 		Crayon.rect(_panel, r, st.edge, 6, st.bg, 901)
 		if st.has("name"):
-			# name tag for characters who talk
-			var tag := Rect2(Vector2(r.position.x + 26, r.end.y - 16 if top else r.position.y - 24), Vector2(150, 40))
+			# name tag: who is talking (sized to fit the name)
+			var tw := Crayon.title_font().get_string_size(st.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x + 44.0
+			var tag := Rect2(Vector2(r.position.x + 26, r.end.y - 16 if top else r.position.y - 24), Vector2(maxf(150.0, tw), 40))
 			Crayon.rect(_panel, tag, st.edge, 4, st.edge.lightened(0.15), 905)
 			Crayon.text(_panel, tag.get_center(), st.name, 26, Crayon.WHITE, 1, 906, Crayon.title_font(), 0.3, false)
 		var left := int(_shown)

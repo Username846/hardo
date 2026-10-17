@@ -248,7 +248,7 @@ func _poke_duck() -> void:
 	_pop(duck.pos + Vector2(0, -60), "QUACK!!", Crayon.RED)
 	if not said.has("duck"):
 		said["duck"] = true
-		say_bg("Oh no. You poked the duck. RUN!", Narrator.HYPE)
+		say_bg("Oh no. You poked the duck. RUN!")
 
 
 # ---------------------------------------------------------------- update

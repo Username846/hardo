@@ -42,9 +42,9 @@ def voice_fx(text, timbre, pitch, speed=170, rng=None, shift=1.0):
     return x
 
 
-def character(who, how, text):
+def character(who, text):
     import voices
-    x, y = voices.voice(who, how, text)
+    x, y = voices.voice(who, text)
     y = np.asarray(y)
     if y.ndim == 2:
         y = y.mean(axis=0)
@@ -128,10 +128,10 @@ def build(out_dir, only=None):
     fx["giggle"] = voice_fx("hee hee hee", "kid", 380, 230, 120)
     fx["giggle_low"] = voice_fx("hee hee hee", "croak", 90, 140, 30)
     # characters' own voices (the same ones as their narration, see voices.py)
-    fx["oof"] = character("chumbo", "normal", "oof!")
-    fx["ow"] = character("chumbo", "normal", "ow!")
-    fx["whisper_chumbo"] = character("pip", "normal", "chumbo")
-    fx["im_chumbo"] = character("diji", "dark", "I'm chumbo.")
+    fx["oof"] = character("chumbo", "oof!")
+    fx["ow"] = character("chumbo", "ow!")
+    fx["whisper_chumbo"] = character("pip", "chumbo")
+    fx["im_chumbo"] = character("diji", "I'm chumbo.")
     fx["yay_small"] = voice_fx("yay!", "kid", 350, 200, 150)
     fx["uh_oh"] = voice_fx("uh oh!", "kid", 300, 180, 120)
 
@@ -272,7 +272,7 @@ def build(out_dir, only=None):
     for st, f in ((0.0, 1300), (0.28, 900)):
         rl += np.where(t >= st, (hp(noise(len(t)), 1500) * 0.6 + np.sin(2 * np.pi * f * t) * 0.5) * np.exp(-np.maximum(t - st, 0) * 50), 0)
     fx["reload"] = rl
-    zz = character("everyone", "normal", "haaapy biiirthdaaay")
+    zz = character("everyone", "haaapy biiirthdaaay")
     t = np.arange(len(zz)) / SR
     fx["zombie"] = zz * (0.75 + 0.25 * np.sin(2 * np.pi * 5 * t))
     fx["streak"] = tone_seq([76, 79, 83, 88], "pulse25", 0.06, 0.1)

@@ -17,6 +17,8 @@ from scipy import signal
 
 SR = 32000
 CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
+# bump to throw away every cached espeak clip
+CACHE_VERSION = 2
 
 
 def midi_hz(m):
@@ -761,8 +763,14 @@ def espeak_root():
     root = os.path.join(CACHE_DIR, "espeak")
     dst = os.path.join(root, "espeak-ng-data")
     if not os.path.isdir(dst):
+        # copy aside and rename into place, so parallel song renders never see half a copy
         os.makedirs(root, exist_ok=True)
-        shutil.copytree(data, dst)
+        tmp = f"{dst}.tmp{os.getpid()}"
+        shutil.copytree(data, tmp)
+        try:
+            os.rename(tmp, dst)
+        except OSError:  # another process got there first
+            shutil.rmtree(tmp, ignore_errors=True)
     _ESPEAK_ROOT = root
     return root
 
@@ -786,8 +794,14 @@ TIMBRES = {
 }
 
 
+def _timbre_tag(timbre):
+    """Short hash of a timbre's definition. It is part of every espeak voice name (and so of every
+    cached clip), so retuning a voice can never reuse audio made with its old settings."""
+    return hashlib.md5(repr(TIMBRES[timbre]).encode()).hexdigest()[:6]
+
+
 def _variant_name(timbre, p):
-    return f"sg_{timbre}_{p}"
+    return f"sg_{timbre}_{_timbre_tag(timbre)}_{p}"
 
 
 def _ensure_variant(timbre, p):
@@ -810,7 +824,7 @@ def _read_wav(path):
 
 def espeak_raw(text, voice="en-us", speed=170, pitch=None, extra_args=()):
     """Render text with espeak-ng, returns (samples at SR, float)."""
-    key = hashlib.md5(f"{text}|{voice}|{speed}|{pitch}|{extra_args}".encode()).hexdigest()
+    key = hashlib.md5(f"{CACHE_VERSION}|{text}|{voice}|{speed}|{pitch}|{extra_args}".encode()).hexdigest()
     cpath = os.path.join(CACHE_DIR, "tts", key + ".npy")
     if os.path.exists(cpath):
         return np.load(cpath)
@@ -958,7 +972,7 @@ def speak(text, timbre="guy", pitch_hz=None, speed=150, range_=None):
         return espeak_raw(text, "en-us", speed)
     root = espeak_root()
     rng = range_ if range_ is not None else pitch_hz * 0.5
-    name = f"sp_{timbre}_{int(pitch_hz)}_{int(rng)}"
+    name = f"sp_{timbre}_{_timbre_tag(timbre)}_{int(pitch_hz)}_{int(rng)}"
     path = os.path.join(root, "espeak-ng-data", "voices", "!v", name)
     if not os.path.exists(path):
         gender, formants, extra = TIMBRES[timbre]

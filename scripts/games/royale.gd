@@ -6,6 +6,13 @@ extends Screen
 const IDX := 5
 const ME := Vector2(640, 410)
 const SPOTS := ["Cake Castle", "Balloon Park", "Pinata Peaks", "Sprinkle Springs"]
+## One voiced line per landing spot (same order as SPOTS).
+var LANDED := [
+	["You landed at Cake Castle! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
+	["You landed at Balloon Park! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
+	["You landed at Pinata Peaks! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
+	["You landed at Sprinkle Springs! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
+]
 const NAMES := ["xX_CakeLord_Xx", "BalloonBoi99", "sprinkle_queen", "PinataSlayer", "DefaultDancer", "LlamaLover",
 	"Frosting_Fiend", "GiftWrapGamer", "CandleCrusher", "PartyHat_Pro", "NoScopeNapkin", "ConfettiKid"]
 
@@ -79,7 +86,8 @@ func _jump() -> void:
 	await wait(1.6)
 	Audio.sfx("thud")
 	phase = "fight"
-	say_bg("You landed at %s! Tap to build walls. Tap a player to throw cake!" % spot)
+	var landed: Array = LANDED[SPOTS.find(spot)]
+	say_bg(landed[0], landed[1])
 
 
 func _build(p: Vector2) -> void:

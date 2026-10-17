@@ -16,6 +16,14 @@ var LINES := [
 	["The candles have been burning for a very long time.", Narrator.DARK],
 	["One more present. The last one. It's for you, and it's for us.", Narrator.DARK],
 ]
+## Spelled out (not "%d") so each one gets a voice clip.
+var OPEN_NEXT := [
+	["Open present number one!", Narrator.CUTE], ["Open present number two!", Narrator.CUTE],
+	["Open present number three!", Narrator.CUTE], ["Open present number four!", Narrator.CUTE],
+	["Open present number five!", Narrator.CUTE], ["Open present number six!", Narrator.CUTE],
+	["Open present number seven!", Narrator.CUTE], ["Open present number eight!", Narrator.CUTE],
+	["Open present number nine!", Narrator.CUTE], ["Open present number ten!", Narrator.CUTE],
+]
 
 var opening := -1
 var open_t := 0.0
@@ -85,7 +93,7 @@ func _talk() -> void:
 		Game.save_game()
 		await say(LINES[p][0], LINES[p][1])
 	elif p < LINES.size():
-		say_bg("Open present number %d!" % (p + 1))
+		say_bg(OPEN_NEXT[p][0], OPEN_NEXT[p][1])
 
 
 func _present_rect(i: int) -> Rect2:

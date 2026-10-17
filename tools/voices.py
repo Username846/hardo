@@ -1,6 +1,7 @@
 """Narration: finds every say("...") line in the GDScript sources and renders a voice clip
-for it with espeak-ng. Clips are named by md5("<mood>|<text>")[:12] - the same key the game
-computes at runtime (Narrator.key_for)."""
+for it with espeak-ng, in the voice of whoever is talking. Clips are named by
+md5("v<VOICE_VERSION>|<mood>|<text>")[:12] - the same key the game computes at runtime
+(Narrator.key_for)."""
 import glob
 import hashlib
 import os
@@ -11,7 +12,7 @@ import numpy as np
 import synth as S
 
 MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5, "CHUMBO": 6, "ROCKO": 7,
-         "MONSTER": 8, "HONK": 9, "PIP": 10, "TAXMAN": 11}
+         "MONSTER": 8, "HONK": 9, "PIP": 10, "TAXMAN": 11, "SARGE": 12}
 
 STR = r'"((?:[^"\\]|\\.)*)"'
 SAY_RE = re.compile(r"\bsay(?:_bg)?\(\s*" + STR + r"\s*(?:,\s*Narrator\.(\w+))?")
@@ -81,8 +82,13 @@ def write_index(root):
         fh.write("\n".join(lines) + "\n")
 
 
+# Bumped when every clip is re-recorded, so the new files get new names (nothing old can be
+# picked up from an import cache or a browser cache). Must match Narrator.VOICE_VERSION.
+VOICE_VERSION = 2
+
+
 def key_for(mood, text):
-    return hashlib.md5(f"{mood}|{text}".encode("utf-8")).hexdigest()[:12]
+    return hashlib.md5(f"v{VOICE_VERSION}|{mood}|{text}".encode("utf-8")).hexdigest()[:12]
 
 
 def tts_text(text):
@@ -93,62 +99,41 @@ def tts_text(text):
     return t
 
 
-# Every character always speaks with the same voice. The party host has moods (cute, dark,
-# whisper), but it is the same espeak voice and vocal tract each time, just said differently.
+# Every character always speaks with exactly the same voice. Moods (cute / dark / whisper) only
+# change the subtitle box, never the voice, so the party host sounds the same in every line.
 CHARACTERS = {
     "host": dict(timbre="lady", pitch=178, speed=152, range=120),
     "announcer": dict(timbre="guy", pitch=128, speed=178, range=130),
+    "sarge": dict(timbre="deep", pitch=100, speed=172, range=100),
     "chumbo": dict(timbre="guy", pitch=108, speed=158, range=45),
-    "diji": dict(timbre="kid", pitch=320, speed=175, range=220),
+    "diji": dict(timbre="kid", pitch=320, speed=175, range=110),
     "honk": dict(timbre="goose", pitch=150, speed=185, range=110),
     "pip": dict(timbre="kid_whisper", pitch=260, speed=125, range=50),
     "taxman": dict(timbre="deep", pitch=84, speed=142, range=35),
 }
 
-# Narrator mood -> (who is talking, how)
-MOOD_VOICE = {0: ("host", "normal"), 1: ("host", "dark"), 2: ("host", "whisper"), 3: ("diji", "normal"),
-              4: ("everyone", "normal"), 5: ("announcer", "normal"), 6: ("chumbo", "normal"), 7: ("rocko", "normal"),
-              8: ("diji", "dark"), 9: ("honk", "normal"), 10: ("pip", "normal"), 11: ("taxman", "normal")}
+# Narrator mood -> who is talking
+MOOD_VOICE = {0: "host", 1: "host", 2: "host", 3: "diji", 4: "everyone", 5: "announcer", 6: "chumbo",
+              7: "rocko", 8: "diji", 9: "honk", 10: "pip", 11: "taxman", 12: "sarge"}
 
 
-def _base(who, t, pitch_mul=1.0, speed_mul=1.0, range_mul=1.0, timbre=None):
+def _base(who, t):
     c = CHARACTERS[who]
-    return S.speak(t, timbre or c["timbre"], c["pitch"] * pitch_mul, int(c["speed"] * speed_mul), c["range"] * range_mul)
+    return S.speak(t, c["timbre"], c["pitch"], c["speed"], c["range"])
 
 
 def _mix(*parts):
-    n = max(len(p) for p, _, _ in parts)
-    out = np.zeros(n + int(0.1 * S.SR))
+    n = max(len(p) + int(d * S.SR) for p, _, d in parts)
+    out = np.zeros(n)
     for x, gain, delay in parts:
         j = int(delay * S.SR)
         out[j:j + len(x)] += x * gain
     return out
 
 
-def voice(who, how, text):
-    """One line of speech for a character, as dry-ish mono samples with its room sound."""
+def voice(who, text):
+    """One line of speech in a character's voice: (dry samples, with its room sound)."""
     t = tts_text(text)
-    if who == "host":
-        if how == "dark":
-            # the same host, slower and lower, in a bigger, darker room
-            x = _base("host", t, 0.8, 0.85, 0.4)
-            x = S.lp(x, 4200)
-            return x, S.reverb(x, 0.35, 1.3)
-        if how == "whisper":
-            x = _base("host", t, 1.0, 0.82, 0.5, timbre="lady_whisper")
-            return x, S.reverb(x, 0.4, 1.2)
-        x = _base("host", t)
-        return x, S.reverb(x, 0.12, 0.6)
-    if who == "diji":
-        if how == "dark":
-            # the same little monster, grown huge: lower, slower, growling
-            x = _base("diji", t, 0.45, 0.8, 0.35)
-            x = S.resample(x, 1.1)
-            tt = np.arange(len(x)) / S.SR
-            x = np.tanh(x * (0.75 + 0.25 * np.sin(2 * np.pi * 27 * tt)) * 2.2) * 0.6
-            return x, S.reverb(x, 0.35, 1.3)
-        x = S.resample(_base("diji", t), 1 / 1.12)
-        return x, S.reverb(x, 0.1, 0.5)
     if who == "everyone":
         # all the party guests saying it together, slow and flat
         a = S.speak(t, "lady", 150, 108, 12)
@@ -166,27 +151,25 @@ def voice(who, how, text):
         b = np.pad(b, (0, n - len(b)))
         tt = np.arange(n) / S.SR
         x = np.tanh(a * (0.7 + 0.3 * np.sin(2 * np.pi * 29 * tt)) * 2.5) * 0.7 + b * 0.45
-        x = S.resample(x, 1.1)
-        x = S.lp(x, 3800)
+        x = S.lp(S.resample(x, 1.1), 3800)
         return x, S.reverb(x, 0.45, 1.5)
-    if who == "honk":
-        x = S.bp(_base("honk", t), 380, 3800)
-        x = S.resample(x, 1 / 1.06)
-        return x, S.reverb(x, 0.1, 0.5)
-    if who == "pip":
-        x = _base("pip", t)
-        return x, S.reverb(x, 0.5, 1.4)
-    if who == "taxman":
-        # on a little TV screen in the truck
-        x = S.bp(_base("taxman", t), 280, 3400) * 1.4
-        return x, S.reverb(x, 0.15, 0.6)
     x = _base(who, t)
-    return x, S.reverb(x, 0.15 if who == "announcer" else 0.1, 0.6)
+    if who == "diji":
+        x = S.resample(x, 1 / 1.12)
+    elif who == "honk":
+        x = S.resample(S.bp(x, 380, 3800), 1 / 1.06)
+    elif who == "sarge":
+        # barking through a megaphone
+        x = np.tanh(S.bp(x, 300, 3600) * 2.5) * 0.8
+    elif who == "taxman":
+        # on a little TV screen in the truck
+        x = S.bp(x, 280, 3400) * 1.4
+    room = {"host": (0.12, 0.6), "pip": (0.5, 1.4), "sarge": (0.12, 0.5)}.get(who, (0.1, 0.5))
+    return x, S.reverb(x, *room)
 
 
 def render(mood, text):
-    who, how = MOOD_VOICE[mood]
-    x, y = voice(who, how, text)
+    x, y = voice(MOOD_VOICE[mood], text)
     y = np.asarray(y)
     if y.ndim == 2:
         y = y.mean(axis=0)
