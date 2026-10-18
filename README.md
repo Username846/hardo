@@ -11,7 +11,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 - **The title screen.** A party carousel turning at dusk to the game's own theme song: a waltz called "It's Your Birthday" (with words to sing along). Each pole carries a rider from one of the presents, still wrapped up as a **?** present until you've played that game. In a browser, the first tap switches the party on, because browsers don't allow sound until you tap. Tap the riders to hear them, then press **PLAY!**
 - **Name check.** The game asks for your name. The only correct answer is `I'm Chumbo` (any capitalization). Anything else gets you a boxing glove, a falling cake, or a hole in the ground. After three wrong tries the game types it for you. Once it's been got right, the game remembers and skips straight to the party.
 - **The calendar.** The game uses the device's date, so whatever day he plays is his birthday. Try telling it otherwise.
-- **The party.** Ten presents, opened in order. The party room changes a little every time you come back. The arrow at the top left goes back to the title screen, and the speaker button at the top right pops out a volume slider.
+- **The party.** Ten presents, opened in order. A present you've played gets a silver star; find that game's hidden secret and the star turns gold. The party room changes a little every time you come back. The arrow at the top left goes back to the title screen, and the speaker button at the top right pops out a volume slider.
 - **Ten mini-games**, each starting cute and ending... slightly less cute:
 
 | # | Game | Genre | Music |
@@ -50,6 +50,7 @@ Mikake is in the credits cast too, still switched off from the karaoke: slumped 
 - **R.E.P.O.:** poke the Peeper (the big eye) 5 times. Nice shades.
 - **MIKAKE KARAOKE:** tap Mikake's leek 5 times quickly during the first song: leek spin.
 - **The secret game:** poke Rocko 4 times during the chase. A red dot!
+- **All ten gold stars:** play the secret game again. This time Rocko doesn't chase Chumbo back to the party: he stops at a fork in the road at the edge of town and lets him choose. **Back to the party** gets the surprise party. **Leave the party** is a long, slow walk away down the dark road to a sad song ("Every Road Leads Back") while the town's lights go out behind him... and the road ends at a sign that says WELCOME TO BIRTHDAY TOWN. Then black, and eyes, and a reminder that you can't escape your birthday.
 </details>
 
 Every line of dialogue shows who is talking (PARTY HOST, ANNOUNCER, SGT. SPRINKLES, CHUMBO, ROCKO, DIJIMON, TONY HONK, PIP, TAXMAN or EVERYONE, the guests speaking together), and every character keeps the same voice all game. The party host has three (a good voice, an evil voice and a whisper for its grey lines) and the announcer two (good and evil). Every song is sung by the same two singers, and every dark version by the same two spooky ones.
@@ -89,7 +90,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=hubui` tries the volume slider and the way back to the title, `--bot=eggs` finds every game's secret, `--bot=titleegg` the title screen's, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game (`--bot=rockoleave` / `--bot=rockoback` with all ten gold stars, taking that road at the fork), `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=hubui` tries the volume slider and the way back to the title, `--bot=eggs` finds every game's secret, `--bot=titleegg` the title screen's, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```

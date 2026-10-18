@@ -5,6 +5,8 @@ const SongData := preload("res://scripts/gen/song_data.gd")
 const VoiceIndex := preload("res://scripts/gen/voice_index.gd")
 const MUSIC_DB := -5.0
 const DUCK_DB := -11.0
+## Not "_dark" versions, but just as sad: their words are shown in the dark style too.
+const GREY_SONGS := ["karaoke_grey", "rocko_leave"]
 
 var _a: AudioStreamPlayer
 var _b: AudioStreamPlayer
@@ -284,7 +286,7 @@ func lyric_state() -> Dictionary:
 			for k in times.size():
 				if pos >= times[k] - 0.05:
 					sung = k + 1
-			return {"parts": ln.parts, "sung": sung, "id": song + str(i), "dark": song.ends_with("_dark")}
+			return {"parts": ln.parts, "sung": sung, "id": song + str(i), "dark": song.ends_with("_dark") or song in GREY_SONGS}
 	return {}
 
 

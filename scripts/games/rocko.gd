@@ -3,6 +3,9 @@ extends Screen
 ## Chumbo closes the birthday game on his phone and chills on the couch. His cat Rocko comes
 ## over for pets. Rocko would like Chumbo to go back to his party. Rocko insists. RUN!
 ## Chase: a three-lane street runner - tap above or below Chumbo to change lanes and dodge.
+## With all ten gold stars, Rocko doesn't lead him back to the party this time: he leads him to a
+## fork in the road at the edge of town and lets Chumbo choose. Back to the party, or away. Away
+## is a long walk in the dark... and every road bends back. You can't escape your birthday.
 
 const LANES := [470.0, 565.0, 660.0]
 const ME_X := 640.0
@@ -65,6 +68,13 @@ var _q := Vector2.ZERO
 var rocko_taps: Array = []
 var laser_t := 0.0
 var laser_p := Vector2.ZERO
+# the fork in the road (all ten gold stars)
+var fork := false
+var fork_walk := 0.0      # walking away, 0..1
+var fork_back := 0.0      # walking back to the party, 0..1
+var lights_out := 0.0     # the town's lights going out behind him, 0..1
+var fork_dark := 0.0
+var eyes := 0.0
 
 var LINES := [
 	["Come back, Chumbo! The cake is getting cold!", Narrator.ROCKO],
@@ -356,6 +366,8 @@ func tick(dt: float) -> void:
 	pops = pops.filter(func(pp: Dictionary) -> bool: return pp.t > 0.0)
 	if phase == "cat" and cat_pose == "walk":
 		cat_face = -1.0
+	if fork:
+		return
 	if not _chasing():
 		return
 	run_ph += dt * (speed / 330.0) * 11.0
@@ -404,7 +416,10 @@ func _chase_tick(dt: float) -> void:
 	for i in LINES.size():
 		if k >= LINE_AT[i] and not said.has(i):
 			said[i] = true
-			say_bg(LINES[i][0], LINES[i][1])
+			if i == LINES.size() - 1 and Game.all_gold():
+				say_bg("Not that way, Chumbo. Follow me. I want to show you something.", Narrator.ROCKO)
+			else:
+				say_bg(LINES[i][0], LINES[i][1])
 	# new things in the road
 	spawn_t -= dt
 	if spawn_t <= 0.0 and dist < RUN_TIME - 3.0:
@@ -435,7 +450,10 @@ func _chase_tick(dt: float) -> void:
 			gap += 1
 			pops.append({"p": Vector2(rocko_x + 40, rocko_y - 230), "t": 1.2, "s": "you're getting away!", "c": Crayon.GREEN})
 	if dist >= RUN_TIME:
-		_arrive()
+		if Game.all_gold():
+			_to_fork()
+		else:
+			_arrive()
 
 
 func _spawn(k: float) -> void:
@@ -556,10 +574,200 @@ func _party() -> void:
 	finish_game(-1, "SECRET FOUND!")
 
 
+# ------------------------------------------------------------------ the fork in the road
+
+
+## All ten gold stars: instead of the party house, Rocko stops at the edge of town.
+func _to_fork() -> void:
+	phase = "arrive"
+	locked = true
+	_tw("black", 1.0, 1.2)
+	Audio.stop_music(1.5)
+	await wait(1.4)
+	fork = true
+	phase = "fork_in"
+	speed = 0.0
+	obstacles.clear()
+	throws.clear()
+	demon = 0.0
+	grow = 1.0
+	refresh_back()
+	Audio.sfx("wind", -6)
+	_tw("black", 0.0, 1.5)
+	await wait(1.6)
+	await say("Chumbo. Every year I chase you back to the party.", Narrator.ROCKO)
+	await say("Not this time. This time, you choose.", Narrator.ROCKO)
+	await say("Back to the party, where everyone is waiting for you. Or away, where nobody is. It's your choice, Chumbo.", Narrator.WHISPER)
+	phase = "fork"
+	add_button("back", Rect2(60, 600, 400, 84), "BACK TO THE PARTY", _choose_back, Crayon.YELLOW, 32)
+	add_button("leave", Rect2(820, 600, 400, 84), "LEAVE THE PARTY", _choose_leave, Color(0.7, 0.7, 0.76), 32)
+	locked = false
+
+
+func _choose_back() -> void:
+	if phase != "fork":
+		return
+	phase = "back"
+	locked = true
+	remove_button("back")
+	remove_button("leave")
+	Audio.play_music("hub", 1.5)
+	_tw("fork_back", 1.0, 4.0)
+	await say("You came back. They always come back.", Narrator.DARK)
+	await wait(2.0)
+	_tw("black", 1.0, 1.0)
+	await wait(1.2)
+	Audio.sfx("surprise")
+	Audio.sfx("tada", -3)
+	confetti_burst(Vector2(640, 300), 70)
+	_tw("black", 0.55, 0.6)
+	await say("SURPRISE! Happy birthday, Chumbo!")
+	_meow("Meow.")
+	await say("Meow.", Narrator.ROCKO)
+	Game.secret_done = true
+	Game.save_game()
+	finish_game(-1, "SECRET FOUND!")
+
+
+## He walks away, down the dark road, while the lights go out behind him. No party, no one,
+## nothing... until the road bends round and there's a sign: WELCOME TO BIRTHDAY TOWN.
+func _choose_leave() -> void:
+	if phase != "fork":
+		return
+	phase = "leave"
+	locked = true
+	remove_button("back")
+	remove_button("leave")
+	await say("Okay, Chumbo.", Narrator.ROCKO)
+	Audio.play_music("rocko_leave", 2.0, 0.0, false)
+	var dur := Audio.song_length()
+	_tw("fork_walk", 1.0, dur * 0.85)
+	_tw("lights_out", 1.0, dur * 0.8)
+	_tw("fork_dark", 0.8, dur * 0.95)
+	var t0 := Time.get_ticks_msec()
+	while Audio.song == "rocko_leave" and Audio.song_pos < dur - 0.5 and Time.get_ticks_msec() - t0 < (dur + 8.0) * 1000.0:
+		await get_tree().process_frame
+	_tw("black", 1.0, 2.5)
+	Audio.stop_music(2.5)
+	await wait(4.0)
+	# in the dark, the eyes. All of them.
+	phase = "eyes"
+	Audio.sfx("heartbeat", -4)
+	_tw("eyes", 1.0, 3.0)
+	await wait(3.2)
+	await say("Chumbo.", Narrator.CREEPY)
+	await say("Where did you think you were going?", Narrator.CREEPY)
+	await say("You can't escape your birthday, Chumbo. Nobody ever leaves the party.", Narrator.CREEPY)
+	await wait(1.0)
+	Game.secret_done = true
+	Game.save_game()
+	Game.back_to_party()
+
+
+func _fork_back() -> void:
+	var sky := Color(0.06, 0.05, 0.16)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, 2340), sky)
+	for i in 5:
+		pen.draw_rect(Rect2(-2000, 230 + i * 22, W + 4000, 22), sky.lerp(Color(0.2, 0.12, 0.26), (i + 1) / 6.0))
+	pen.draw_rect(Rect2(-2000, 340, W + 4000, 2000), Color(0.11, 0.17, 0.13))
+	Crayon.line(pen, Vector2(-40, 340), Vector2(W + 40, 340), Crayon.INK, 4, 2000)
+	# the roads: one back into town, one out into the dark
+	var road := Color(0.28, 0.27, 0.31)
+	Crayon.poly(pen, PackedVector2Array([Vector2(540, 760), Vector2(740, 760), Vector2(690, 556), Vector2(590, 556)]), Crayon.INK, 4, road, 2001)
+	Crayon.poly(pen, PackedVector2Array([Vector2(590, 560), Vector2(668, 548), Vector2(330, 340), Vector2(282, 342)]), Crayon.INK, 4, road, 2002)
+	Crayon.poly(pen, PackedVector2Array([Vector2(612, 548), Vector2(690, 560), Vector2(1010, 342), Vector2(966, 340)]), Crayon.INK, 4, road, 2003)
+	# the town on the left: houses, and the party house with its banner and balloons
+	for k in 4:
+		var hx := 40.0 + k * 92.0
+		var hh := 70.0 + fmod(k * 37.0, 30.0)
+		Crayon.rect(pen, Rect2(hx, 340 - hh, 80, hh), Crayon.INK, 3, Color(0.2, 0.18, 0.26), 2010 + k)
+		Crayon.poly(pen, PackedVector2Array([Vector2(hx - 8, 340 - hh), Vector2(hx + 88, 340 - hh), Vector2(hx + 40, 300 - hh)]), Crayon.INK, 3, Color(0.25, 0.12, 0.15), 2020 + k)
+	Crayon.rect(pen, Rect2(220, 236, 140, 104), Crayon.INK, 4, Color(0.42, 0.3, 0.38), 2030)
+	Crayon.poly(pen, PackedVector2Array([Vector2(206, 236), Vector2(374, 236), Vector2(290, 180)]), Crayon.INK, 4, Color(0.45, 0.16, 0.2), 2031)
+	Crayon.rect(pen, Rect2(214, 196, 152, 26), Crayon.INK, 2, Crayon.WHITE, 2032)
+	Crayon.text(pen, Vector2(290, 209), "HAPPY BIRTHDAY", 14, Crayon.RED, 1, 2033, null, 0.2, false)
+	for b in 3:
+		Crayon.balloon(pen, Vector2(200 + b * 90, 268 - b * 10), 14, Crayon.RAINBOW[b * 2], 50, 2034 + b)
+	# out on the right: nothing. A sign, and a lamp post.
+	Crayon.line(pen, Vector2(842, 520), Vector2(842, 448), Crayon.INK, 5, 2040)
+	Crayon.line(pen, Vector2(958, 520), Vector2(958, 448), Crayon.INK, 5, 2041)
+	Crayon.rect(pen, Rect2(812, 404, 176, 58), Crayon.INK, 4, Color(0.25, 0.45, 0.3), 2042)
+	Crayon.text(pen, Vector2(900, 422), "LEAVING", 18, Crayon.WHITE, 1, 2043, Crayon.title_font())
+	Crayon.text(pen, Vector2(900, 446), "BIRTHDAY TOWN", 18, Crayon.WHITE, 1, 2044, Crayon.title_font())
+	Crayon.line(pen, Vector2(1090, 452), Vector2(1090, 300), Crayon.INK, 5, 2045)
+	Crayon.line(pen, Vector2(1090, 300), Vector2(1066, 296), Crayon.INK, 5, 2046)
+	for k in 12:
+		Crayon.star(pen, Vector2(fmod(k * 263.0, W), 20 + fmod(k * 89.0, 180.0)), 4, Color(1, 1, 0.7), Color(1, 1, 0.7), 2050 + k)
+
+
+func _paint_fork() -> void:
+	# the town's windows, going dark one by one when he walks away
+	for k in 6:
+		var on := lights_out < (k + 1) / 7.0
+		var wp := Vector2(58 + k * 62, 300 - fmod(k * 13.0, 20.0)) if k < 4 else Vector2(250 + (k - 4) * 60, 266)
+		Crayon.rect(pen, Rect2(wp, Vector2(22, 18)), Crayon.INK, 2, Color(1, 0.86, 0.45) if on else Color(0.12, 0.1, 0.14), 2060 + k)
+	if lights_out < 0.9:
+		var flick := 1.0 if lights_out < 0.75 or fmod(t * 9.0, 1.0) > 0.4 else 0.0
+		Crayon.disc(pen, Vector2(1064, 312), 30, Color(1, 0.9, 0.5, 0.16 * flick))
+		Crayon.circle(pen, Vector2(1064, 302), 8, Crayon.INK, 2, Color(1, 0.95, 0.6) if flick > 0.0 else Color(0.3, 0.3, 0.3), 2061)
+	if lights_out < 0.4:
+		Crayon.disc(pen, Vector2(290, 280), 70, Color(1, 0.8, 0.4, 0.12 * (1.0 - lights_out / 0.4)))
+	# far down the dark road, the road bends... and there's a sign
+	if fork_walk > 0.55:
+		var a := clampf((fork_walk - 0.55) * 3.0, 0.0, 1.0)
+		var sp := Vector2(1010, 318)
+		Crayon.line(pen, sp + Vector2(-40, 30), sp + Vector2(-40, 0), Color(Crayon.INK, a), 4, 2070)
+		Crayon.line(pen, sp + Vector2(40, 30), sp + Vector2(40, 0), Color(Crayon.INK, a), 4, 2071)
+		Crayon.rect(pen, Rect2(sp + Vector2(-80, -42), Vector2(160, 46)), Color(Crayon.INK, a), 3, Color(0.85, 0.35, 0.5, a), 2072)
+		Crayon.text(pen, sp + Vector2(0, -28), "WELCOME TO", 15, Color(1, 1, 1, a), 1, 2073, Crayon.title_font())
+		Crayon.text(pen, sp + Vector2(0, -9), "BIRTHDAY TOWN", 15, Color(1, 1, 1, a), 1, 2074, Crayon.title_font())
+		Crayon.balloon(pen, sp + Vector2(90, -56), 11, Color(Crayon.RED, a), 36, 2075)
+	# Rocko waits at the fork (and follows, if Chumbo goes back)
+	var cat := Vector2(500, 600).lerp(Vector2(330, 352), fork_back)
+	draw_cat(pen, cat, 0.8 * (1.0 - fork_back * 0.6), 1.0, "sit" if fork_back <= 0.0 else "walk", 0.0, t)
+	# Chumbo
+	var me := Vector2(660, 700)
+	var sc := 1.0
+	var mood := "o"
+	var pose := "stand"
+	var a := 1.0
+	if fork_back > 0.0:
+		me = Vector2(660, 700).lerp(Vector2(300, 350), fork_back)
+		sc = lerpf(1.0, 0.32, fork_back)
+		pose = "walk"
+		mood = "flat"
+	elif fork_walk > 0.0:
+		var w := fork_walk
+		me = Vector2(660, 700).lerp(Vector2(650, 570), clampf(w * 3.0, 0.0, 1.0)) if w < 0.33 else Vector2(650, 570).lerp(Vector2(986, 346), (w - 0.33) / 0.67)
+		sc = lerpf(1.0, 0.22, w)
+		pose = "walk"
+		mood = "sad"
+		a = clampf((1.0 - w) * 6.0, 0.0, 1.0)
+	Crayon.person(pen, me, 150.0 * sc, Color(Crayon.INK, a), mood, Color(Crayon.GREEN, a), pose, t * 3.0, 2080)
+	if fork_dark > 0.0:
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.01, 0.0, 0.03, fork_dark))
+	if phase == "fork":
+		Crayon.text(pen, Vector2(640, 470), "IT'S YOUR CHOICE", 44, Crayon.WHITE, 1, 2090, Crayon.title_font())
+
+
+## In the dark: eyes. More and more of them.
+func _eyes() -> void:
+	var n := int(eyes * 18.0)
+	for k in n:
+		var p := Vector2(60.0 + fmod(k * 331.0, 1140.0), 150.0 + fmod(k * 197.0, 500.0))
+		if fmod(t + k * 0.7, 4.0) < 0.15:
+			continue
+		Crayon.disc(pen, p, 6, Color(1, 0.95, 0.5))
+		Crayon.disc(pen, p + Vector2(18, 0), 6, Color(1, 0.95, 0.5))
+
+
 # ------------------------------------------------------------------ drawing
 
 
 func paint_back() -> void:
+	if fork:
+		_fork_back()
+		return
 	if _chasing() or phase == "chase_intro":
 		_street_back()
 		return
@@ -673,13 +881,17 @@ func paint() -> void:
 	var q := quake * 9.0
 	_q = Vector2(randf_range(-q, q), randf_range(-q, q)) if quake > 0.0 else Vector2.ZERO
 	pen.draw_set_transform(_q)
-	if _chasing():
+	if fork:
+		_paint_fork()
+	elif _chasing():
 		_paint_chase()
 	else:
 		_paint_room()
 	pen.draw_set_transform(Vector2.ZERO)
 	if black > 0.0:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, black))
+	if eyes > 0.0:
+		_eyes()
 
 
 func _paint_room() -> void:

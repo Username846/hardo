@@ -402,7 +402,11 @@ func _present(i: int) -> void:
 	if Game.done[i]:
 		# opened box with a star
 		Crayon.rect(pen, Rect2(r.position + Vector2(0, 30), Vector2(r.size.x, r.size.y - 30)), Crayon.INK, 4, col, 200 + i)
-		Crayon.star(pen, r.position + Vector2(r.size.x * 0.5, 22), 26, Crayon.INK, Crayon.YELLOW, 210 + i)
+		# silver for playing it, gold once its secret has been found as well
+		var gold := Game.gold_star(i)
+		var sp := r.position + Vector2(r.size.x * 0.5, 22)
+		Crayon.star(pen, sp, 26, Crayon.INK, Color(1.0, 0.8, 0.12) if gold else Color(0.78, 0.8, 0.86), 210 + i)
+		Crayon.star(pen, sp + Vector2(-7, -6), 7, Color(1, 1, 1, 0), Color(1, 1, 1, 0.85 if gold else 0.6), 215 + i)
 		Crayon.text(pen, r.position + Vector2(r.size.x * 0.5, 74), str(i + 1), 34, Crayon.WHITE, 1, 220 + i, Crayon.title_font())
 	else:
 		var lift := 0.0

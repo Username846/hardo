@@ -80,6 +80,24 @@ func play_game(i: int) -> void:
 	goto("game", i)
 
 
+## A present's star: silver once it's played, gold once its secret has been found too.
+func gold_star(i: int) -> bool:
+	return eggs.has(GAMES[i].id)
+
+
+func gold_stars() -> int:
+	var n := 0
+	for i in GAMES.size():
+		if gold_star(i):
+			n += 1
+	return n
+
+
+## All ten gold stars: the secret game ends somewhere else.
+func all_gold() -> bool:
+	return gold_stars() == GAMES.size()
+
+
 ## Marks a game's secret as found (and saves). Returns true the first time.
 func found_egg(id: String) -> bool:
 	if eggs.has(id):

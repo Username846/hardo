@@ -57,8 +57,10 @@ func _ready() -> void:
 		get_tree().quit()
 		return
 	if which == "hubui":
-		# the party room's volume slider and the way back to the title screen
+		# the party room's volume slider and the way back to the title screen (and the stars:
+		# silver for played, gold where the secret was found)
 		Game.done.fill(true)
+		Game.eggs = {"race": true, "digi": true, "cards": true, "obby": true}
 		Game.finale_seen = true
 		Game.secret_done = true
 		Game.main._open("hub", null)
@@ -254,8 +256,9 @@ func _ready() -> void:
 		await _rocko_shots()
 		get_tree().quit()
 		return
-	if which == "rocko":
-		await _rocko()
+	if which == "rocko" or which == "rockoleave" or which == "rockoback":
+		# rockoleave / rockoback: all ten gold stars, then pick that road at the fork
+		await _rocko(which.substr(5))
 		print("BOT RESULTS ", results)
 		get_tree().quit()
 		return
@@ -337,9 +340,13 @@ func _egg(id: String) -> bool:
 
 
 ## The secret game: close the phone, pet Rocko, survive the chase, knock on the door.
-func _rocko() -> void:
+func _rocko(choice: String = "") -> void:
 	Game.finale_seen = true
 	Game.secret_done = false
+	Game.eggs = {}
+	if choice != "":
+		for gm in Game.GAMES:
+			Game.eggs[gm.id] = true
 	Game.main._open("rocko", null)
 	g = Game.main.current
 	var t0 := Time.get_ticks_msec()
@@ -349,6 +356,8 @@ func _rocko() -> void:
 	tmr = 0.0
 	while is_instance_valid(g) and not g.finished and Time.get_ticks_msec() - t0 < 400000:
 		await get_tree().process_frame
+		if not is_instance_valid(g):
+			break
 		var dt := get_process_delta_time()
 		tmr += dt
 		_skip_narration()
@@ -358,11 +367,15 @@ func _rocko() -> void:
 			key = "chase%d" % int(g.dist / 12.0)
 		elif ph == "turn" and g.demon > 0.9:
 			key = "turn_demon"
+		elif ph == "leave":
+			key = "leave%d" % int(g.fork_walk * 4.0)
 		if not shots.has(key):
 			shots[key] = Time.get_ticks_msec()
 		elif shots[key] > 0 and Time.get_ticks_msec() - shots[key] > 900:
 			shots[key] = -1
 			await _snap("rocko_" + key)
+			if not is_instance_valid(g):
+				break
 		if shot_dir != "" and shots.get(key, 0) != -1 and not ph.begins_with("chase"):
 			continue
 		match ph:
@@ -378,13 +391,17 @@ func _rocko() -> void:
 			"knock":
 				if not g.locked:
 					g.press(g._house_door().get_center())
+			"fork":
+				if not g.locked:
+					_btn(choice)
 		if g.gap < last_gap:
 			hits += 1
 		last_gap = g.gap
 		if Engine.get_process_frames() % 300 == 0:
 			print("  dbg rocko phase=", ph, " dist=", snappedf(g.dist, 0.1), " gap=", g.gap, " lane=", g.lane, " obstacles=", g.obstacles.size())
 	results["rocko"] = Game.secret_done
-	print("ROCKO hits=", hits, " secret_done=", Game.secret_done, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
+	var where: Node = Game.main.current
+	print("ROCKO hits=", hits, " secret_done=", Game.secret_done, " choice=", choice, " now at ", where.get_script().resource_path if where and where.get_script() else "?", " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
 	if is_instance_valid(g):
 		await get_tree().create_timer(1.0).timeout
 		await _snap("rocko_done")

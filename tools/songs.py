@@ -645,6 +645,44 @@ SONGS.append(dict(
     dark=None,
 ))
 
+# ---------------------------------------------------------------- SECRET: the road away from the party
+# Only if Chumbo chooses to leave. Slow, alone, in the dark whisper, and every road bends back.
+SONGS.append(dict(
+    id="rocko_leave", title="Every Road Leads Back", bpm=66, key=57, beats=4, scale="nat_minor",
+    singers=("whisper", None),
+    sections=dict(
+        verse=dict(
+            melody="5:1 5:1 4:1 3:1 | 2:1 3:1 1:2 | 1:1 2:1 3:1 4:1 | 3:1 2:1 2:2 | "
+                   "5:1 5:1 6:1 5:1 | 4:1 3:1 2:2 | 3:1 2:1 1:1 7,:1 | 2:1 7,:1 1:2",
+            chords="I | V | IV | V | I | IV | V | I",
+            lyrics="Walk-ing down the emp-ty road, / par-ty lights are fad-ing slow. / "
+                   "No one calls my name out here, / just the dark and just the cold.",
+        ),
+        chorus=dict(
+            melody="1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 4:1 5:1 6:1 | 5:1 4:1 3:2 | "
+                   "1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 3:1 2:1 1:1 | 2:1 7,:1 1:2",
+            chords="IV | I | IV | V | IV | I | V | I",
+            lyrics="Ev-ery road I try to take / bends a-round and leads me back, / "
+                   "back to can-dles, back to cake, / back to where I can't es-cape.",
+        ),
+    ),
+    form=[
+        ("intro", dict(src="verse", bars=(6, 8), vocal=False)),
+        ("verse", dict(src="verse")),
+        ("chorus", dict(src="chorus")),
+        ("outro", dict(src="chorus", bars=(6, 8), vocal=False)),
+    ],
+    parts=[
+        P("box", "music_box", "melody", sections=["intro", "outro"], vol=-21, oct=1),
+        P("harp", "harp", "arp", rate=1.0, shape="up", oct=0, vol=-24, pan=-0.2),
+        P("pad", "strings", "pad", vol=-26),
+        P("drone", "choir", "drone", oct=0, vol=-26),
+        P("heart", None, "drums", kit=dict(heart="x...............x..............."), vol=-20),
+    ],
+    fx=dict(wow=0.008, lowpass=2400, crackle=0.04, reverb=0.7),
+    dark=None,
+))
+
 # ---------------------------------------------------------------- SECRET: Rocko (cozy couch -> chase)
 SONGS.append(dict(
     id="rocko", title="Oh Hi Rocko", bpm=96, key=62, beats=4, scale="major",
