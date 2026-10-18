@@ -128,7 +128,7 @@ func paint() -> void:
 	_lcd(Rect2(BOX.position + Vector2(BOX.size.x * 0.3, 18), Vector2(BOX.size.x * 0.4, 108)))
 	for n in notes:
 		var a := clampf(2.5 - n.t, 0.0, 1.0)
-		Crayon.text(pen, n.p, "♪", 34, Color(n.col, a), 1, 900, null, 0.3, false)
+		Crayon.note(pen, n.p, 34, Color(n.col, a))
 
 
 func _lcd(r: Rect2) -> void:

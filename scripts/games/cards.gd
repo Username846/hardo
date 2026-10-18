@@ -37,6 +37,11 @@ var lost_note := ""
 var lost_t := 0.0
 var photo_zoom := 0.0
 var bits: Array = []
+## (the dog's card has a squeaky bone on it. Squeak it enough and the dog comes for it.)
+var bone_taps := 0
+var dog_t := -1.0
+var dog_card := -1
+var pawed := -1
 
 var _baked_key := ""
 var _a := 1.0
@@ -203,6 +208,92 @@ func _lose(c: Dictionary) -> void:
 	await wait(0.4)
 
 
+func press(p: Vector2) -> void:
+	if i < 0 or i >= cards.size() or dog_t >= 0.0 or card_off.length() > 4.0:
+		return
+	var c: Dictionary = cards[i]
+	if c.pic != "bone" or not Rect2(CARD.position + Vector2(CARD.size.x * 0.5 - 70, 40), Vector2(140, 64)).has_point(p):
+		return
+	bone_taps += 1
+	Audio.sfx("squish", -4, 1.7 + bone_taps * 0.08)
+	if bone_taps >= 3:
+		_dog()
+
+
+## Here, boy! The dog runs in, jumps up for its bone and paw-proves the card.
+func _dog() -> void:
+	dog_card = i
+	dog_t = 0.0
+	Audio.sfx("run", -4)
+	var tw := create_tween()
+	tw.tween_property(self, "dog_t", 1.0, 3.4)
+	await wait(3.4 * 0.36)
+	Audio.sfx("jump", -4)
+	var first := Game.found_egg("cards")
+	await wait(3.4 * 0.2)
+	Audio.sfx("chomp", -2)
+	Audio.sfx("stamp", -4, 0.8)
+	pawed = dog_card
+	await wait(0.3)
+	if first:
+		say_bg("Good boy! That card has been paw-proved.", Narrator.CUTE)
+	await tw.finished
+	dog_t = -1.0
+
+
+## Where the dog is along its run: in from the left, up to the bone, down and off to the right.
+func _dog_pos(k: float) -> Vector2:
+	var floor_l := Vector2(-160, 668)
+	var below := Vector2(560, 668)
+	var bone := CARD.position + Vector2(CARD.size.x * 0.5, 96)
+	var down := Vector2(930, 668)
+	var gone := Vector2(1480, 668)
+	if k < 0.36:
+		return floor_l.lerp(below, k / 0.36)
+	if k < 0.56:
+		var u := (k - 0.36) / 0.2
+		return below.lerp(bone, u) + Vector2(0, -sin(u * PI) * 90.0)
+	if k < 0.66:
+		return bone
+	if k < 0.8:
+		var u := (k - 0.66) / 0.14
+		return bone.lerp(down, u) + Vector2(0, -sin(u * PI) * 60.0)
+	return down.lerp(gone, (k - 0.8) / 0.2)
+
+
+## A scruffy crayon pup, side on, facing right. Carries the bone once it has it.
+func _draw_dog(p: Vector2, k: float) -> void:
+	var ink := Crayon.INK
+	var fur := Color(0.78, 0.55, 0.32)
+	var run := sin(t * 22.0)
+	var airborne := k >= 0.36 and k < 0.8
+	for leg in 4:
+		var lx := -26.0 + leg * 17.0
+		var sw := (run if leg % 2 == 0 else -run) * (0.0 if airborne else 8.0)
+		Crayon.line(pen, p + Vector2(lx, 0), p + Vector2(lx + sw, 26), ink, 6, 4700 + leg)
+	Crayon.ellipse(pen, p, Vector2(42, 22), ink, 4, fur, 4704)
+	Crayon.disc(pen, p + Vector2(-10, -4), 9, fur.darkened(0.25))
+	var tail := sin(t * 30.0) * 0.6
+	Crayon.line(pen, p + Vector2(-38, -8), p + Vector2(-38, -8) + Vector2(-cos(tail), -1.0 + sin(tail) * 0.5) * 24.0, ink, 5, 4705)
+	var head := p + Vector2(40, -22)
+	Crayon.circle(pen, head, 19, ink, 4, fur, 4706)
+	Crayon.ellipse(pen, head + Vector2(18, 6), Vector2(13, 9), ink, 3, fur.lightened(0.2), 4707)
+	Crayon.disc(pen, head + Vector2(30, 3), 4, ink)
+	Crayon.disc(pen, head + Vector2(5, -5), 3.5, ink)
+	Crayon.ellipse(pen, head + Vector2(-10, 4), Vector2(7, 15), ink, 3, fur.darkened(0.35), 4708)
+	if k >= 0.6:
+		# got it
+		var b := head + Vector2(26, 16)
+		Crayon.line(pen, b + Vector2(-20, 0), b + Vector2(20, 0), ink, 10, 4709)
+		Crayon.line(pen, b + Vector2(-20, 0), b + Vector2(20, 0), Crayon.WHITE, 6, 4710)
+		for sx in [-1, 1]:
+			for sy in [-1, 1]:
+				Crayon.circle(pen, b + Vector2(sx * 22, sy * 5), 6, ink, 2, Crayon.WHITE, 4711)
+	elif not airborne:
+		# tongue out
+		Crayon.oval(pen, head + Vector2(22, 16), Vector2(5, 7), Color(0.95, 0.4, 0.5))
+
+
 func _end() -> void:
 	locked = true
 	busy = true
@@ -253,6 +344,8 @@ func paint() -> void:
 	for b in bits:
 		var a := clampf(b.t, 0.0, 1.0)
 		pen.draw_rect(Rect2(b.p, Vector2(9, 7)), Color(b.col, a))
+	if dog_t >= 0.0:
+		_draw_dog(_dog_pos(dog_t), dog_t)
 	Crayon.text(pen, Vector2(1080, 545), "checked: %d / %d" % [checked, cards.size()], 30, Crayon.WHITE, 1, 50)
 	Crayon.text(pen, Vector2(1080, 585), "oopsies: %d" % mistakes, 30, Crayon.WHITE, 1, 51)
 	if feedback_t > 0.0:
@@ -353,7 +446,9 @@ func _card(c: Dictionary) -> void:
 	Crayon.rect(pen, r.grow(-14), _c(col), 4, Color(0, 0, 0, 0), 101 + i)
 	var cx := r.get_center().x
 	var y := r.position.y
-	_pic(c.pic, Vector2(cx, y + 70), 120 + i)
+	if pawed != i:
+		# (once the dog has been, its bone is gone)
+		_pic(c.pic, Vector2(cx, y + 70), 120 + i)
 	var ink := _c(Crayon.INK)
 	Crayon.text(pen, Vector2(r.position.x + 30, y + 150), "TO: " + String(c.to), 34, ink, 0, 130 + i, null, 0.6, false)
 	Crayon.text(pen, Vector2(r.position.x + 30, y + 196), "DATE: " + String(c.date), 28, ink, 0, 131 + i, null, 0.6, false)
@@ -363,6 +458,15 @@ func _card(c: Dictionary) -> void:
 		from_txt = "FROM: "
 	Crayon.text(pen, Vector2(r.position.x + 30, r.end.y - 92), from_txt, 26, ink, 0, 133 + i, null, 0.6, false)
 	_signature(String(c.sig), Vector2(r.position.x + 30, r.end.y - 50), 140 + i, c.has("who"))
+	if pawed == i:
+		# a muddy paw print, right across the card
+		var pp := Vector2(cx - 120, y + 66)
+		var mud := _c(Color(0.45, 0.28, 0.15, 0.85))
+		Crayon.ellipse(pen, pp, Vector2(30, 26), mud, 3, mud, 155)
+		for k in 4:
+			var a := -2.5 + k * 0.55
+			Crayon.ellipse(pen, pp + Vector2(cos(a), sin(a)) * 44.0, Vector2(11, 14), mud, 2, mud, 156 + k)
+		Crayon.text(pen, Vector2(cx + 70, y + 72), "PAW-PROVED!", 32, mud, 1, 160, Crayon.title_font(), 0.5, false)
 	if stamp != "":
 		var sc := Crayon.GREEN.darkened(0.2) if stamp == "YAY!" else Crayon.RED
 		sc.a = 0.85

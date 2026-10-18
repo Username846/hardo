@@ -19,6 +19,9 @@ const STAGES := [
 	{"name": "CHUMBOMON", "level": "MEGA", "atk": ""},
 ]
 const FEED_DARK := 6
+## Happy Birthday in V-pet beeps (pitch, beats)
+const BEEP_SONG := [[1.0, 0.75], [1.0, 0.25], [1.122, 1.0], [1.0, 1.0], [1.335, 1.0], [1.26, 2.0],
+	[1.0, 0.75], [1.0, 0.25], [1.122, 1.0], [1.0, 1.0], [1.498, 1.0], [1.335, 2.0]]
 
 var stage := 0           # index into STAGES
 var cracks := 0
@@ -51,6 +54,9 @@ var age_spin := false
 var feeds_dark := 0
 var clean_said := false
 var said := {}
+# (the Dijivice's three little buttons do something, if you keep pressing them)
+var dev_taps := 0
+var disco_t := -1.0
 
 
 var _baked_key := ""
@@ -129,6 +135,11 @@ func _hit_test(p: Vector2) -> bool:
 
 
 func press(p: Vector2) -> void:
+	if not training and stage >= 1 and stage <= 4:
+		for i in 3:
+			if p.distance_to(_dev_button_pos(i)) < 22.0:
+				_dev_button(i)
+				return
 	if stage == 0:
 		if p.distance_to(CENTER) < 130:
 			cracks += 1
@@ -147,6 +158,35 @@ func press(p: Vector2) -> void:
 		Audio.sfx("beep", -14, 1.3)
 		hearts.append({"p": p, "t": 0.0})
 		_add(2, 0.06)
+
+
+func _dev_button_pos(i: int) -> Vector2:
+	return Vector2(586 + i * 54, 506 + (8 if i == 1 else 0))
+
+
+func _dev_button(i: int) -> void:
+	Audio.sfx("beep", -8, [1.0, 1.26, 1.5][i])
+	dev_taps += 1
+	if dev_taps >= 5 and disco_t < 0.0 and evo_t < 0.0:
+		_disco()
+
+
+## Diji-disco: the backlight goes party mode and the monster bops to Happy Birthday in beeps.
+func _disco() -> void:
+	disco_t = 0.0
+	Game.found_egg("digi")
+	Audio.sfx("sparkle", -4)
+	for n in BEEP_SONG:
+		squish = 0.7
+		Audio.sfx("beep", -4, n[0])
+		await wait(n[1] * 0.3)
+	if stage <= 3:
+		say_bg("Beep beep! Happy birthday, Chumbo!", Narrator.CRITTER)
+	else:
+		say_bg("Beep. Beep. Happy birthday. Again.", Narrator.MONSTER)
+	await wait(1.2)
+	disco_t = -1.0
+	dev_taps = 0
 
 
 func drag(p: Vector2) -> void:
@@ -426,6 +466,8 @@ func tick(dt: float) -> void:
 			attack_t = -1.0
 	if flush_t >= 0.0:
 		flush_t += dt
+	if disco_t >= 0.0:
+		disco_t += dt
 	if training:
 		train_t += dt
 		if train_t > 6.0:
@@ -585,6 +627,8 @@ func paint() -> void:
 	if evo_t >= 0.0:
 		_evo_rays()
 	var look := (mouse - _mon_center()).normalized()
+	if disco_t >= 0.0:
+		_disco_lights()
 	# the training dummy
 	if training or attack_t >= 0.0:
 		var dp := Vector2(LCD.end.x - 30, FLOOR_Y - 34)
@@ -642,6 +686,28 @@ func paint() -> void:
 				Crayon.poly(pen, PackedVector2Array([top + Vector2(-30, 0), top + Vector2(30, 0), top + Vector2(34, -30), top + Vector2(-34, -30)]), Crayon.INK, 3, Color(1, 0.85, 0.7), 73)
 	if training:
 		_train_bar()
+
+
+func _disco_lights() -> void:
+	var cols := [Crayon.PINK, Crayon.YELLOW, Crayon.SKY, Crayon.GREEN, Crayon.PURPLE, Crayon.ORANGE]
+	pen.draw_rect(LCD, Color(0.08, 0.06, 0.18, minf(0.6, disco_t * 2.0)))
+	for k in 6:
+		var a := disco_t * 2.2 + k * TAU / 6.0
+		var p := LCD.get_center() + Vector2(cos(a) * LCD.size.x * 0.34, sin(a * 1.3) * LCD.size.y * 0.3)
+		Crayon.disc(pen, p, 34, Color(cols[k], 0.6))
+	# the disco ball
+	var ball := Vector2(LCD.get_center().x, LCD.position.y + 34)
+	Crayon.line(pen, Vector2(ball.x, LCD.position.y + 2), ball, Crayon.INK, 2, 680)
+	Crayon.circle(pen, ball, 17, Crayon.INK, 3, Color(0.85, 0.87, 0.92), 681)
+	for k in 3:
+		Crayon.line(pen, ball + Vector2(-16, -8 + k * 8), ball + Vector2(16, -8 + k * 8), Color(0.5, 0.52, 0.6), 1.5, 682 + k, 0.2)
+	for k in 4:
+		var a := disco_t * 3.0 + k * PI * 0.5
+		Crayon.line(pen, ball + Vector2(cos(a), sin(a)) * 22.0, ball + Vector2(cos(a), sin(a)) * 34.0, Color(1, 1, 0.8, 0.9), 2, 686 + k, 0.2)
+	for k in 3:
+		var ph := fmod(disco_t * 0.7 + k / 3.0, 1.0)
+		var np := Vector2(LCD.position.x + 50 + k * 110, LCD.end.y - 30 - ph * (LCD.size.y - 70))
+		Crayon.note(pen, np, 30, Color(1, 1, 1, 0.9 * (1.0 - ph)))
 
 
 ## Text on a little white card so it reads over the monster.

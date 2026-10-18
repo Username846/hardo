@@ -38,6 +38,10 @@ var secret_done := false
 var secret_started := false
 ## The party radio (after the secret game) has been opened at least once.
 var radio_seen := false
+## Chumbo on the title screen was tapped once too often. The title stays grim until a new party.
+var title_dead := false
+## Secrets found in the games: id -> true.
+var eggs := {}
 var hub_lines_heard := -1
 var muted := false
 var main: Node = null
@@ -75,6 +79,15 @@ func play_game(i: int) -> void:
 	goto("game", i)
 
 
+## Marks a game's secret as found (and saves). Returns true the first time.
+func found_egg(id: String) -> bool:
+	if eggs.has(id):
+		return false
+	eggs[id] = true
+	save_game()
+	return true
+
+
 func back_to_party() -> void:
 	goto("hub")
 
@@ -88,6 +101,8 @@ func save_game() -> void:
 	cf.set_value("p", "secret", secret_done)
 	cf.set_value("p", "secret_started", secret_started)
 	cf.set_value("p", "radio_seen", radio_seen)
+	cf.set_value("p", "title_dead", title_dead)
+	cf.set_value("p", "eggs", eggs)
 	cf.set_value("p", "heard", hub_lines_heard)
 	cf.set_value("p", "muted", muted)
 	cf.save(SAVE_PATH)
@@ -106,6 +121,8 @@ func load_game() -> void:
 	secret_done = cf.get_value("p", "secret", false)
 	secret_started = cf.get_value("p", "secret_started", secret_done)
 	radio_seen = cf.get_value("p", "radio_seen", false)
+	title_dead = cf.get_value("p", "title_dead", false)
+	eggs = cf.get_value("p", "eggs", {})
 	hub_lines_heard = cf.get_value("p", "heard", -1)
 	muted = cf.get_value("p", "muted", false)
 
@@ -118,6 +135,8 @@ func reset() -> void:
 	secret_done = false
 	secret_started = false
 	radio_seen = false
+	title_dead = false
+	eggs = {}
 	hub_lines_heard = -1
 	save_game()
 

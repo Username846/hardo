@@ -46,6 +46,11 @@ var frozen_beat := 0.0
 var err_text := ""
 var sparks: Array = []      # {p, v, t}
 var smoke: Array = []       # {p, t}
+## (Tap her leek a few times in a row during the first song and she does the leek spin.)
+var leek_taps: Array = []
+var leek_spin := 0.0
+var spin_ang := 0.0
+var _whoosh_t := 0.0
 
 # per note: target position, flying icon start, symbol
 var _pos := PackedVector2Array()
@@ -127,8 +132,43 @@ func press(p: Vector2) -> void:
 	match phase:
 		"cute", "dark":
 			_tap()
+			if phase == "cute":
+				_leek_check(p)
 		"candles":
 			_candle_tap(p)
+
+
+func _leek_check(p: Vector2) -> void:
+	if leek_spin > 0.0:
+		return
+	if p.distance_to(_leek_center()) > 75.0:
+		leek_taps.clear()
+		return
+	leek_taps.append(t)
+	leek_taps = leek_taps.filter(func(x: float) -> bool: return t - x < 2.5)
+	if leek_taps.size() >= 5:
+		leek_taps.clear()
+		_leek_spin()
+
+
+## Where the middle of her leek is right now (it moves with the dance).
+func _leek_center() -> Vector2:
+	var h := 330.0
+	var beat := _beat()
+	var up := sin(beat * PI)
+	var sway := sin(beat * PI * 0.5) * 0.06
+	var hand_r := Vector2(h * 0.08, -h * 0.69) + Vector2(h * 0.13, -h * 0.1 - up * h * 0.08)
+	var la := -1.25 + up * 0.5
+	return MIKAKE_FEET + (hand_r + Vector2(cos(la), sin(la)) * h * 0.12).rotated(sway)
+
+
+func _leek_spin() -> void:
+	leek_spin = 8.0
+	_whoosh_t = 0.0
+	Audio.sfx("sparkle", -2)
+	Audio.sfx("yay_small", -4)
+	if Game.found_egg("karaoke"):
+		say_bg("Leek spin! The crowd goes wild!", Narrator.HYPE)
 
 
 func _tap() -> void:
@@ -184,6 +224,13 @@ func _tap() -> void:
 
 func tick(dt: float) -> void:
 	bounce = maxf(0.0, bounce - dt * 4.0)
+	if leek_spin > 0.0:
+		leek_spin = maxf(0.0, leek_spin - dt) if phase == "cute" else 0.0
+		spin_ang += dt * 15.0
+		_whoosh_t -= dt
+		if _whoosh_t <= 0.0 and leek_spin > 0.0:
+			_whoosh_t = 0.42
+			Audio.sfx("whoosh", -14, randf_range(1.3, 1.6))
 	for pp in pops:
 		pp.t += dt
 	pops = pops.filter(func(pp): return pp.t < 0.7)
@@ -389,7 +436,13 @@ func paint() -> void:
 	if mal_glitch > 0.0:
 		feet += Vector2(randf_range(-8, 8), randf_range(-3, 3)) * mal_glitch
 	var glitch := 0.18 if phase == "dark" else mal_glitch
-	draw_mikake(pen, feet, 330.0, beat, dk, sing, 600, glitch, broken)
+	draw_mikake(pen, feet, 330.0, beat, dk, sing, 600, glitch, broken, spin_ang if leek_spin > 0.0 else NAN)
+	if leek_spin > 0.0:
+		# a ring of little leeks spinning round her
+		var fade := clampf(leek_spin, 0.0, 1.0)
+		for k in 8:
+			var a := t * 2.2 + k * TAU / 8.0
+			_mini_leek(MIKAKE_FEET + Vector2(0, -190) + Vector2(cos(a) * 250.0, sin(a) * 120.0), spin_ang * 0.6 + k, 46.0 * fade)
 	for sm in smoke:
 		Crayon.disc(pen, sm.p, 14.0 + sm.t * 10.0, Color(0.55, 0.55, 0.6, 0.35 * (1.0 - sm.t / 3.0)))
 	for sp in sparks:
@@ -466,6 +519,15 @@ func _lights(beat: float, dark: bool) -> void:
 		Crayon.disc(pen, top + Vector2(0, 6), 12, c.lightened(0.5) if not dark else Color(0.9, 0.2, 0.2))
 
 
+func _mini_leek(c: Vector2, ang: float, len_: float) -> void:
+	if len_ < 4.0:
+		return
+	var d := Vector2(cos(ang), sin(ang)) * len_ * 0.5
+	Crayon.line(pen, c - d, c, Color(0.97, 0.97, 0.92), len_ * 0.2, 640)
+	Crayon.line(pen, c, c + d, Crayon.GREEN, len_ * 0.17, 641)
+	Crayon.line(pen, c + d * 0.4, c + d * 1.05 + d.orthogonal() * 0.3, Crayon.GREEN.darkened(0.1), len_ * 0.12, 642)
+
+
 ## The LED screens: equaliser bars and a heart, or glitchy errors in the dark verse.
 func _screens(beat: float, dark: bool) -> void:
 	for sx in [40.0, 990.0]:
@@ -485,6 +547,11 @@ func _screens(beat: float, dark: bool) -> void:
 				for i in rows.size():
 					var ry := r.get_center().y + (i - (rows.size() - 1) * 0.5) * fs * 1.1
 					Crayon.text(pen, Vector2(r.get_center().x, ry), rows[i], fs, Color(1, 0.3, 0.3), 1, 4420 + int(sx) + i, Crayon.title_font(), 0.5, false)
+			continue
+		if leek_spin > 0.0 and not dark:
+			# the screens join in
+			_mini_leek(r.get_center() + Vector2(0, -16), spin_ang * (1.0 if sx < 500.0 else -1.0), 170.0)
+			Crayon.text(pen, Vector2(r.get_center().x, r.end.y - 34), "LEEK SPIN!", 34, Crayon.YELLOW, 1, 4405 + int(sx), Crayon.title_font(), 0.5, false)
 			continue
 		if not dark:
 			for k in 9:
@@ -552,6 +619,8 @@ func _symbol(c: Vector2, r: float, kind: int, col: Color, filled: bool, sd: int)
 ## The crowd at the front of the stage, glow sticks up. In the dark verse they stop and stare.
 func _crowd(beat: float, dark: bool) -> void:
 	var stick := TEAL.lightened(0.2) if not dark else Color(0.95, 0.15, 0.2)
+	if leek_spin > 0.0 and not dark:
+		stick = Crayon.GREEN.lightened(0.25)
 	for k in 16:
 		var x := 40.0 + k * 80.0 + (20.0 if k % 2 == 1 else 0.0)
 		var y := H + 6.0 - (k % 3) * 8.0 - crowd_k * 26.0
@@ -663,8 +732,8 @@ static func mikake_head(feet: Vector2, h: float, broken: float) -> Vector2:
 ## Hatsune Mikake: teal twin-tails down to the floor, headset, grey top, teal tie, a leek.
 ## h = height from feet to the top of her head, beat = dance phase (in beats), dark 0..1,
 ## glitch = how often her hair and leek jump around (dark verse), broken = switched off
-## (0..1: she slumps over, arms hanging, X eyes).
-static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0, broken: float = 0.0) -> void:
+## (0..1: she slumps over, arms hanging, X eyes), twirl = leek-spin angle (NAN = not spinning).
+static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0, broken: float = 0.0, twirl: float = NAN) -> void:
 	var lively := (1.0 - dark * 0.85) * (1.0 - broken)
 	var bob := absf(sin(beat * PI)) * h * 0.025 * lively
 	var sway := sin(beat * PI * 0.5) * 0.06 * lively
@@ -716,6 +785,9 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 	# switched off: both arms just hang
 	hand_l = hand_l.lerp(sh_l + Vector2(-h * 0.03, h * 0.24), broken)
 	hand_r = hand_r.lerp(sh_r + Vector2(h * 0.04, h * 0.24), broken)
+	var spinning := not is_nan(twirl)
+	if spinning:
+		hand_r = sh_r + Vector2(h * 0.15, -h * 0.17)
 	for arm in [[sh_l, hand_l], [sh_r, hand_r]]:
 		var s0: Vector2 = arm[0]
 		var s1: Vector2 = arm[1]
@@ -729,14 +801,18 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 	if glitching:
 		la += 1.6
 	la = lerpf(la, 1.35, broken)
+	if spinning:
+		la = twirl
 	var ldir := Vector2(cos(la), sin(la))
-	var leek_top := hand_r + ldir * h * 0.24
+	# spinning, she holds it by the middle
+	var grip := hand_r - ldir * h * 0.1 if spinning else hand_r
+	var leek_top := grip + ldir * h * 0.24
 	var white := Color(0.97, 0.97, 0.92).lerp(Color(0.6, 0.6, 0.55), dark * 0.5)
 	var green := Crayon.GREEN.lerp(Color(0.35, 0.4, 0.3), dark * 0.6)
-	Crayon.line(ci, hand_r - ldir * h * 0.04, hand_r + ldir * h * 0.12, white, h * 0.032, sd + 40)
-	Crayon.line(ci, hand_r + ldir * h * 0.1, leek_top, green, h * 0.028, sd + 41)
-	Crayon.line(ci, hand_r + ldir * h * 0.16, leek_top + ldir.rotated(0.5) * h * 0.06, green.darkened(0.1), h * 0.02, sd + 42)
-	Crayon.line(ci, hand_r + ldir * h * 0.16, leek_top + ldir.rotated(-0.45) * h * 0.05, green.lightened(0.1), h * 0.02, sd + 43)
+	Crayon.line(ci, grip - ldir * h * 0.04, grip + ldir * h * 0.12, white, h * 0.032, sd + 40)
+	Crayon.line(ci, grip + ldir * h * 0.1, leek_top, green, h * 0.028, sd + 41)
+	Crayon.line(ci, grip + ldir * h * 0.16, leek_top + ldir.rotated(0.5) * h * 0.06, green.darkened(0.1), h * 0.02, sd + 42)
+	Crayon.line(ci, grip + ldir * h * 0.16, leek_top + ldir.rotated(-0.45) * h * 0.05, green.lightened(0.1), h * 0.02, sd + 43)
 	# neck + head
 	Crayon.line(ci, Vector2(0, -h * 0.71), Vector2(0, -h * 0.76 - bob), SKIN, h * 0.035, sd + 50, 0.3)
 	Crayon.circle(ci, head, hr, ink, 3, SKIN, sd + 51)

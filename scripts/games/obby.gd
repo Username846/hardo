@@ -35,6 +35,12 @@ var runners_on := [true, true, true]
 var ended := false
 var badge := 0.0
 var cam := 0.0
+# (poke the sun enough times and it pays out: R$ rain and a golden crown that Chumbo keeps)
+const SUN := Vector2(1100, 110)
+var sun_taps := 0
+var crown := false
+var crown_t := 0.0
+var coins: Array = []     # {p, v, t} in screen space
 
 
 var _baked_stage := -1
@@ -112,11 +118,33 @@ func _build_level() -> void:
 func press(_p: Vector2) -> void:
 	if not running or dead_t > 0.0 or ended:
 		return
+	if stage < 2 and not crown and _p.distance_to(SUN) < 70.0:
+		sun_taps += 1
+		Audio.sfx("blip2", -8, 1.0 + sun_taps * 0.12)
+		if sun_taps >= 5:
+			_golden_crown()
 	if grounded or jumps < 2:
 		vy = -JUMP * (1.0 if grounded else 0.85)
 		jumps += 1
 		grounded = false
 		Audio.sfx("jump", -4, 1.0 + jumps * 0.1)
+
+
+func _golden_crown() -> void:
+	crown = true
+	Game.found_egg("obby")
+	Audio.sfx("levelup", -2)
+	for k in 36:
+		coins.append({"p": SUN + Vector2(randf_range(-30, 30), randf_range(-30, 30)), "v": Vector2(randf_range(-420, 160), randf_range(-420, -60)), "t": randf_range(0.0, 0.6)})
+	var tw := create_tween()
+	tw.tween_property(self, "crown_t", 1.0, 1.3).set_trans(Tween.TRANS_SINE)
+	for line in ["[You got: Golden Birthday Crown]", "xX_CakeLover_Xx: WHERE DID U GET THAT", "guest_1337: omg rich chumbo", "builderman_jr: can i have it"]:
+		chat.append(line)
+		if chat.size() > 5:
+			chat.pop_front()
+		Audio.sfx("coin", -6, randf_range(0.9, 1.3))
+		await wait(0.45)
+	say_bg("Ooh, a golden crown! Fancy!")
 
 
 func _die() -> void:
@@ -143,6 +171,11 @@ func _respawn() -> void:
 
 func tick(dt: float) -> void:
 	banner_t = maxf(0.0, banner_t - dt)
+	for c in coins:
+		c.t += dt
+		c.v.y += 900.0 * dt
+		c.p += c.v * dt
+	coins = coins.filter(func(c): return c.t < 2.6 and c.p.y < H + 40)
 	if ended:
 		badge = minf(1.0, badge + dt * 2.0)
 		return
@@ -325,10 +358,25 @@ func paint() -> void:
 		Crayon.text(pen, pos + off + Vector2(0, -110), "OOF!", 46, Crayon.RED, 1, 110, Crayon.title_font())
 	else:
 		_noob(pos + off, Crayon.YELLOW, Color(0.2, 0.4, 0.9), Crayon.GREEN, t * 12.0 if grounded else 0.0, "happy", 1.0, 120)
-		Crayon.text(pen, pos + off + Vector2(0, -100), "I'm Chumbo", 20, Crayon.WHITE, 1, 121, null, 0.5, false)
+		if crown:
+			# flies down from the sun, then stays on his head
+			_crown(SUN.lerp(pos + off + Vector2(0, -82), crown_t) + Vector2(0, -sin(crown_t * PI) * 120.0), 1.25 + (1.0 - crown_t) * 0.6)
+		Crayon.text(pen, pos + off + Vector2(0, -118 if crown else -100), "I'm Chumbo", 20, Crayon.WHITE, 1, 121, null, 0.5, false)
+
+
+func _crown(base: Vector2, sc: float) -> void:
+	var pts := PackedVector2Array([base + Vector2(-16, 0) * sc, base + Vector2(-18, -20) * sc, base + Vector2(-8, -10) * sc,
+		base + Vector2(0, -24) * sc, base + Vector2(8, -10) * sc, base + Vector2(18, -20) * sc, base + Vector2(16, 0) * sc])
+	Crayon.poly(pen, pts, Crayon.INK, 3, Crayon.YELLOW, 130)
+	Crayon.disc(pen, base + Vector2(0, -6) * sc, 4.0 * sc, Crayon.RED)
+	if fmod(t, 1.4) < 0.2:
+		Crayon.star(pen, base + Vector2(12, -20) * sc, 5, Crayon.WHITE, Crayon.WHITE, 131)
 
 
 func paint_top() -> void:
+	for c in coins:
+		Crayon.circle(pen, c.p, 13, Crayon.INK, 2, Crayon.YELLOW, 140)
+		Crayon.text(pen, c.p + Vector2(0, 1), "R$", 12, Crayon.INK, 1, 141, null, 0.2, false)
 	# chat box
 	var r := Rect2(100, 14, 470, 36 + chat.size() * 28)
 	pen.draw_rect(r, Color(0, 0, 0, 0.45))

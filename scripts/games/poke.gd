@@ -39,6 +39,13 @@ var invert := 0.0
 var dark := false
 var encounter_flash := 0.0
 var next_wild := 0
+# (headbutt the same tree three times: a very rare MEWFFIN was hiding in it)
+var tree_taps := {}
+var mew := false
+var mew_pos := Vector2.ZERO
+var mew_a := 0.0
+var gold_ball := false
+var leaves: Array = []   # {p, v, t}
 
 
 var _baked_key := ""
@@ -68,6 +75,14 @@ func _run() -> void:
 
 func press(p: Vector2) -> void:
 	if mode == "walk":
+		if not gold_ball and not locked:
+			for k in 6:
+				if p.distance_to(_tree(k)) < 46.0:
+					tree_taps[k] = tree_taps.get(k, 0) + 1
+					_shake_tree(k, 6)
+					if tree_taps[k] >= 3:
+						_mewffin(k)
+						return
 		me_target = p.clamp(Vector2(80, 180), Vector2(W - 80, H - 60))
 	elif mode == "battle" and msg_shown < msg.length():
 		msg_shown = msg.length()
@@ -80,12 +95,54 @@ func tick(dt: float) -> void:
 	encounter_flash = maxf(0.0, encounter_flash - dt)
 	if ball_t >= 0.0:
 		ball_t += dt
+	for lf in leaves:
+		lf.t += dt
+		lf.v.y += 160.0 * dt
+		lf.p += lf.v * dt
+	leaves = leaves.filter(func(lf): return lf.t < 1.6)
 	if mode == "walk":
 		var d := me_target - me
 		if d.length() > 0.5:
 			me += d.normalized() * minf(d.length(), 260.0 * dt)
 			if me.distance_to(me_target) <= 0.5:
 				_arrived()
+
+
+func _tree(k: int) -> Vector2:
+	return Vector2(70 + k * 228, 150 + (k % 2) * 30)
+
+
+func _shake_tree(k: int, n: int) -> void:
+	Audio.sfx("bonk", -8, randf_range(0.9, 1.1))
+	for i in n:
+		leaves.append({"p": _tree(k) + Vector2(randf_range(-36, 36), randf_range(-30, 20)), "v": Vector2(randf_range(-60, 60), randf_range(-80, 10)), "t": 0.0})
+
+
+func _mewffin(k: int) -> void:
+	locked = true
+	me_target = me
+	gold_ball = true
+	Game.found_egg("poke")
+	_shake_tree(k, 20)
+	await wait(0.4)
+	Audio.sfx("sparkle")
+	mew = true
+	mew_pos = _tree(k)
+	mew_a = 0.0
+	var tw := create_tween()
+	tw.tween_property(self, "mew_pos", me + Vector2(140, -120), 1.0).set_trans(Tween.TRANS_SINE)
+	await wait(1.0)
+	say_bg("A wild MEWFFIN! It's super rare. It left you a golden party ball!")
+	var tw2 := create_tween()
+	tw2.tween_property(self, "mew_a", TAU * 1.5, 2.2)
+	await wait(2.2)
+	Audio.sfx("catch")
+	var tw3 := create_tween()
+	tw3.tween_property(self, "mew_pos", Vector2(mew_pos.x + 200, -150), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await wait(1.0)
+	mew = false
+	if mode == "walk":
+		locked = false
 
 
 func _arrived() -> void:
@@ -352,6 +409,12 @@ func _overworld() -> void:
 	# the party ball shelf
 	for k in caught.size():
 		_ball(Vector2(120 + k * 50, H - 40), 0.0)
+	if gold_ball and not mew:
+		_ball(Vector2(60, H - 40), 0.0, Crayon.YELLOW)
+	for lf in leaves:
+		Crayon.disc(pen, lf.p, 6, Color(GB2, clampf(1.6 - lf.t, 0.0, 1.0)))
+	if mew:
+		_mewffin_draw(me + (mew_pos - me).rotated(mew_a) if mew_a > 0.0 else mew_pos)
 
 
 func _battle() -> void:
@@ -392,13 +455,33 @@ func _info(r: Rect2, name: String, hp: float) -> void:
 	pen.draw_rect(Rect2(bar.position + Vector2(3, 3), Vector2((bar.size.x - 6) * hp, bar.size.y - 6)), col)
 
 
-func _ball(p: Vector2, wob: float) -> void:
+func _ball(p: Vector2, wob: float, top: Color = Crayon.PINK) -> void:
 	pen.draw_set_transform(p, wob, Vector2.ONE)
 	Crayon.circle(pen, Vector2.ZERO, 22, GB3, 4, Crayon.WHITE, 60)
-	pen.draw_rect(Rect2(-22, -22, 44, 20), Crayon.PINK)
+	pen.draw_rect(Rect2(-22, -22, 44, 20), top)
 	Crayon.line(pen, Vector2(-22, 0), Vector2(22, 0), GB3, 4, 61)
 	Crayon.circle(pen, Vector2.ZERO, 7, GB3, 3, Crayon.WHITE, 62)
 	pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
+
+## MEWFFIN: a little pink cat that is also a birthday muffin. Floats. Sparkles. Very rare.
+func _mewffin_draw(p: Vector2) -> void:
+	p += Vector2(0, sin(t * 3.0) * 8.0)
+	# long thin tail with a round tip
+	Crayon.path(pen, PackedVector2Array([p + Vector2(22, 14), p + Vector2(54, 4), p + Vector2(62, -26), p + Vector2(48, -44)]), GB3, 4, 130)
+	Crayon.circle(pen, p + Vector2(48, -48), 8, GB3, 3, Crayon.PINK.lightened(0.3), 131)
+	# muffin cup
+	Crayon.poly(pen, PackedVector2Array([p + Vector2(-26, 2), p + Vector2(26, 2), p + Vector2(18, 34), p + Vector2(-18, 34)]), GB3, 4, Crayon.SKY, 132)
+	for k in 3:
+		Crayon.line(pen, p + Vector2(-12 + k * 12, 6), p + Vector2(-10 + k * 10, 30), GB3, 2, 133 + k)
+	# frosting head with cat ears
+	Crayon.poly(pen, PackedVector2Array([p + Vector2(-26, -24), p + Vector2(-20, -50), p + Vector2(-6, -32)]), GB3, 3, Crayon.PINK.lightened(0.3), 136)
+	Crayon.poly(pen, PackedVector2Array([p + Vector2(26, -24), p + Vector2(20, -50), p + Vector2(6, -32)]), GB3, 3, Crayon.PINK.lightened(0.3), 137)
+	Crayon.ellipse(pen, p + Vector2(0, -12), Vector2(32, 24), GB3, 4, Crayon.PINK.lightened(0.3), 138)
+	Crayon.face(pen, p + Vector2(0, -10), 18, "happy", Vector2.ZERO, 139)
+	for k in 4:
+		var a := t * 2.5 + k * TAU / 4.0
+		Crayon.star(pen, p + Vector2(cos(a) * 52, sin(a) * 40 - 8), 7, GB3, Crayon.YELLOW, 140 + k)
 
 
 func _partychu(p: Vector2) -> void:

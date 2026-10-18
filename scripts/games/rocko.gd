@@ -60,6 +60,11 @@ var guests_out := 0.0
 var run_ph := 0.0
 var _tiles: Array[Texture2D] = []
 var _q := Vector2.ZERO
+## (Poke Rocko a few times while he chases you and somebody shines a laser pointer. He's
+## still a cat.)
+var rocko_taps: Array = []
+var laser_t := 0.0
+var laser_p := Vector2.ZERO
 
 var LINES := [
 	["Come back, Chumbo! The cake is getting cold!", Narrator.ROCKO],
@@ -273,6 +278,8 @@ func press(p: Vector2) -> void:
 			if _cat_rect().grow(20).has_point(p):
 				_pet()
 		"chase", "chase_intro":
+			if phase == "chase":
+				_rocko_tap(p)
 			if p.y < me_y - 70.0:
 				_move(-1)
 			elif p.y > me_y + 10.0:
@@ -302,6 +309,31 @@ func _unhandled_key_input(e: InputEvent) -> void:
 			_move(-1)
 		elif e.keycode in [KEY_DOWN, KEY_S]:
 			_move(1)
+
+
+func _rocko_tap(p: Vector2) -> void:
+	if laser_t > 0.0:
+		return
+	if not Rect2(rocko_x - 130.0, rocko_y - 210.0, 230.0, 215.0).has_point(p):
+		rocko_taps.clear()
+		return
+	rocko_taps.append(t)
+	rocko_taps = rocko_taps.filter(func(x: float) -> bool: return t - x < 3.0)
+	if rocko_taps.size() >= 4:
+		rocko_taps.clear()
+		_laser()
+
+
+func _laser() -> void:
+	laser_t = 7.0
+	laser_p = Vector2(rocko_x + 160.0, rocko_y)
+	gap = 3
+	safe_t = 0.0
+	throw_t = maxf(throw_t, 9.0)
+	Audio.sfx("meow", -2, 1.25)
+	pops.append({"p": Vector2(rocko_x, rocko_y - 250.0), "t": 1.2, "s": "!", "c": Crayon.RED})
+	if Game.found_egg("rocko"):
+		say_bg("Ooh! A red dot! Must... catch... the red dot!", Narrator.ROCKO)
 
 
 func _move(d: int) -> void:
@@ -336,8 +368,16 @@ func tick(dt: float) -> void:
 		target_x = ME_X - 70.0
 	elif phase in ["arrive", "knock_wait", "knock", "party"]:
 		target_x = 300.0
-	rocko_x = move_toward(rocko_x, target_x, (260.0 if phase != "chase_intro" else 420.0) * dt)
-	rocko_y = lerpf(rocko_y, LANES[1] if phase in ["knock_wait", "knock", "party"] else me_y, minf(1.0, dt * 2.5))
+	if laser_t > 0.0:
+		laser_t = maxf(0.0, laser_t - dt) if phase == "chase" else 0.0
+		laser_p = Vector2(350.0 + sin(t * 2.3) * 140.0 + sin(t * 7.1) * 25.0, LANES[1] + sin(t * 1.7) * 90.0 + cos(t * 5.3) * 12.0)
+	if laser_t > 0.0:
+		# that dot. he has to get that dot.
+		rocko_x = move_toward(rocko_x, laser_p.x - 130.0, 560.0 * dt)
+		rocko_y = lerpf(rocko_y, laser_p.y, minf(1.0, dt * 6.0))
+	else:
+		rocko_x = move_toward(rocko_x, target_x, (260.0 if phase != "chase_intro" else 420.0) * dt)
+		rocko_y = lerpf(rocko_y, LANES[1] if phase in ["knock_wait", "knock", "party"] else me_y, minf(1.0, dt * 2.5))
 	for o in obstacles:
 		o.x -= speed * dt
 	obstacles = obstacles.filter(func(o: Dictionary) -> bool: return o.x > -200.0)
@@ -840,6 +880,13 @@ func _paint_chase() -> void:
 				_chumbo_run()
 			2:
 				_rocko_run()
+	if laser_t > 0.0:
+		# somebody's laser pointer, from off to the side
+		var la := clampf(laser_t * 2.0, 0.0, 1.0)
+		pen.draw_line(Vector2(-60, 140), laser_p, Color(1, 0.15, 0.15, 0.35 * la), 4.0)
+		Crayon.disc(pen, laser_p, 24.0, Color(1, 0.1, 0.1, 0.3 * la))
+		Crayon.disc(pen, laser_p, 11.0, Color(1, 0.2, 0.2, la))
+		Crayon.disc(pen, laser_p + Vector2(-3, -3), 4.0, Color(1, 0.8, 0.8, la))
 	for th in throws:
 		var k: float = th.t / th.dur
 		var to := Vector2(ME_X, LANES[int(th.lane)] - 20)
@@ -866,7 +913,12 @@ func _rocko_run() -> void:
 	var feet := Vector2(rocko_x, rocko_y)
 	Crayon.oval(pen, feet + Vector2(0, 4), Vector2(70 * grow * 0.6, 12), Color(0, 0, 0, 0.35))
 	var pose := "run" if speed > 1.0 else "sit"
-	draw_cat(pen, feet, grow, 1.0, pose, demon, t, _q)
+	var face := 1.0
+	if laser_t > 0.0:
+		# pounce!
+		feet.y -= absf(sin(t * 7.0)) * 28.0
+		face = 1.0 if laser_p.x >= rocko_x else -1.0
+	draw_cat(pen, feet, grow, face, pose, demon, t, _q)
 
 
 func _obstacle(o: Dictionary) -> void:

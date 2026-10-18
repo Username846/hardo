@@ -102,6 +102,10 @@ var roll_t := 0.0
 var grind_snd := 0.0
 var said := {}
 var line_q: Array = []
+# (sit back and stop tapping for a while, and Tony Honk shows you how it's done)
+var idle_t := 0.0
+var goose_fly := -1.0
+var goose_done := false
 var _tiles: Array[Texture2D] = []
 var _tex := {}
 var _sky_step := -1
@@ -211,6 +215,7 @@ func _line(pair: Array, again: bool = false) -> void:
 
 
 func press(_p: Vector2) -> void:
+	idle_t = 0.0
 	if not skating:
 		return
 	pressing = true
@@ -343,6 +348,26 @@ func _bail(cake: bool) -> void:
 	_pop("BAIL!", Crayon.RED, 64)
 
 
+## Tony Honk swoops over Chumbo's head and lands a 900 himself.
+func _goose_900() -> void:
+	goose_done = true
+	goose_fly = 0.0
+	Game.found_egg("skate")
+	Audio.sfx("honk", 0, 1.2)
+	var tw := create_tween()
+	tw.tween_property(self, "goose_fly", 1.0, 2.4)
+	await wait(0.7)
+	Audio.sfx("whoosh", -4, 0.8)
+	Audio.sfx("honk", -2, 1.4)
+	await wait(0.6)
+	Audio.sfx("cheer", -8)
+	score += 2000
+	_pop("GOOSE 900!  +2,000", Crayon.YELLOW, 48)
+	_line(["HONK! Too slow, birthday boy! That's how you do a 900!", Narrator.HONK], true)
+	await wait(1.2)
+	goose_fly = -1.0
+
+
 func _pop(s: String, col: Color, size: int) -> void:
 	var fresh := 0
 	for p in pops:
@@ -445,6 +470,10 @@ func tick(dt: float) -> void:
 	sparks = sparks.filter(func(s): return s.t < 0.35)
 	if pressing:
 		press_t += dt
+	if skating and clock_on and not pressing and not goose_done and phase in ["s1", "s2"]:
+		idle_t += dt
+		if idle_t >= 8.0 and state == "ground":
+			_goose_900()
 	if clock_on:
 		time_left -= dt
 		_clock_events()
@@ -1036,6 +1065,8 @@ func paint() -> void:
 	_paint_chumbo()
 	if goose_k > 0.0 or phase == "title":
 		_paint_goose(gy)
+	if goose_fly >= 0.0 and goose_fly < 1.0:
+		_paint_goose_900(gy)
 
 
 const CHALK := [[300.0, "HAPPY BIRTHDAY!", "STAY"], [1550.0, "SK8 OR DIE", "AGAIN"], [2100.0, "*", "*"],
@@ -1279,6 +1310,18 @@ func _paint_goose(gy: float) -> void:
 		Crayon.rect(pen, Rect2(bp - Vector2(80, 30), Vector2(160, 56)), Crayon.INK, 4, Crayon.WHITE, 640)
 		Crayon.line(pen, bp + Vector2(-50, 26), feet + Vector2(40, -140), Crayon.INK, 4, 641)
 		Crayon.text(pen, bp, honk_txt, 32, Crayon.INK, 1, 642, Crayon.title_font())
+
+
+func _paint_goose_900(gy: float) -> void:
+	var f := goose_fly
+	var at := func(k: float) -> Vector2: return Vector2(lerpf(-160.0, W + 160.0, k), gy - 90.0 - sin(k * PI) * 280.0)
+	for i in 5:
+		var k := f - 0.03 * (i + 1)
+		if k > 0.0:
+			Crayon.star(pen, at.call(k), 14.0 - i * 2.0, Crayon.INK, Crayon.YELLOW, 1180 + i)
+	pen.draw_set_transform(at.call(f), f * TAU * 2.5, Vector2.ONE)
+	draw_mascot(pen, Vector2(0, 75), 1.0, t, session == 2)
+	pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 
 
 ## Tony Honk: a goose in a helmet on a skateboard (party=true: a party hat instead).

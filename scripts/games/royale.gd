@@ -38,6 +38,10 @@ var hurt := 0.0
 ## The loot llama pinata (tap it for full health and fixed walls).
 var llama := {}
 var llama_done := false
+## (poke yourself three times quick: emote! Everyone else stops throwing and dances too)
+var me_taps := 0
+var me_tap_t := -9.0
+var emote_t := 0.0
 const STILL_THERE := [" is still in the storm", " can't find the exit", " joined again", " has been here for 300 years",
 	" is waiting for you", " forgot their name", " is still dancing"]
 
@@ -75,6 +79,9 @@ func press(p: Vector2) -> void:
 					cakes.append({"pos": ME, "target": f})
 					Audio.sfx("throw", -4)
 					return
+			if p.distance_to(ME + Vector2(0, -10)) < 44.0:
+				_poke_me()
+				return
 			_build(p)
 
 
@@ -88,6 +95,30 @@ func _jump() -> void:
 	phase = "fight"
 	var landed: Array = LANDED[SPOTS.find(spot)]
 	say_bg(landed[0], landed[1])
+
+
+func _poke_me() -> void:
+	if t - me_tap_t > 0.8:
+		me_taps = 0
+	me_tap_t = t
+	me_taps += 1
+	Audio.sfx("blip", -8, 1.0 + me_taps * 0.15)
+	if me_taps >= 3 and emote_t <= 0.0:
+		me_taps = 0
+		_emote()
+
+
+## Default dance! The whole lobby stops for a dance-off (no water balloons while it lasts).
+func _emote() -> void:
+	emote_t = 5.0
+	shots.clear()
+	Audio.sfx("yay_small", -2)
+	Audio.sfx("cheer", -10)
+	confetti_burst(ME + Vector2(0, -90), 40)
+	_feed("Emote: DEFAULT DANCE")
+	_feed("Everyone stopped to dance!")
+	if Game.found_egg("royale"):
+		say_bg("Dance off! Nobody throws a water balloon during a dance off.", Narrator.HYPE)
 
 
 func _build(p: Vector2) -> void:
@@ -111,6 +142,7 @@ func _feed(msg: String) -> void:
 
 func tick(dt: float) -> void:
 	hurt = maxf(0.0, hurt - dt * 2.0)
+	emote_t = maxf(0.0, emote_t - dt)
 	for f in feed:
 		f.t -= dt
 	feed = feed.filter(func(f): return f.t > 0.0)
@@ -162,6 +194,8 @@ func _fight(dt: float) -> void:
 	for f in foes:
 		if f.hit:
 			f.gone += dt
+			continue
+		if emote_t > 0.0:
 			continue
 		f.throw -= dt
 		if f.throw <= 0.0:
@@ -300,7 +334,11 @@ func paint() -> void:
 		var mood := "happy" if not twisted else "blank"
 		if f.hit:
 			mood = "x"
-		Crayon.person(pen, f.pos + Vector2(0, 50), 100, col, mood, f.col if not twisted else Color(0, 0, 0, 0), "wave", t * 3.0, f.seed)
+		var pose := "wave"
+		if emote_t > 0.0 and not f.hit:
+			pose = "up" if int(t * 4.0 + f.seed) % 2 == 0 else "wave"
+			Crayon.note(pen, f.pos + Vector2(30, -60 - fmod(t * 40.0 + f.seed, 30.0)), 20, Color(Crayon.RAINBOW[int(f.seed) % 7], 0.9))
+		Crayon.person(pen, f.pos + Vector2(0, 50), 100, col, mood, f.col if not twisted else Color(0, 0, 0, 0), pose, t * 3.0, f.seed)
 		if f.hit:
 			Crayon.circle(pen, f.pos + Vector2(0, -26), 30 * a + 4, Crayon.INK, 3, Color(Crayon.PINK, a), f.seed + 5)
 	_me()
@@ -359,10 +397,11 @@ func _storm(col: Color) -> void:
 
 func _me() -> void:
 	var pose := "stand"
-	if dance:
+	var dancing := dance or emote_t > 0.0
+	if dancing:
 		pose = "up" if int(t * 4.0) % 2 == 0 else "wave"
 	var feet := ME + Vector2(0, 55)
-	if dance:
+	if dancing:
 		# floss-ish dance
 		var sw := sin(t * 10.0) * 30.0
 		Crayon.line(pen, feet + Vector2(0, -62), feet + Vector2(-20, 0), Crayon.INK, 5, 70)
@@ -376,6 +415,10 @@ func _me() -> void:
 	else:
 		Crayon.person(pen, feet, 120, Crayon.INK, "o" if hurt > 0.3 else "happy", Crayon.GREEN, pose, t * 2.0, 78)
 	Crayon.text(pen, ME + Vector2(0, 86), "YOU", 24, Crayon.WHITE, 1, 79)
+	if emote_t > 0.0:
+		for k in 2:
+			var ph := fmod(t * 0.8 + k * 0.5, 1.0)
+			Crayon.note(pen, ME + Vector2(-50 + k * 100 + sin(ph * 6.0) * 8.0, -90 - ph * 60.0), 26, Color(Crayon.RAINBOW[k * 3], 1.0 - ph))
 
 
 func _map_back() -> void:

@@ -685,6 +685,15 @@ static func cake_flames(ci: CanvasItem, base: Vector2, w: float, h: float, candl
 		flame(ci, Vector2(x + 5, base.y - h - 46), 9.0, s + 60 + i)
 
 
+## A drawn eighth note (the web build's font has no music symbols). p = the middle of the note.
+static func note(ci: CanvasItem, p: Vector2, sz: float, col: Color) -> void:
+	var w := maxf(2.0, sz * 0.11)
+	disc(ci, p + Vector2(-sz * 0.18, sz * 0.32), sz * 0.24, col)
+	ci.draw_line(p + Vector2(sz * 0.04, sz * 0.32), p + Vector2(sz * 0.04, -sz * 0.5), col, w)
+	ci.draw_line(p + Vector2(sz * 0.04, -sz * 0.5), p + Vector2(sz * 0.36, -sz * 0.28), col, w)
+	ci.draw_line(p + Vector2(sz * 0.36, -sz * 0.28), p + Vector2(sz * 0.32, -sz * 0.1), col, w)
+
+
 static func flame(ci: CanvasItem, c: Vector2, r: float, s: int = 0) -> void:
 	var f := 1.0 + sin(Time.get_ticks_msec() * 0.02 + s) * 0.12
 	var pts := PackedVector2Array([c + Vector2(0, -r * 1.6 * f), c + Vector2(r * 0.7, 0), c + Vector2(0, r * 0.7), c + Vector2(-r * 0.7, 0)])

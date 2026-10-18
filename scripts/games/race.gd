@@ -38,6 +38,9 @@ const GREEN_HI := 0.94
 const GLOWS := {"PINK": Color(1.0, 0.35, 0.75), "GREEN": Color(0.3, 1.0, 0.5), "BLUE": Color(0.3, 0.75, 1.0), "PURPLE": Color(0.72, 0.42, 1.0)}
 const VINYLS := ["FLAMES", "STARS", "SPRINKLES"]
 const BODY := Color(0.98, 0.55, 0.72)
+const GOLD := Color(1.0, 0.8, 0.22)
+## La Cucaracha on the horn (pitch, beats)
+const HORN_TUNE := [[1.0, 0.5], [1.0, 0.5], [1.0, 0.5], [1.335, 1.0], [1.682, 1.0], [1.0, 0.5], [1.0, 0.5], [1.0, 0.5], [1.335, 1.0], [1.682, 1.5]]
 const RIVALS := [["Sir Sprinkles", "rival0"], ["xX_FrostBite_Xx", "rival1"], ["Lil Cupcake", "rival2"]]
 const CELL := 320.0
 const ATLAS_COLS := 8
@@ -60,6 +63,10 @@ var sky_mode := "garage" # garage sunset dusk night midnight doom
 var glow: Color = GLOWS["GREEN"]
 var vinyl := "FLAMES"
 var garage_done := false
+# (honk the car in the garage enough and it gets a secret paint job)
+var car_col := BODY
+var horn_taps := 0
+var hop := 0.0
 
 # the track
 var curves := PackedFloat32Array()
@@ -471,10 +478,37 @@ func _lap_now() -> int:
 
 func press(p: Vector2) -> void:
 	match phase:
+		"garage":
+			if not locked and Rect2(410, 400, 470, 200).has_point(p):
+				_honk()
 		"race", "circuit", "count", "grid":
 			steer_x = p.x
 		"drag":
 			_shift()
+
+
+func _honk() -> void:
+	horn_taps += 1
+	hop = 1.0
+	Audio.sfx("horn", -8, 1.0 + randf_range(-0.04, 0.04))
+	if horn_taps == 5:
+		_golden()
+
+
+## The golden birthday cake car: a horn tune, gold paint for the rest of the races.
+func _golden() -> void:
+	car_col = GOLD
+	Game.found_egg("race")
+	flash = 0.6
+	Audio.sfx("sparkle", -2)
+	Audio.sfx("levelup", -6)
+	confetti_burst(Vector2(640, 470), 60)
+	say_bg("Secret paint job! The golden birthday cake car!", Narrator.HYPE)
+	await wait(0.6)
+	for n in HORN_TUNE:
+		hop = 0.6
+		Audio.sfx("horn", -6, n[0])
+		await wait(n[1] * 0.22)
 
 
 func drag(p: Vector2) -> void:
@@ -546,6 +580,7 @@ func _pop(txt: String, col: Color) -> void:
 
 func tick(dt: float) -> void:
 	flash = maxf(0.0, flash - dt * 1.2)
+	hop = maxf(0.0, hop - dt * 4.0)
 	for p in pops:
 		p.t -= dt
 	pops = pops.filter(func(p: Dictionary) -> bool: return p.t > 0.0)
@@ -1302,7 +1337,9 @@ static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float) -> 
 func paint() -> void:
 	if sky_mode == "garage":
 		var bob := absf(sin(t * 3.0)) * 3.0
-		car_side(pen, Vector2(640, 590 - bob), 2.0, t * 0.3, BODY, glow, vinyl, 900)
+		car_side(pen, Vector2(640, 590 - bob - sin(hop * PI) * 18.0), 2.0, t * 0.3, car_col, glow, vinyl, 900)
+		if car_col == GOLD:
+			_twinkles(Vector2(640, 500), Vector2(260, 90), 6)
 		if phase == "garage" and not locked:
 			Crayon.text(pen, Vector2(640, 238), "TAP TO PICK!", 30, Crayon.YELLOW, 1, 940, null, 0.6, false)
 		return
@@ -1533,7 +1570,9 @@ func _player_car() -> void:
 			segs.append(Vector2(640, HZ) + dir * Vector2(r0, r0 * 0.6))
 			segs.append(Vector2(640, HZ) + dir * Vector2(r0 + 220.0, (r0 + 220.0) * 0.6))
 		pen.draw_multiline(segs, Color(1, 1, 1, 0.45), 4.0)
-	car_rear(pen, c, 300.0, BODY, glow, vinyl, 400, Color(0, 0, 0, 0), "", true)
+	car_rear(pen, c, 300.0, car_col, glow, vinyl, 400, Color(0, 0, 0, 0), "", true)
+	if car_col == GOLD:
+		_twinkles(c + Vector2(0, -100), Vector2(170, 70), 4)
 	# candle antenna on the spoiler
 	Crayon.rect(pen, Rect2(c + Vector2(100, -186), Vector2(9, 40)), Crayon.INK, 2, Crayon.YELLOW, 430)
 	Crayon.flame(pen, c + Vector2(104.5, -196), 9, 431)
@@ -1545,6 +1584,16 @@ func _player_car() -> void:
 		Crayon.cloud(pen, c + Vector2(0, -230), 34, Color(0.85, 0.85, 0.9, 0.9), 445)
 
 
+## Little gold glints around the golden car.
+func _twinkles(c: Vector2, r: Vector2, n: int) -> void:
+	for i in n:
+		var ph := fmod(t * 0.9 + i * 0.37, 1.0)
+		var a := i * 2.4 + floorf(t * 0.9 + i * 0.37) * 1.3
+		var sz := sin(ph * PI) * 16.0
+		if sz > 1.0:
+			Crayon.star(pen, c + Vector2(cos(a) * r.x, sin(a) * r.y), sz, Color(1, 0.95, 0.6), Color(1, 1, 0.85), 1150 + i)
+
+
 func _paint_end() -> void:
 	var k := end_k
 	var sky := Color(0.05, 0.03, 0.12)
@@ -1554,7 +1603,7 @@ func _paint_end() -> void:
 	Crayon.line(pen, Vector2(-40, 560), Vector2(W + 40, 560), Crayon.INK, 5, 990)
 	spr_house(pen, Vector2(930, 560), 1.55, 991)
 	spr_banner(pen, Vector2(390, 560), "START", 992)
-	car_side(pen, Vector2(390, 590), 1.25, t * 0.2, BODY, glow, vinyl, 993)
+	car_side(pen, Vector2(390, 590), 1.25, t * 0.2, car_col, glow, vinyl, 993)
 	for i in 5:
 		var gp := Vector2(700 + i * 105, 610 + (i % 2) * 18)
 		var up := clampf(k * 1.5 - i * 0.12, 0.0, 1.0)
@@ -1626,7 +1675,7 @@ func _progress_bar(y: float, goal: float, from: float) -> void:
 		var k := clampf((float(r.z) - from) / (goal - from), 0.0, 1.0)
 		Crayon.disc(pen, Vector2(lerpf(x0, x1, k), y), 9, Crayon.GREY)
 	var kp := clampf((player_z - from) / (goal - from), 0.0, 1.0)
-	Crayon.circle(pen, Vector2(lerpf(x0, x1, kp), y), 12, Crayon.INK, 3, BODY, 1142)
+	Crayon.circle(pen, Vector2(lerpf(x0, x1, kp), y), 12, Crayon.INK, 3, car_col, 1142)
 
 
 func _drag_hud(y: float) -> void:

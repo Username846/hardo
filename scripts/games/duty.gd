@@ -23,6 +23,9 @@ const RANKS := ["RECRUIT", "PRIVATE PARTY", "CORPORAL CUPCAKE", "SERGEANT SPRINK
 ## Zombie rounds: what the counter says, how many guests, how many at once.
 const ROUNDS := [[1, 3, 2], [2, 4, 3], [3, 4, 3], [8, 5, 4], [23, 5, 4], [99, 6, 5], [-1, 999, 6]]
 const CAKE_POS := Vector2(640, 492)
+## Three little teddy bears hiding in the yard: on the bouncy castle, on the roof, and
+## dangling from the bunting (the bunting one hangs from its string). [spot, hanging]
+const TEDDIES := [[Vector2(300, 207), false], [Vector2(1040, 147), false], [Vector2(470, 214), true]]
 const PIVOT := Vector2(1172, 742)
 
 var phase := "intro"     # intro, m1, between, m2, twist, banner, zombies, ending
@@ -67,6 +70,9 @@ var no_darts := false
 var loading := -1.0
 var end_cake := 0.0
 var aim_rot := -0.35
+## Teddy bears shot down (all three: a secret song, and they get up and dance to it).
+var teddies := [{"down": 0.0, "hit": false}, {"down": 0.0, "hit": false}, {"down": 0.0, "hit": false}]
+var teddy_party := false
 
 var _baked_key := ""
 
@@ -128,6 +134,8 @@ func _fire(p: Vector2) -> void:
 	Audio.sfx("dart", -3, randf_range(0.95, 1.12))
 	var h := _hit_test(p)
 	darts.append({"to": p, "t": 0.0, "h": h})
+	if h.is_empty() and _shoot_teddy(p):
+		return
 	if h.is_empty():
 		misses_row += 1
 		if misses_row >= 6 and not failed_joke and phase != "zombies":
@@ -140,6 +148,39 @@ func _fire(p: Vector2) -> void:
 		_on_hit(h, p)
 	if ammo == 0:
 		empty_t = 0.0
+
+
+func _shoot_teddy(p: Vector2) -> bool:
+	if teddy_party:
+		return false
+	for k in TEDDIES.size():
+		var td: Dictionary = teddies[k]
+		if not td.hit and p.distance_to(TEDDIES[k][0] + Vector2(0, -4)) < 24.0:
+			td.hit = true
+			Audio.sfx("squish", -2, 1.6)
+			Audio.sfx("boing", -8, 1.4)
+			pops.append({"p": TEDDIES[k][0] + Vector2(0, -30), "s": "115", "t": 0.0, "col": Crayon.YELLOW})
+			var tw := create_tween()
+			tw.tween_method(func(v: float): td.down = v, 0.0, 1.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			if teddies.all(func(x): return x.hit):
+				_teddy_song()
+			return true
+	return false
+
+
+## Every bear found: someone put a song on. The bears get back up to dance.
+func _teddy_song() -> void:
+	teddy_party = true
+	Game.found_egg("duty")
+	await wait(0.7)
+	Audio.sfx("radio", -4)
+	Audio.play_music("race", 0.8)
+	_banner("SECRET SONG", "TEDDY BEAR PARTY", Crayon.PINK, 2.5)
+	for td in teddies:
+		var tw := create_tween()
+		tw.tween_method(func(v: float): td.down = v, 1.0, 0.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await wait(0.6)
+	say_bg("Soldier! Who put the radio on? Was it the teddy bears?", Narrator.SARGE)
 
 
 func _reload() -> void:
@@ -884,6 +925,8 @@ func paint() -> void:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.05, 0.0, 0.1, dark * 0.6))
 	if _table_on():
 		_cake(CAKE_POS, slices)
+	for k in TEDDIES.size():
+		_teddy(k)
 	for tg in targets:
 		if tg.type == "pop":
 			_cutout(tg)
@@ -1103,6 +1146,45 @@ func _cutout(tg: Dictionary) -> void:
 	for d in tg.darts:
 		_dart_stub(d, 1.0 / s, 1.0)
 	pen.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## A tiny crayon teddy bear. Shot ones tumble off out of sight; after the secret they dance
+## (with sunglasses on).
+func _teddy(k: int) -> void:
+	var td: Dictionary = teddies[k]
+	var spot: Vector2 = TEDDIES[k][0]
+	var hanging: bool = TEDDIES[k][1]
+	if td.down >= 1.0:
+		return
+	var down: float = td.down
+	var a := 1.0 - down
+	var p := spot + Vector2(down * 24.0, down * down * 90.0)
+	var rot := down * 2.5
+	if teddy_party:
+		p.y -= absf(sin(t * 8.0 + k)) * 10.0
+		rot = sin(t * 8.0 + k) * 0.25
+	if hanging and not td.hit:
+		Crayon.line(pen, spot + Vector2(0, -66), spot + Vector2(0, -16), Color(Crayon.INK, a), 2, 2400 + k, 0.3)
+	var fur := Color(0.72, 0.5, 0.3) if not night else Color(0.42, 0.3, 0.2)
+	var ink := Color(Crayon.INK, a)
+	pen.draw_set_transform(p, rot, Vector2.ONE)
+	for sx in [-1.0, 1.0]:
+		Crayon.disc(pen, Vector2(sx * 9, 10), 4.5, Color(fur, a))
+		Crayon.disc(pen, Vector2(sx * 7, -21), 3.5, Color(fur, a))
+	Crayon.circle(pen, Vector2(0, 4), 9, ink, 2, Color(fur, a), 2410 + k)
+	Crayon.circle(pen, Vector2(0, -12), 8, ink, 2, Color(fur, a), 2420 + k)
+	Crayon.disc(pen, Vector2(0, -9), 3.5, Color(fur.lightened(0.35), a))
+	Crayon.disc(pen, Vector2(0, -10), 1.4, ink)
+	if teddy_party:
+		pen.draw_rect(Rect2(-8, -16, 16, 4), ink)
+	else:
+		Crayon.disc(pen, Vector2(-3, -14), 1.3, ink)
+		Crayon.disc(pen, Vector2(3, -14), 1.3, ink)
+	pen.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	if teddy_party and k == 0:
+		for j in 3:
+			var ph := fmod(t * 0.7 + j / 3.0, 1.0)
+			Crayon.note(pen, TEDDIES[j][0] + Vector2(14 + sin(ph * 6.0) * 6.0, -30 - ph * 40), 18, Color(Crayon.RAINBOW[(j * 2) % 7], 1.0 - ph))
 
 
 func _dart_stub(p: Vector2, sc: float, a: float) -> void:

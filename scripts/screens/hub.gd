@@ -272,14 +272,20 @@ func paint() -> void:
 			# ...and so did the radio
 			var kick := pow(1.0 - fmod(t * 2.0, 1.0), 3.0)
 			Radio.draw_boombox(pen, RADIO_RECT, kick, 4460)
-			for k in 2:
-				var ph := fmod(t * 0.6 + k * 0.5, 1.0)
-				Crayon.text(pen, RADIO_RECT.get_center() + Vector2(-30 + k * 60 + sin(ph * 6.0) * 8, -40 - ph * 50), "♪", 26, Color(Crayon.RAINBOW[k * 3], 1.0 - ph), 1, 4470 + k, null, 0.3, false)
 			if not Game.radio_seen:
 				var tag := Rect2(RADIO_RECT.get_center() + Vector2(-62, -96 - absf(sin(t * 4.0)) * 8), Vector2(124, 40))
 				Crayon.rect(pen, tag, Crayon.INK, 3, Crayon.WHITE, 4475)
 				Crayon.line(pen, Vector2(tag.get_center().x, tag.end.y), Vector2(tag.get_center().x, RADIO_RECT.position.y - 14), Crayon.INK, 3, 4476)
 				Crayon.text(pen, tag.get_center(), "tap me!", 26, Crayon.RED, 1, 4477, Crayon.title_font())
+			# music notes puffing out of both speakers
+			for k in 4:
+				var side := -1.0 if k % 2 == 0 else 1.0
+				var ph := fmod(t * 0.55 + k * 0.25, 1.0)
+				var from := RADIO_RECT.position + Vector2(RADIO_RECT.size.x * (0.15 if side < 0 else 0.85), RADIO_RECT.size.y * 0.5)
+				var np := from + Vector2(side * (20.0 + ph * 70.0), -ph * 90.0 + sin(ph * 9.0) * 6.0)
+				var a := clampf((1.0 - ph) * 1.6, 0.0, 1.0)
+				Crayon.note(pen, np + Vector2(2, 2), 30, Color(Crayon.INK, a * 0.8))
+				Crayon.note(pen, np, 30, Color(Crayon.RAINBOW[(k * 2) % 7], a))
 	# balloons tied to the table
 	var cols := [Crayon.RED, Crayon.BLUE, Crayon.YELLOW, Crayon.GREEN]
 	for i in 4:

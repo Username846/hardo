@@ -91,6 +91,56 @@ func _ready() -> void:
 		print("RADIO after end: cur=", rd.cur, " song=", Audio.song)
 		get_tree().quit()
 		return
+	if which == "eggs" or which.begins_with("egg:"):
+		# every game's hidden secret: each tests/eggs/<id>.gd plays like a curious player would
+		# (drive(bot, game, dt) each frame) until the game reports the secret as found
+		var ids := ["race", "skate", "digi", "cards", "duty", "royale", "obby", "poke", "repo", "karaoke", "rocko"]
+		if which.begins_with("egg:"):
+			ids = [which.substr(4)]
+		var found := {}
+		for id in ids:
+			found[id] = await _egg(id)
+		print("EGG RESULTS ", found)
+		get_tree().quit()
+		return
+	if which == "titleegg":
+		# poke Chumbo on the title screen until he's had enough, then check the grim title
+		# survives a reload, and that a new party brings him back
+		Game.player_name = Game.CANON_NAME
+		Game.title_dead = false
+		Game.done.fill(false)
+		Game.done[0] = true
+		Game.done[2] = true
+		Game.main._open("title", null)
+		var te: Node = Game.main.current
+		await get_tree().create_timer(1.0).timeout
+		await _snap("egg_title_presents")
+		for hk in te.HITS_TO_DIE:
+			te.press(te.CHUMBO + Vector2(0, -80))
+			await get_tree().create_timer(0.5).timeout
+			if hk == 6:
+				await _snap("egg_title_hurt")
+		var tt := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tt < 30000 and te.dying:
+			await get_tree().process_frame
+			_skip_narration()
+		await get_tree().create_timer(1.0).timeout
+		await _snap("egg_title_dead")
+		print("TITLEEGG dead=", Game.title_dead, " music=", Audio.song, " grim=", te.grim)
+		Game.main._open("title", null)
+		te = Game.main.current
+		await get_tree().create_timer(2.0).timeout
+		await _snap("egg_title_reload")
+		print("TITLEEGG reload dead=", te.dead, " music=", Audio.song)
+		g = te
+		_btn("forget")
+		await get_tree().create_timer(0.3).timeout
+		_btn("forget")
+		await get_tree().create_timer(2.0).timeout
+		await _snap("egg_title_revived")
+		print("TITLEEGG revived dead=", te.dead, " saved=", Game.title_dead, " music=", Audio.song, " name=", Game.player_name)
+		get_tree().quit()
+		return
 	if which == "title":
 		# the title screen: the "tap to start" gate (what the web shows before sound is allowed),
 		# then the party switched on, then PLAY goes to the name screen
@@ -117,7 +167,17 @@ func _ready() -> void:
 		_btn("play")
 		await get_tree().create_timer(2.0).timeout
 		var nm: Node = Game.main.current
-		print("TITLE play -> ", nm.get_script().resource_path if nm and nm.get_script() else "?")
+		print("TITLE play -> ", nm.get_script().resource_path if nm and nm.get_script() else "?", " (name known: ", Game.player_name == Game.CANON_NAME, ", intro done: ", Game.intro_done, ")")
+		# once the name has been got right, PLAY skips the name screen
+		Game.player_name = Game.CANON_NAME
+		Game.intro_done = true
+		Game.main._open("title", null)
+		g = Game.main.current
+		await get_tree().create_timer(1.0).timeout
+		_btn("play")
+		await get_tree().create_timer(2.0).timeout
+		nm = Game.main.current
+		print("TITLE known name: play -> ", nm.get_script().resource_path if nm and nm.get_script() else "?")
 		get_tree().quit()
 		return
 	if which == "finale":
@@ -209,6 +269,42 @@ func _play(i: int) -> void:
 	results[Game.GAMES[i].id] = ok
 	print("BOT GAME ", i, " ", Game.GAMES[i].id, " done=", ok, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
 	await get_tree().create_timer(1.0).timeout
+
+
+func _egg(id: String) -> bool:
+	Game.eggs.erase(id)
+	Game.done.fill(false)
+	var idx := -1
+	for i in Game.GAMES.size():
+		if Game.GAMES[i].id == id:
+			idx = i
+	if id == "rocko":
+		Game.finale_seen = true
+		Game.main._open("rocko", null)
+	else:
+		Game.main._open("game", idx)
+	g = Game.main.current
+	step = 0
+	tmr = 0.0
+	stuck = 0.0
+	var script_path := "res://tests/eggs/%s.gd" % id
+	if not ResourceLoader.exists(script_path):
+		print("EGG ", id, " has no test script")
+		return false
+	var egg: Object = load(script_path).new()
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 120000 and not Game.eggs.has(id) and is_instance_valid(g):
+		await get_tree().process_frame
+		_skip_narration()
+		egg.drive(self, g, get_process_delta_time())
+	var ok := Game.eggs.has(id)
+	print("EGG ", id, " found=", ok, " in ", (Time.get_ticks_msec() - t0) / 1000.0, "s")
+	if ok:
+		await get_tree().create_timer(1.2).timeout
+		await _snap("egg_" + id)
+		await get_tree().create_timer(2.0).timeout
+		await _snap("egg_" + id + "_b")
+	return ok
 
 
 ## The secret game: close the phone, pet Rocko, survive the chase, knock on the door.

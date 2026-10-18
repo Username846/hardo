@@ -77,6 +77,10 @@ var banner_t := 0.0
 var self_beam := 0.0
 var bot_float := 0.0
 var said := {}
+# (poke the Peeper in the eye enough and it gets itself some shades and stops staring)
+var peeper_pokes := 0
+var peeper_blink := 0.0
+var shades := 0.0
 
 var _walls: Array = []
 var _hole: GradientTexture2D
@@ -188,6 +192,9 @@ func press(p: Vector2) -> void:
 	if duck.state == "cute" and p.distance_to(duck.pos) < 40.0:
 		_poke_duck()
 		return
+	if shades <= 0.0 and p.distance_to(PEEPER) < 44.0:
+		_poke_peeper()
+		return
 	for g in gnomes:
 		if g.stun <= 0.0 and p.distance_to(g.pos) < 46.0:
 			_bonk(g)
@@ -257,10 +264,27 @@ func _poke_duck() -> void:
 		say_bg("Oh no. You poked the duck. RUN!")
 
 
+func _poke_peeper() -> void:
+	peeper_pokes += 1
+	peeper_blink = 0.35
+	Audio.sfx("squish", -4, 0.9 + peeper_pokes * 0.08)
+	if peeper_pokes < 5:
+		return
+	Game.found_egg("repo")
+	Audio.sfx("whoosh", -4)
+	var tw := create_tween()
+	tw.tween_property(self, "shades", 1.0, 0.8).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	await wait(0.8)
+	Audio.sfx("ding", -2)
+	_pop(PEEPER + Vector2(0, -60), "LOOKING GOOD!", Crayon.YELLOW)
+	say_bg("Nice shades. That eyeball's got more style than you, kid.", Narrator.TAXMAN)
+
+
 # ---------------------------------------------------------------- update
 
 func tick(dt: float) -> void:
 	banner_t = maxf(0.0, banner_t - dt)
+	peeper_blink = maxf(0.0, peeper_blink - dt)
 	for pp in pops:
 		pp.t -= dt
 		pp.p.y -= 40.0 * dt
@@ -298,7 +322,8 @@ func _move_bot(dt: float) -> void:
 	if not carried.is_empty():
 		sp *= 0.85
 	# the Peeper's stare makes you slow and dizzy
-	var stare := bot_pos.distance_to(PEEPER) < 215.0
+	# (too cool to stare, once it has its shades on)
+	var stare := bot_pos.distance_to(PEEPER) < 215.0 and shades < 1.0
 	if stare:
 		sp *= 0.38
 		dizzy = minf(1.0, dizzy + dt * 2.0)
@@ -947,8 +972,11 @@ func _price_tag(it: Dictionary) -> void:
 func _peeper() -> void:
 	# the Peeper: a giant eyeball on the library ceiling, always watching
 	var p := PEEPER + Vector2(0, sin(t * 1.3) * 4.0)
-	var blink := fmod(t, 5.0) < 0.15
+	var blink := fmod(t, 5.0) < 0.15 or peeper_blink > 0.0
 	Crayon.ellipse(pen, p, Vector2(40, 30), Crayon.INK, 4, Color(0.97, 0.94, 0.9), 600)
+	if shades > 0.0:
+		_shades(p + Vector2(0, -70.0 * (1.0 - shades)))
+		return
 	if blink:
 		Crayon.line(pen, p + Vector2(-34, 0), p + Vector2(34, 0), Crayon.INK, 5, 601)
 		return
@@ -960,6 +988,18 @@ func _peeper() -> void:
 	Crayon.disc(pen, p + look * 14.0, 7.0, Crayon.BLACK)
 	if bot_pos.distance_to(PEEPER) < 215.0:
 		Crayon.text(pen, p + Vector2(0, 52), "DON'T LOOK!", 22, Crayon.RED.lightened(0.3), 1, 606, Crayon.title_font())
+
+
+## The Peeper's new look: big black shades and a party hat.
+func _shades(p: Vector2) -> void:
+	Crayon.party_hat(pen, p + Vector2(6, -26), 22, Crayon.PINK, 607, 0.25)
+	Crayon.line(pen, p + Vector2(-40, -4), p + Vector2(40, -4), Crayon.INK, 5, 608)
+	for side in [-1.0, 1.0]:
+		Crayon.ellipse(pen, p + Vector2(side * 20, 2), Vector2(18, 13), Crayon.INK, 3, Color(0.08, 0.08, 0.1), 609 + int(side + 1))
+	Crayon.line(pen, p + Vector2(-28, -3), p + Vector2(-20, 4), Color(1, 1, 1, 0.7), 3, 612)
+	Crayon.line(pen, p + Vector2(12, -3), p + Vector2(20, 4), Color(1, 1, 1, 0.7), 3, 613)
+	if shades >= 1.0 and fmod(t, 3.0) < 0.25:
+		Crayon.star(pen, p + Vector2(34, -10), 7, Crayon.WHITE, Crayon.WHITE, 614)
 
 
 func _gnome(g: Dictionary) -> void:

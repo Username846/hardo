@@ -8,8 +8,8 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 ## What's inside
 
-- **The title screen.** A party carousel turning at dusk, with a rider from the presents on every pole, to the game's own theme song: a waltz called "It's Your Birthday" (with words to sing along). In a browser, the first tap switches the party on, because browsers don't allow sound until you tap. Tap the riders to hear them, then press **PLAY!**
-- **Name check.** The game asks for your name. The only correct answer is `I'm Chumbo` (any capitalization). Anything else gets you a boxing glove, a falling cake, or a hole in the ground. After three wrong tries the game types it for you.
+- **The title screen.** A party carousel turning at dusk to the game's own theme song: a waltz called "It's Your Birthday" (with words to sing along). Each pole carries a rider from one of the presents, still wrapped up as a **?** present until you've played that game. In a browser, the first tap switches the party on, because browsers don't allow sound until you tap. Tap the riders to hear them, then press **PLAY!**
+- **Name check.** The game asks for your name. The only correct answer is `I'm Chumbo` (any capitalization). Anything else gets you a boxing glove, a falling cake, or a hole in the ground. After three wrong tries the game types it for you. Once it's been got right, the game remembers and skips straight to the party.
 - **The calendar.** The game uses the device's date, so whatever day he plays is his birthday. Try telling it otherwise.
 - **The party.** Ten presents, opened in order. The party room changes a little every time you come back.
 - **Ten mini-games**, each starting cute and ending... slightly less cute:
@@ -34,6 +34,23 @@ Mikake is in the credits cast too, still switched off from the karaoke: slumped 
 **Secret (spoilers):** the first time the credits finish, the button says **Continue** and starts the secret game right away. After that it says **back to the party**, and the cake on the party table shows **???** so you can play the secret game again. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
 
 **Party radio:** beat the secret game and a radio turns up on the party table. Tap it to play any song from the game, the cute version or the evil one, with the words to sing along. When a song ends, the next one comes on.
+
+<details>
+<summary><b>Easter eggs (big spoilers, nothing in the game hints at them)</b></summary>
+
+- **Title screen:** poke Chumbo by the carousel. He doesn't like it. Keep going and he dies: the theme slows down into its evil version, the colours drain out, and a ghost floats over his grave. It stays that way after a restart, until you press **new party**.
+- **KNEAD FOR SPEED:** in the garage, tap the car 5 times for a golden paint job (and a La Cucaracha horn).
+- **TONY HONK 2:** stop tapping for 8 seconds while rolling. Tony Honk shows you how a 900 is done.
+- **DIJIMON:** tap the Dijivice's three little buttons 5 times: Diji-disco.
+- **Card Checkpoint:** tap the bone on the card from your dog 3 times. Good boy.
+- **CALL OF BIRTHDAY:** shoot the three hidden teddy bears in the yard for a secret song.
+- **FORTNIGHT:** tap yourself 3 times quickly: everyone stops for a dance-off.
+- **ROBLOCKS:** tap the sun 5 times for coins and a golden crown.
+- **POKeMANS:** headbutt (tap) the same tree 3 times. A wild MEWFFIN!
+- **R.E.P.O.:** poke the Peeper (the big eye) 5 times. Nice shades.
+- **MIKAKE KARAOKE:** tap Mikake's leek 5 times quickly during the first song: leek spin.
+- **The secret game:** poke Rocko 4 times during the chase. A red dot!
+</details>
 
 Every line of dialogue shows who is talking (PARTY HOST, ANNOUNCER, SGT. SPRINKLES, CHUMBO, ROCKO, DIJIMON, TONY HONK, PIP, TAXMAN or EVERYONE, the guests speaking together), and every character keeps the same voice all game. The party host has three (a good voice, an evil voice and a whisper for its grey lines) and the announcer two (good and evil). Every song is sung by the same two singers, and every dark version by the same two spooky ones.
 
