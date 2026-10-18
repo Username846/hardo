@@ -873,7 +873,8 @@ func _hud() -> void:
 	if run == 2:
 		# what Chumbo has left: it only ever goes down
 		var own := items.filter(func(x): return x.state != "gone").size()
-		Crayon.text(pen, Vector2(48, 676), "THINGS YOU STILL OWN: %d" % own, 28, Color(1.0, 0.55, 0.6) if own > 0 else Crayon.RED, 0, 365, Crayon.title_font())
+		# (above the lyric bar at the bottom)
+		Crayon.text(pen, Vector2(48, 650), "THINGS YOU STILL OWN: %d" % own, 26, Color(1.0, 0.55, 0.6) if own > 0 else Crayon.RED, 0, 365, Crayon.title_font())
 
 
 static func _bot(ci: CanvasItem, feet: Vector2, sc: float, tm: float, look: Vector2, dizzy: float, stunned: bool) -> void:
@@ -1010,7 +1011,10 @@ func _gnome(g: Dictionary) -> void:
 	Crayon.disc(pen, p + Vector2(0, 4 - hop), 9, Color(0.95, 0.95, 0.95))
 	Crayon.party_hat(pen, p + Vector2(0, -14 - hop), 11, g.col, 611, tilt)
 	if g.stun > 0.0:
-		Crayon.text(pen, p + Vector2(0, -38), "zzz", 16, Crayon.WHITE, 1, 612, null, 0.3, false)
+		# bonked: dizzy stars going round its head
+		for k in 3:
+			var a := t * 6.0 + k * TAU / 3.0
+			Crayon.star(pen, p + Vector2(cos(a) * 16.0, -30.0 + sin(a) * 5.0), 6, Crayon.INK, Crayon.YELLOW, 612 + k)
 
 
 func _duck(p: Vector2, k: float, angry: bool) -> void:

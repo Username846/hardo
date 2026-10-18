@@ -85,7 +85,7 @@ func paint() -> void:
 	var mood := "wide" if not cheer else "happy"
 	Crayon.cake(pen, Vector2(640, floor_y), 260, 130, Crayon.PINK, 10, true, 2)
 	Host.draw(pen, Vector2(640, 250), 80, 0.5 if not cheer else 0.0, Narrator.is_active(), Vector2.ZERO, 3)
-	# the street racer, Tony Honk, Partymon and a party guest from the zombie rounds
+	# the street racer, Tony Honk, Partymon and one of the friends from the front
 	Race.draw_mascot(pen, Vector2(120, floor_y), 0.75, t)
 	Skate.draw_mascot(pen, Vector2(272, floor_y), 1.0, t, true)
 	Digi.draw_mascot(pen, Vector2(418, floor_y), 0.55, t)

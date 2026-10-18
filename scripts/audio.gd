@@ -28,7 +28,7 @@ func _ready() -> void:
 		_sfx.append(_player())
 	voice = _player()
 	voice.volume_db = 2.0
-	apply_mute()
+	apply_volume()
 	_web_clock_setup()
 
 
@@ -49,14 +49,22 @@ func _load(path: String) -> AudioStream:
 	return s
 
 
-func apply_mute() -> void:
-	AudioServer.set_bus_mute(0, Game.muted)
+## Set from the volume slider. The slider is squared so the middle of it sounds like the middle.
+func apply_volume() -> void:
+	var v := clampf(Game.volume, 0.0, 1.0)
+	AudioServer.set_bus_mute(0, v <= 0.001)
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(v * v, 0.0001)))
 
 
-func toggle_mute() -> void:
-	Game.muted = not Game.muted
-	apply_mute()
-	Game.save_game()
+func set_volume(v: float, save: bool = true) -> void:
+	Game.volume = clampf(v, 0.0, 1.0)
+	apply_volume()
+	if save:
+		Game.save_game()
+
+
+## True once a tap has let the browser play sound (the title screen's first tap).
+var unlocked := false
 
 
 ## On the web, sounds are decoded the first time they play, which can freeze the game for a

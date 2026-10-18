@@ -68,8 +68,8 @@ func enter() -> void:
 	add_button("full", Rect2(16, H - 64, 168, 50), "full screen", _fullscreen, Crayon.WHITE, 24)
 	if Game.player_name != "":
 		add_button("forget", Rect2(W - 184, H - 64, 168, 50), "new party", _forget, Crayon.WHITE, 24)
-	if not OS.has_feature("web"):
-		# no autoplay rules to wait for: the party is already going
+	if not OS.has_feature("web") or Audio.unlocked:
+		# no autoplay rules to wait for (or a tap already allowed sound): the party is already going
 		_wake(false)
 
 
@@ -82,6 +82,7 @@ func _wake(fanfare: bool = true) -> void:
 	if awake:
 		return
 	awake = true
+	Audio.unlocked = true
 	Audio.preload_sfx()
 	Audio.play_music("theme_dark" if dead else "theme", 0.3)
 	if fanfare:

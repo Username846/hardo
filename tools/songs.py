@@ -364,10 +364,10 @@ SONGS.append(dict(
                    "Pop the card-board crash-ers down, / don't hit Grand-ma, she's in town!",
             lyrics2="Three in a row, spy bal-loon, / five, a care pack-age{ij} lands soon! / "
                     "Sev-en streak, the cake strike falls, / Ser{sar}-geant{jent} Sprin-kles{kulls} gives the calls!",
-            dark="Round one, round two, round a-gain. / Guests come back, they nev-er end. / "
-                 "Hats are crook-ed, fac{fay}-es{sez} gray, / sing-ing stay, just one more day.",
-            dark2="Out of darts and out of time, / ev-ery round's the same old rhyme. / "
-                  "Count the rounds, they nev-er stop. / No ex-trac-tion{shun}, no air-drop.",
+            dark="Rain is fall-ing in the mud. / Boots too big and hel-mets cold. / "
+                 "Write a let-ter: Mom, I'm fine. / Fold it up. It won't get home.",
+            dark2="Max was laugh-ing yes-ter-day. / Now his hel-met's all that stayed. / "
+                  "No one wins and no one knows / why the war-time whis-tle blows.",
         ),
         chorus=dict(
             melody="5:1 5:0.5 5:0.5 1':2 | 7:1 6:1 5:2 | 4:1 4:0.5 4:0.5 6:2 | 5:1 4:1 3:2 | "
@@ -375,8 +375,8 @@ SONGS.append(dict(
             chords="I | V:2 I:2 | IV | I | V | IV | ii:2 V:2 | I",
             lyrics="Call of Birth-day! Hear the call! / Foam darts fly-ing, one and all! / "
                    "Cap-ture cake and hold the line, / mis-sion{shun}: par-ty, right on time!",
-            dark="Call of Birth-day, hear them call, / rounds that nev-er end at all. / "
-                 "Round for-ev-er, here they come. / There's no-where for you to run.",
+            dark="Call of Birth-day, hear the call, / send the young ones, one and all. / "
+                 "Can-dles out and flags hung low, / no one's com-ing home, you know.",
         ),
     ),
     form=LONG_FORM,
@@ -614,6 +614,35 @@ SONGS.append(dict(
                    P("drone", "choir", "drone", oct=0, vol=-23),
                    P("heart", None, "drums", kit=dict(heart="x.......x......."), vol=-17)],
               fx=dict(wow=0.007, lowpass=3500, crackle=0.03, reverb=0.55)),
+))
+
+# ---------------------------------------------------------------- KARAOKE: after Mikake breaks down
+# The birthday song goes on without her: one slow verse in the grey whisper, then nothing.
+SONGS.append(dict(
+    id="karaoke_grey", title="Without Her", bpm=64, key=64, beats=4, scale="nat_minor",
+    singers=("lady_whisper", None),
+    sections=dict(
+        verse=dict(
+            melody="3:0.5 3:0.5 5:0.5 3:0.5 2:1 1:1 | 2:1 3:2 r:1 | 3:0.5 3:0.5 5:0.5 6:0.5 5:1 3:1 | 5:1 6:2 r:1 | "
+                   "6:0.5 6:0.5 5:0.5 6:0.5 1':1 6:1 | 5:1 3:2 r:1 | 4:0.5 4:0.5 3:0.5 4:0.5 5:1 2:1 | 3:1 1:2 r:1",
+            chords="I | V | vi | IV | IV | V | ii | V",
+            lyrics="No-bo-dy sings it an-y-more. / The mic{mike}-ro-phone just hums a-lone. / "
+                   "The crowd still waits in rows of red. / The song goes on. It al-ways will.",
+        ),
+    ),
+    form=[
+        ("intro", dict(src="verse", bars=(6, 8), vocal=False)),
+        ("verse", dict(src="verse")),
+        ("outro", dict(src="verse", bars=(6, 8), vocal=False)),
+    ],
+    parts=[
+        P("box", "music_box", "melody", sections=["intro", "outro"], vol=-20, oct=2),
+        P("drone", "choir", "drone", oct=0, vol=-25),
+        P("pad", "strings", "pad", vol=-27),
+        P("heart", None, "drums", kit=dict(heart="x.......x......."), vol=-19),
+    ],
+    fx=dict(wow=0.009, lowpass=2600, crackle=0.05, reverb=0.65),
+    dark=None,
 ))
 
 # ---------------------------------------------------------------- SECRET: Rocko (cozy couch -> chase)

@@ -467,14 +467,15 @@ def render_song(song, dark=False):
         b = rms_norm(b, p.get("vol", -20))
         mix += b
     # the same two singers in every song: one pair for the cute versions, one for the dark ones
-    timbre, timbre2 = DARK_SINGERS if dark else SINGERS
+    # (a song can name its own, e.g. the grey whisper that sings on after Mikake breaks)
+    timbre, timbre2 = song.get("singers") or (DARK_SINGERS if dark else SINGERS)
     lead = render_vocals(song, ctx, notes, nsamp, timbre)
     if lead is not None:
         mix += rms_norm(S.pan_stereo(lead, 0.0), -13.5)
-        harm = render_vocals(song, ctx, notes, nsamp, timbre2, harmony=True)
+        harm = render_vocals(song, ctx, notes, nsamp, timbre2, harmony=True) if timbre2 else None
         if harm is not None and np.any(harm):
             mix += rms_norm(S.pan_stereo(harm, -0.3), -21)
-    fx = d.get("fx", {}) if dark else {}
+    fx = d.get("fx", {}) if dark else song.get("fx", {})
     # master chain
     if fx.get("radio"):
         mix = np.stack([S.bp(ch, 250, 3500) for ch in mix]) * 1.6

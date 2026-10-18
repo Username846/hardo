@@ -1,7 +1,10 @@
 extends Screen
 ## Present 5: CALL OF BIRTHDAY: MODERN PARTYFARE (foam-dart shooting gallery).
-## Boot camp, capture the cake... then a bonus mode where the party guests keep coming
-## back, round after round. The round counter only goes up.
+## Boot camp, capture the cake... and then the next mission loads, and it isn't a game any more:
+## the yard is a muddy battlefield in the rain, shells come whistling down, and Chumbo's friends
+## are pinned down out there. Tap them to pull them back to the trench. Letters home between the
+## days. Then the order comes to go over the top, and it goes very quiet. (No gore: the ones who
+## don't come back leave only a helmet, and poppies grow there.)
 
 const IDX := 4
 const MAG := 12
@@ -20,15 +23,23 @@ const SPOTS := [
 const CRATE_COLS := [Color(0.98, 0.5, 0.7), Color(0.22, 0.48, 0.9), Color(0.3, 0.72, 0.3), Color(0.58, 0.32, 0.78), Color(1.0, 0.85, 0.2), Color(0.98, 0.55, 0.16)]
 const RANKS := ["RECRUIT", "PRIVATE PARTY", "CORPORAL CUPCAKE", "SERGEANT SPRINKLES", "LIEUTENANT LOLLIPOP",
 	"CAPTAIN CANDLES", "MAJOR MUFFIN", "COLONEL CONFETTI", "GENERAL GIFTWRAP"]
-## Zombie rounds: what the counter says, how many guests, how many at once.
-const ROUNDS := [[1, 3, 2], [2, 4, 3], [3, 4, 3], [8, 5, 4], [23, 5, 4], [99, 6, 5], [-1, 999, 6]]
+## The squad at the front: Chumbo's friends from the party, in helmets that are too big for them.
+const SQUAD := ["MAX", "LULU", "BEN", "OLLIE", "SAM", "RUBY"]
+## Days at the front: [day, friends pinned down, shells, seconds of warning before each lands]
+const WAVES := [[1, 2, 3, 2.6], [40, 3, 4, 2.2], [365, 4, 5, 1.9]]
+const LETTERS := [
+	"Dear Mom,\nIt's my birthday today. We had mud instead of cake. I'll be home soon.",
+	"Dear Mom,\nSome of the guys aren't here any more. Nobody talks about it.",
+	"Dear Mom,\nI can't remember what cake tastes like. Please don't forget me.",
+]
+const SHELL_R := 95.0
 const CAKE_POS := Vector2(640, 492)
 ## Three little teddy bears hiding in the yard: on the bouncy castle, on the roof, and
 ## dangling from the bunting (the bunting one hangs from its string). [spot, hanging]
 const TEDDIES := [[Vector2(300, 207), false], [Vector2(1040, 147), false], [Vector2(470, 214), true]]
 const PIVOT := Vector2(1172, 742)
 
-var phase := "intro"     # intro, m1, between, m2, twist, banner, zombies, ending
+var phase := "intro"     # intro, m1, between, m2, twist, front, lull, charge, ending
 var ammo := MAG
 var reloading := 0.0
 var empty_t := 0.0
@@ -42,7 +53,6 @@ var downed := 0
 var goal := 0
 var targets: Array = []
 var drones: Array = []
-var zombies: Array = []
 var darts: Array = []
 var stuck: Array = []
 var pops: Array = []
@@ -59,16 +69,28 @@ var strike := -1.0
 var cakes: Array = []
 var slices := 8
 var slice_said := false
-var round_i := -1
-var round_left := 0
-var round_t := 0.0
 var night := false
 var dark := 0.0
-var hug := 0.0
-var hug_said := false
 var no_darts := false
 var loading := -1.0
-var end_cake := 0.0
+# the front
+var war := false
+var dawn := false
+var wave := -1
+var day := 0
+var squad: Array = []     # {name, state: trench/pinned/run/charge/lost, x, z, t, seed, shake}
+var shells: Array = []    # {x, z, t, warn, boom, whistle}
+var blasts: Array = []    # {p, t, r}
+var helmets: Array = []   # {x, z, name}
+var flashes: Array = []   # far-off flashes on the horizon {x, t}
+var flash := 0.0
+var whiteout := 0.0
+var letter := ""
+var letter_a := 0.0
+var poppies := 0.0
+var lost_today := 0
+var pulled_said := false
+var lost_said := false
 var aim_rot := -0.35
 ## Teddy bears shot down (all three: a secret song, and they get up and dance to it).
 var teddies := [{"down": 0.0, "hit": false}, {"down": 0.0, "hit": false}, {"down": 0.0, "hit": false}]
@@ -104,6 +126,9 @@ func _run() -> void:
 
 
 func press(p: Vector2) -> void:
+	if phase == "front" and not locked:
+		_pull(p)
+		return
 	if not _playing():
 		return
 	if not care.is_empty() and care.landed and p.distance_to(care.pos + Vector2(0, -30)) < 80.0:
@@ -113,7 +138,7 @@ func press(p: Vector2) -> void:
 
 
 func _playing() -> bool:
-	return phase == "m1" or phase == "m2" or phase == "zombies"
+	return phase == "m1" or phase == "m2"
 
 
 func _fire(p: Vector2) -> void:
@@ -138,7 +163,7 @@ func _fire(p: Vector2) -> void:
 		return
 	if h.is_empty():
 		misses_row += 1
-		if misses_row >= 6 and not failed_joke and phase != "zombies":
+		if misses_row >= 6 and not failed_joke:
 			failed_joke = true
 			_banner("MISSION FAILED", "...just kidding!", Crayon.RED, 2.5)
 			Audio.sfx("wrong", -4)
@@ -190,13 +215,8 @@ func _reload() -> void:
 	Audio.sfx("reload", -2)
 
 
-## Front-most thing under the point: zombies (nearest first), drones, then cut-outs.
+## Front-most thing under the point: drones, then cut-outs.
 func _hit_test(p: Vector2) -> Dictionary:
-	var zs := zombies.duplicate()
-	zs.sort_custom(func(a, b): return a.z > b.z)
-	for z in zs:
-		if z.state == "walk" and _zombie_rect(z).grow(10).has_point(p):
-			return {"kind": "zombie", "o": z}
 	for d in drones:
 		if d.state != "pop" and p.distance_to(d.pos) < 46.0 * d.sc + 10.0:
 			return {"kind": "drone", "o": d}
@@ -220,20 +240,6 @@ func _on_hit(h: Dictionary, p: Vector2) -> void:
 			_downed()
 		"drone":
 			_pop_drone(o, p)
-		"zombie":
-			o.hp -= 1
-			o.flinch = 1.0
-			o.z = maxf(0.0, o.z - 0.035)
-			var fs := _zombie_feet(o)
-			var hh := _zombie_h(o)
-			o.darts.append((p - fs) / hh)
-			_hitmarker()
-			if o.hp <= 0:
-				o.state = "dizzy"
-				o.st = 0.0
-				Audio.sfx("boing", -6, 0.7)
-				Audio.sfx("giggle_low", -10)
-				_score(150, p, false)
 
 
 func _hitmarker() -> void:
@@ -250,10 +256,7 @@ func _score(n: int, p: Vector2, marker: bool = true) -> void:
 	if want > rank:
 		rank = want
 		Audio.sfx("levelup", -4)
-		if phase == "zombies":
-			_banner("RANK UP!", "STILL HERE", Color(0.9, 0.2, 0.25), 2.0)
-		else:
-			_banner("RANK UP!", RANKS[rank], Crayon.YELLOW, 2.0)
+		_banner("RANK UP!", RANKS[rank], Crayon.YELLOW, 2.0)
 
 
 func _downed() -> void:
@@ -401,80 +404,224 @@ func _twist() -> void:
 	Audio.sfx("static", -8)
 	Audio.play_music("duty_dark", 2.0)
 	night = true
+	war = true
 	refresh_back()
 	var tw2 := create_tween()
 	tw2.tween_property(self, "dark", 1.0, 2.0)
 	await wait(0.8)
 	loading = -1.0
-	_banner("BONUS MODE UNLOCKED", "PARTY ZOMBIES", Color(0.9, 0.2, 0.25), 4.0)
-	Audio.sfx("zombie", -4, 0.8)
-	await say("Bonus mode unlocked.", Narrator.DARK)
-	await say("The party guests are coming back, Chumbo. They always come back. Tap them until they get dizzy.", Narrator.DARK)
-	ammo = MAG
-	round_i = -1
-	locked = false
-	_next_round()
+	_banner("MISSION 3", "THE FRONT", Color(0.85, 0.8, 0.7), 4.0)
+	Audio.sfx("thud", -2, 0.5)
+	await say("This isn't a game any more, Chumbo. It's a war.", Narrator.DARK)
+	await say("Incoming! Your friends are pinned down out there. Tap them to pull them back to the trench!", Narrator.SARGE)
+	squad.clear()
+	for k in SQUAD.size():
+		squad.append({"name": SQUAD[k], "state": "trench", "x": 640.0, "z": 0.3, "t": 0.0, "seed": 3000 + k * 37, "shake": 0.0})
+	_day(0)
 
 
-func _next_round() -> void:
-	round_i += 1
-	phase = "banner"
-	round_t = 0.0
-	banner = {}
-	var r: Array = ROUNDS[round_i]
-	Audio.sfx("heartbeat", -2)
-	Audio.sfx("zombie", -8, 0.7)
-	match round_i:
-		0:
-			say_bg("Round one. They just want to sing to you.", Narrator.HYPE_DARK)
+## A day at the front: some of the squad are pinned down in the craters, and the shells come
+## down right where they're hiding, one after another.
+func _day(i: int) -> void:
+	wave = i
+	day = WAVES[i][0]
+	lost_today = 0
+	var idle := squad.filter(func(f): return f.state == "trench")
+	idle.shuffle()
+	var n := mini(int(WAVES[i][1]), idle.size())
+	var warn: float = WAVES[i][3]
+	for k in n:
+		var f: Dictionary = idle[k]
+		f.state = "pinned"
+		f.x = 250.0 + (k + 0.5) * 780.0 / n + randf_range(-40, 40)
+		f.z = randf_range(0.22, 0.5)
+		f.t = 0.0
+	shells.clear()
+	for k in int(WAVES[i][2]):
+		var sh := {"t": -(1.4 + k * warn * 0.85), "warn": warn, "x": randf_range(220, 1060), "z": randf_range(0.1, 0.5), "boom": false, "whistle": false}
+		if k < n:
+			# this one is coming down right where somebody is hiding
+			sh.x = idle[k].x + randf_range(-25, 25)
+			sh.z = idle[k].z + randf_range(-0.03, 0.03)
+		shells.append(sh)
+	_banner("DAY %d" % day, "", Color(0.85, 0.8, 0.7), 2.2)
+	match i:
 		1:
-			say_bg("Round two. There are always more guests.", Narrator.HYPE_DARK)
+			say_bg("Day forty. It hasn't stopped raining.", Narrator.DARK)
 		2:
-			say_bg("Round three. Don't you want to stay?", Narrator.HYPE_DARK)
-		3:
-			say_bg("Round eight. You don't remember rounds four to seven. Nobody does.", Narrator.HYPE_DARK)
-		4:
-			say_bg("Round twenty three. The cake is still warm. It is always warm.", Narrator.HYPE_DARK)
-		5:
-			say_bg("Round ninety nine. Nobody ever leaves this party.", Narrator.HYPE_DARK)
-		6:
-			say_bg("Round forever.", Narrator.HYPE_DARK)
+			say_bg("Day three hundred and sixty five. Happy birthday, soldier.", Narrator.SARGE)
+	phase = "front"
+	locked = false
+
+
+func _pull(p: Vector2) -> void:
+	for f in squad:
+		if f.state == "pinned" and _friend_rect(f).grow(24).has_point(p):
+			f.state = "run"
+			f.t = 0.0
+			Audio.sfx("run", -6)
+			Audio.sfx("whoosh", -12)
+			if not pulled_said:
+				pulled_said = true
+				say_bg("Go, go, go! Back to the trench!", Narrator.SARGE)
+			return
+
+
+func _boom(sh: Dictionary) -> void:
+	sh.boom = true
+	var at := _field_feet(sh.x, sh.z)
+	blasts.append({"p": at, "t": 0.0, "r": 70.0 + sh.z * 140.0})
+	flash = 0.35
+	Audio.sfx("smash", -2, randf_range(0.6, 0.75))
+	Audio.sfx("thud", 0, 0.55)
+	for f in squad:
+		if f.state == "pinned" and _field_feet(f.x, f.z).distance_to(at) < SHELL_R + f.z * 60.0:
+			_lose(f)
+
+
+## Somebody doesn't come back. All that's left out there is their helmet.
+func _lose(f: Dictionary) -> void:
+	f.state = "lost"
+	helmets.append({"x": f.x, "z": f.z, "name": f.name})
+	lost_today += 1
+	if phase == "front" and not lost_said:
+		lost_said = true
+		say_bg("No. No, no, no.", Narrator.CHUMBO)
+
+
+func _tick_front(dt: float) -> void:
+	for f in squad:
+		f.shake = maxf(0.0, f.shake - dt)
+		match f.state:
+			"run":
+				f.t += dt
+				f.z += dt * 0.42
+				if f.z >= 1.02:
+					f.state = "trench"
+					Audio.sfx("land", -6)
+					pops.append({"p": Vector2(_field_feet(f.x, 0.95).x, 600), "s": "SAFE", "t": 0.0, "col": Crayon.GREEN.lightened(0.3)})
+			"charge":
+				f.t += dt
+				if f.t > 0.0:
+					f.z = maxf(0.18, f.z - dt * 0.2)
+	if phase != "front":
+		return
+	var falling := false
+	for sh in shells:
+		if sh.boom:
+			continue
+		falling = true
+		sh.t += dt
+		if sh.t >= 0.0:
+			if not sh.whistle:
+				sh.whistle = true
+				Audio.sfx("slide_down", -4, clampf(1.4 / sh.warn, 0.5, 1.2))
+			for f in squad:
+				if f.state == "pinned" and _field_feet(f.x, f.z).distance_to(_field_feet(sh.x, sh.z)) < SHELL_R:
+					f.shake = 0.15
+		if sh.t >= sh.warn:
+			_boom(sh)
+	if not falling:
+		# the shelling stops for today; anyone still hiding crawls back
+		var out := false
+		for f in squad:
+			if f.state == "pinned":
+				f.state = "run"
+			if f.state == "run":
+				out = true
+		if not out:
+			_end_of_day()
+
+
+func _end_of_day() -> void:
+	phase = "lull"
+	locked = true
+	await wait(1.6)
+	if lost_today > 0:
+		await say("We lost good people today.", Narrator.SARGE)
+	else:
+		await say("Everyone made it back. This time.", Narrator.SARGE)
+	letter = LETTERS[wave]
+	var tw := create_tween()
+	tw.tween_property(self, "letter_a", 1.0, 0.6)
+	await wait(0.7)
+	match wave:
+		0:
+			await say("Dear Mom. It's my birthday today. We had mud instead of cake. I'll be home soon.", Narrator.CHUMBO)
+		1:
+			await say("Dear Mom. Some of the guys aren't here any more. Nobody talks about it.", Narrator.CHUMBO)
+		2:
+			await say("Dear Mom. I can't remember what cake tastes like. Please don't forget me.", Narrator.CHUMBO)
+	await wait(0.8)
+	var tw2 := create_tween()
+	tw2.tween_property(self, "letter_a", 0.0, 0.6)
+	await wait(0.8)
+	if wave + 1 < WAVES.size():
+		_day(wave + 1)
+	else:
+		_over_the_top()
+
+
+## The order nobody wanted: everyone still in the trench climbs out and walks into it.
+func _over_the_top() -> void:
+	phase = "charge"
+	locked = true
+	await say("New orders. Everyone goes over the top at dawn.", Narrator.SARGE)
+	await say("Nobody asked them if they wanted to go.", Narrator.DARK)
+	var going := squad.filter(func(f): return f.state == "trench")
+	for k in going.size():
+		var f: Dictionary = going[k]
+		f.state = "charge"
+		f.x = 300.0 + (k + 0.5) * 680.0 / maxi(going.size(), 1)
+		f.z = 1.0
+		f.t = -k * 0.25
+	Audio.sfx("horn", -2, 0.6)
+	await wait(1.4)
+	for k in 14:
+		var at := _field_feet(randf_range(150, 1130), randf_range(0.05, 0.75))
+		blasts.append({"p": at, "t": 0.0, "r": randf_range(80, 170)})
+		flash = 0.4
+		Audio.sfx("smash", -3 - k * 0.3, randf_range(0.55, 0.75))
+		if k % 3 == 0:
+			Audio.sfx("thud", -1, 0.5)
+		await wait(0.28)
+	# then everything goes white, and rings
+	var tw := create_tween()
+	tw.tween_property(self, "whiteout", 1.0, 0.25)
+	Audio.stop_music(0.3)
+	Audio.sfx("smash", 0, 0.45)
+	for f in squad:
+		if f.state == "charge":
+			_lose(f)
+	for k in 6:
+		Audio.sfx("beep", -14 - k * 2, 2.8)
+		await wait(0.45)
+	await wait(0.6)
+	blasts.clear()
+	flashes.clear()
+	dawn = true
+	refresh_back()
+	var tw2 := create_tween()
+	tw2.tween_property(self, "whiteout", 0.0, 3.0)
 	await wait(2.6)
-	round_left = r[1]
-	spawn_t = 0.3
-	round_t = 0.0
-	phase = "zombies"
+	_ending()
 
 
+## Morning. It's quiet. Poppies grow where they fell, and every one of them gets a cross
+## (with a party hat on it).
 func _ending() -> void:
 	phase = "ending"
 	locked = true
-	no_darts = true
-	ammo = 0
-	get_button("reload").visible = false
-	_banner("OUT OF DARTS", "", Color(0.9, 0.2, 0.25), 3.0)
-	Audio.sfx("click", 0, 0.5)
-	await wait(0.4)
-	Audio.sfx("click", 0, 0.45)
-	await wait(1.0)
-	await say("Out of darts.", Narrator.DARK)
-	# everyone stops being dizzy and gathers round
-	zombies.clear()
-	for k in 9:
-		var x := 640.0 + (k - 4) * 150.0
-		var goal_z := 0.5 + (1.0 - absf(k - 4) / 4.0) * 0.14
-		zombies.append(_make_zombie(x, 0.05 + randf() * 0.1, goal_z))
-	Audio.sfx("zombie", -4, 0.9)
-	await wait(3.5)
-	await say("They were never attacking, Chumbo. They just want you to come back to the party.", Narrator.DARK)
+	Audio.play_music("duty_dark", 4.0)
 	var tw := create_tween()
-	tw.tween_property(self, "end_cake", 1.0, 1.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	Audio.sfx("sparkle")
-	Audio.sfx("cheer", -10, 0.6)
-	await wait(1.6)
-	await say("Happy birthday, Chumbo. There is always another round.", Narrator.CREEPY)
-	await say("Present number five, done! Mission accomplished, soldier!")
-	finish_game(IDX, "MISSION COMPLETE")
+	tw.tween_property(self, "poppies", 1.0, 4.0)
+	await wait(1.5)
+	await say("It's quiet now. It wasn't supposed to be this quiet.", Narrator.SARGE)
+	await say("They only came to a birthday party, Chumbo.", Narrator.DARK)
+	await say("Dear Mom. I'm the only one left. Happy birthday to me.", Narrator.CHUMBO)
+	await wait(0.6)
+	await say("Present number five. Done.", Narrator.WHISPER)
+	finish_game(IDX, "REMEMBER THEM")
 
 
 func _banner(text: String, sub: String, col: Color, dur: float) -> void:
@@ -538,21 +685,13 @@ func _spawn_drone() -> void:
 		"speed": randf_range(85, 105), "seed": randi() % 900, "ph": randf() * TAU})
 
 
-func _make_zombie(x: float, z: float, stop_z: float = 2.0) -> Dictionary:
-	var shirts := [Color(0.55, 0.7, 0.55), Color(0.6, 0.55, 0.75), Color(0.75, 0.55, 0.55), Color(0.5, 0.62, 0.75), Color(0.72, 0.68, 0.5)]
-	return {"x": x, "z": z, "hp": 3, "state": "walk", "flinch": 0.0, "st": 0.0, "ph": randf() * TAU,
-		"seed": randi() % 900, "hat": Crayon.RAINBOW[randi() % 7], "shirt": shirts[randi() % shirts.size()],
-		"darts": [], "speed": randf_range(0.075, 0.095) * (1.0 + maxi(round_i, 0) * 0.07), "stop": stop_z, "a": 1.0,
-		"hat_fly": Vector2.ZERO}
-
-
 # ------------------------------------------------------------------ update
 
 
 func tick(dt: float) -> void:
 	recoil = maxf(0.0, recoil - dt * 6.0)
 	hitmark = maxf(0.0, hitmark - dt * 4.0)
-	hug = maxf(0.0, hug - dt * 1.5)
+	flash = maxf(0.0, flash - dt * 2.0)
 	var want_rot := clampf((mouse - PIVOT).angle() + PI * 0.5, -0.7, 0.05)
 	aim_rot = lerpf(aim_rot, want_rot, minf(1.0, dt * 14.0))
 	for d in darts:
@@ -585,8 +724,9 @@ func tick(dt: float) -> void:
 		rb.visible = _playing() and not no_darts and ammo < MAG and reloading <= 0.0
 	_tick_targets(dt)
 	_tick_drones(dt)
-	_tick_zombies(dt)
 	_tick_streaks(dt)
+	if war:
+		_tick_war(dt)
 	if locked or not _playing():
 		return
 	match phase:
@@ -594,8 +734,6 @@ func tick(dt: float) -> void:
 			_tick_m1(dt)
 		"m2":
 			_tick_m2(dt)
-		"zombies":
-			_tick_round(dt)
 
 
 func _tick_m1(dt: float) -> void:
@@ -626,29 +764,6 @@ func _grandma_up() -> bool:
 		if tg.kind == "grandma" and tg.state != "hit":
 			return true
 	return false
-
-
-func _tick_round(dt: float) -> void:
-	round_t += dt
-	spawn_t -= dt
-	var r: Array = ROUNDS[round_i]
-	var walking := 0
-	for z in zombies:
-		if z.state == "walk":
-			walking += 1
-	if round_left > 0 and spawn_t <= 0.0 and walking < r[2]:
-		spawn_t = randf_range(1.0, 1.8) if round_i < 6 else randf_range(0.5, 0.9)
-		round_left -= 1
-		zombies.append(_make_zombie(randf_range(260, 1020), 0.0))
-		if randf() < 0.4:
-			Audio.sfx("zombie", -10, randf_range(0.8, 1.15))
-	if round_i == 6:
-		# round forever: it doesn't end. The darts do.
-		if round_t > 13.0:
-			_ending()
-		return
-	if round_left <= 0 and zombies.is_empty():
-		_next_round()
 
 
 func _tick_targets(dt: float) -> void:
@@ -701,43 +816,19 @@ func _tick_drones(dt: float) -> void:
 	drones = drones.filter(func(d): return not (d.state == "pop" and d.st > 0.3))
 
 
-func _tick_zombies(dt: float) -> void:
-	for z in zombies:
-		z.ph += dt * 4.0
-		z.flinch = maxf(0.0, z.flinch - dt * 4.0)
-		match z.state:
-			"walk":
-				if phase == "ending":
-					if z.stop < 1.5:
-						z.z = minf(z.stop, z.z + dt * 0.15)
-				elif not locked:
-					z.z += z.speed * dt * (1.0 - z.flinch * 0.8)
-					if z.z >= 0.93:
-						_hug(z)
-			"dizzy":
-				z.st += dt
-				z.hat_fly += Vector2(90, -260 + z.st * 500) * dt
-				if z.st > 1.4:
-					z.state = "leave"
-					z.st = 0.0
-			"leave":
-				z.st += dt
-				z.z = maxf(0.0, z.z - dt * 0.12)
-				z.a = 1.0 - clampf(z.st / 1.2, 0, 1)
-	zombies = zombies.filter(func(z): return not (z.state == "leave" and z.a <= 0.0))
-	zombies.sort_custom(func(a, b): return a.z < b.z)
-
-
-func _hug(z: Dictionary) -> void:
-	hug = 1.0
-	z.z = 0.32
-	z.hp = 3
-	z.darts.clear()
-	Audio.sfx("zombie", -2, 1.1)
-	Audio.sfx("squish", -6)
-	if not hug_said:
-		hug_said = true
-		say_bg("It just wanted a hug. It will come back.", Narrator.DARK)
+## Rain, the far-off guns, smoke, and the blasts fading.
+func _tick_war(dt: float) -> void:
+	_tick_front(dt)
+	for b in blasts:
+		b.t += dt
+	blasts = blasts.filter(func(b): return b.t < 1.6)
+	for fl in flashes:
+		fl.t += dt
+	flashes = flashes.filter(func(fl): return fl.t < 0.5)
+	if not dawn and randf() < dt * 0.7:
+		flashes.append({"x": randf_range(0, W), "t": 0.0})
+		if randf() < 0.35:
+			Audio.sfx("thud", -20, randf_range(0.4, 0.6))
 
 
 func _tick_streaks(dt: float) -> void:
@@ -803,19 +894,19 @@ func _target_rect(tg: Dictionary) -> Rect2:
 	return Rect2(b.x - 54.0 * s, b.y - h, 108.0 * s, h - 20.0 * s * tg.rise)
 
 
-func _zombie_feet(z: Dictionary) -> Vector2:
-	var zz: float = z.z
-	return Vector2(640.0 + (z.x - 640.0) * (0.45 + 0.75 * zz), 365.0 + zz * 380.0)
+## The battlefield in perspective: z = 0 far away on the horizon, 1 = the trench at your feet.
+func _field_feet(x: float, z: float) -> Vector2:
+	return Vector2(640.0 + (x - 640.0) * (0.45 + 0.75 * z), 365.0 + z * 380.0)
 
 
-func _zombie_h(z: Dictionary) -> float:
-	return 60.0 + z.z * 400.0
+func _field_h(z: float) -> float:
+	return 60.0 + z * 400.0
 
 
-func _zombie_rect(z: Dictionary) -> Rect2:
-	var f := _zombie_feet(z)
-	var h := _zombie_h(z)
-	return Rect2(f.x - h * 0.24, f.y - h, h * 0.48, h)
+func _friend_rect(f: Dictionary) -> Rect2:
+	var p := _field_feet(f.x, f.z)
+	var h := _field_h(f.z) * 0.75
+	return Rect2(p.x - h * 0.35, p.y - h, h * 0.7, h)
 
 
 func _muzzle() -> Vector2:
@@ -829,8 +920,15 @@ func _table_on() -> bool:
 	return (phase == "m2" or phase == "twist") and not night
 
 
+func _back_key() -> String:
+	return "%s/%s/%s/%s" % [night, _table_on(), war, dawn]
+
+
 func paint_back() -> void:
-	_baked_key = "%s/%s" % [night, _table_on()]
+	_baked_key = _back_key()
+	if war:
+		_war_back()
+		return
 	var top := Color(0.45, 0.72, 1.0)
 	var low := Color(0.78, 0.9, 1.0)
 	var grass := Color(0.48, 0.8, 0.4)
@@ -919,8 +1017,11 @@ func paint_back() -> void:
 
 
 func paint() -> void:
-	if _baked_key != "%s/%s" % [night, _table_on()]:
+	if _baked_key != _back_key():
 		refresh_back()
+	if war:
+		_war()
+		return
 	if dark > 0.0 and not night:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.05, 0.0, 0.1, dark * 0.6))
 	if _table_on():
@@ -941,12 +1042,6 @@ func paint() -> void:
 		_dart_stub(s.p, 1.0, clampf(s.life * 2.0, 0, 1))
 	if not care.is_empty():
 		_care()
-	for z in zombies:
-		_zombie(z)
-	if end_cake > 0.0:
-		var cb := Vector2(640, 790 - end_cake * 120)
-		Crayon.cake(pen, cb, 340, 130, Crayon.PINK.lerp(Color(0.5, 0.2, 0.3), 0.5), 9, false, 500)
-		Crayon.cake_flames(pen, cb, 340, 130, 9, 500)
 	for c in cakes:
 		var f := clampf(c.t / 0.5, 0, 1)
 		var to_y: float = (_target_rect(c.o).position.y if not c.drone else c.o.pos.y)
@@ -966,9 +1061,6 @@ func paint() -> void:
 		var p: Vector2 = from.lerp(d.to, f)
 		_dart_fly(p, (d.to - from).normalized(), lerpf(1.6, 0.8, f))
 	_blaster()
-	if hug > 0.0:
-		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(1.0, 0.55, 0.75, hug * 0.55))
-		Crayon.text(pen, Vector2(640, 360), "HUG!", 90, Color(1, 1, 1, hug), 1, 700, Crayon.title_font())
 
 
 func paint_top() -> void:
@@ -999,8 +1091,10 @@ func paint_top() -> void:
 		pen.draw_rect(Rect2(r.position + Vector2(6, 6), Vector2((r.size.x - 12) * loading, r.size.y - 12)), Crayon.GREEN if dark < 0.1 else Crayon.RED)
 	if not banner.is_empty():
 		_draw_banner()
-	if phase == "banner" or (phase == "zombies" and round_t < 1.5):
-		_round_title(Vector2(640, 250), 1.0 if phase == "banner" else 1.0 - round_t / 1.5)
+	if letter_a > 0.0:
+		_letter()
+	if whiteout > 0.0:
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0.97, 0.96, 0.93, whiteout))
 
 
 func _hud() -> void:
@@ -1009,18 +1103,13 @@ func _hud() -> void:
 		var title := "MISSION 1: BOOT CAMP" if phase != "m2" else "MISSION 2: CAPTURE THE CAKE"
 		Crayon.text(pen, Vector2(110, 30), title, 30, ink, 0, 730, null, 0.5, false)
 		Crayon.text(pen, Vector2(110, 64), "CRASHERS DOWN: %d / %d" % [mini(downed, goal), goal], 26, ink, 0, 731, null, 0.5, false)
-	elif phase in ["zombies", "banner", "ending"] and round_i >= 0:
-		var rr: int = ROUNDS[round_i][0]
-		Crayon.text(pen, Vector2(110, 30), "PARTY ZOMBIES", 30, Color(1, 0.35, 0.4), 0, 732, null, 0.5, false)
-		if rr > 0:
-			Crayon.text(pen, Vector2(110, 66), "ROUND %d" % rr, 30, Color(1, 0.35, 0.4), 0, 733, null, 0.5, false)
-		else:
-			Crayon.text(pen, Vector2(110, 66), "ROUND", 30, Color(1, 0.35, 0.4), 0, 733, null, 0.5, false)
-			_infinity(Vector2(232, 66), 22, Color(1, 0.35, 0.4), 4)
+	elif war:
+		_war_hud()
+		return
 	if phase != "intro":
 		hud("XP %d" % xp, ink)
 		var y := 84.0 + (120.0 if Narrator.top and Narrator.is_active() else 0.0)
-		Crayon.text(pen, Vector2(W - 24, y), RANKS[rank] if phase not in ["zombies", "banner", "ending"] or rank == 0 else "STILL HERE", 22, ink, 2, 734, null, 0.4, false)
+		Crayon.text(pen, Vector2(W - 24, y), RANKS[rank], 22, ink, 2, 734, null, 0.4, false)
 		if phase == "m1" or phase == "m2":
 			var nxt := "UAB" if streak < 3 else ("CARE PACKAGE" if streak < 5 else "CAKE STRIKE")
 			var need := 3 if streak < 3 else (5 if streak < 5 else 7)
@@ -1056,36 +1145,6 @@ func _draw_banner() -> void:
 	Crayon.text(pen, Vector2(640, y - 14), banner.text, 58, col, 1, 751, Crayon.title_font(), 0.6)
 	if banner.sub != "":
 		Crayon.text(pen, Vector2(640, y + 38), banner.sub, 34, Color(1, 1, 1, k), 1, 752, null, 0.6)
-
-
-## The zombie round number in drippy red crayon.
-func _round_title(c: Vector2, a: float) -> void:
-	if round_i < 0:
-		return
-	var rr: int = ROUNDS[round_i][0]
-	var red := Color(0.85, 0.08, 0.12, a)
-	pen.draw_rect(Rect2(-2000, c.y - 80, W + 4000, 160), Color(0, 0, 0, 0.5 * a))
-	var s := "ROUND %d" % rr if rr > 0 else "ROUND"
-	var w := Crayon.text(pen, c + Vector2(-60 if rr < 0 else 0, 0), s, 96, red, 1, 760, Crayon.title_font())
-	if rr < 0:
-		_infinity(c + Vector2(w * 0.5 + 40, 6), 52, red, 10)
-	# drips
-	var x0 := c.x - w * 0.5 - (60 if rr < 0 else 0)
-	for k in 9:
-		var x := x0 + fmod(k * 73.0 + 17.0, w)
-		var ln := 18.0 + fmod(k * 37.0, 40.0) + sin(t * 1.5 + k) * 6.0
-		var y0 := c.y + 34
-		Crayon.line(pen, Vector2(x, y0), Vector2(x, y0 + ln), red, 6, 770 + k, 0.3)
-		Crayon.disc(pen, Vector2(x, y0 + ln + 3), 6, red)
-
-
-func _infinity(c: Vector2, sz: float, col: Color, w: float) -> void:
-	var pts := PackedVector2Array()
-	for i in 33:
-		var a := TAU * i / 32.0
-		var d := 1.0 + sin(a) * sin(a)
-		pts.append(c + Vector2(cos(a) / d, sin(a) * cos(a) / d) * sz * 1.3)
-	Crayon.path(pen, pts, col, w, 780)
 
 
 func _crate(i: int) -> void:
@@ -1258,73 +1317,227 @@ func _uab() -> void:
 	Crayon.text(pen, p + Vector2(0, -50), "UAB", 20, Crayon.RED, 1, 433, null, 0.2, false)
 
 
-func _zombie(z: Dictionary) -> void:
-	var feet := _zombie_feet(z)
-	var h := _zombie_h(z)
-	var shove := Vector2(sin(z.ph * 7.0) * 8.0 * z.flinch, -z.flinch * 6.0)
-	var sitting: bool = z.state == "dizzy" or z.state == "leave"
-	draw_guest(pen, feet + shove, h, z.shirt, z.hat if z.state == "walk" or phase == "ending" else Color(0, 0, 0, 0), z.ph, z.seed, z.a, sitting)
-	if z.state == "walk":
-		for d in z.darts:
-			var dp: Vector2 = feet + shove + d * h
-			_dart_stub(dp, clampf(h / 260.0, 0.4, 1.6), 1.0)
-	if z.state == "dizzy":
-		var head := feet + Vector2(0, -h * 0.62)
+# ------------------------------------------------------------------ the front: drawing
+
+
+func _war_back() -> void:
+	var top := Color(0.2, 0.18, 0.2) if not dawn else Color(0.62, 0.62, 0.66)
+	var low := Color(0.5, 0.36, 0.28) if not dawn else Color(0.86, 0.83, 0.78)
+	var mud := Color(0.5, 0.41, 0.32) if not dawn else Color(0.56, 0.5, 0.42)
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, 2000 + HORIZON), top)
+	for i in 6:
+		pen.draw_rect(Rect2(-2000, i * HORIZON / 6.0, W + 4000, HORIZON / 6.0 + 1), top.lerp(low, (i + 0.5) / 6.0))
+	pen.draw_rect(Rect2(-2000, HORIZON, W + 4000, 2000), mud)
+	# smoke columns far away
+	if not dawn:
 		for k in 3:
-			var a := t * 5.0 + k * TAU / 3.0
-			Crayon.star(pen, head + Vector2(cos(a) * h * 0.18, sin(a) * h * 0.05 - h * 0.16), maxf(6.0, h * 0.04), Crayon.INK, Crayon.YELLOW, 800 + k)
-		Crayon.party_hat(pen, head + Vector2(0, -h * 0.15) + z.hat_fly, h * 0.09, z.hat, 810, z.st * 6.0)
+			var x := 180.0 + k * 430.0
+			for j in 5:
+				Crayon.disc(pen, Vector2(x + sin(j * 1.7 + k) * 24.0, HORIZON - 30 - j * 46.0), 30.0 + j * 9.0, Color(0.12, 0.1, 0.11, 0.35 - j * 0.05))
+	# what's left of the bouncy castle: flat on the ground, in the mud
+	var bc := Color(0.5, 0.36, 0.42)
+	Crayon.poly(pen, PackedVector2Array([Vector2(40, 334), Vector2(70, 300), Vector2(130, 312), Vector2(180, 290), Vector2(250, 316), Vector2(320, 306), Vector2(340, 334)]), Crayon.INK, 4, bc, 30)
+	Crayon.poly(pen, PackedVector2Array([Vector2(150, 300), Vector2(172, 270), Vector2(190, 296)]), Crayon.INK, 3, Color(0.38, 0.34, 0.22), 31)
+	# the house, without its roof
+	var hc := Color(0.42, 0.38, 0.36)
+	Crayon.poly(pen, PackedVector2Array([Vector2(990, 334), Vector2(990, 214), Vector2(1030, 196), Vector2(1060, 230), Vector2(1100, 186), Vector2(1150, 222), Vector2(1190, 200), Vector2(1240, 232), Vector2(1240, 334)]), Crayon.INK, 5, hc, 42)
+	for k in 2:
+		Crayon.rect(pen, Rect2(1018 + k * 140, 236, 62, 46), Crayon.INK, 4, Color(0.08, 0.07, 0.08), 44 + k)
+		Crayon.line(pen, Vector2(1018 + k * 140, 236), Vector2(1080 + k * 140, 282), Crayon.BROWN, 6, 46 + k)
+		Crayon.line(pen, Vector2(1080 + k * 140, 236), Vector2(1018 + k * 140, 282), Crayon.BROWN, 6, 48 + k)
+	# the tree, burnt down to a stump with two branches
+	Crayon.line(pen, Vector2(640, 334), Vector2(636, 230), Color(0.15, 0.12, 0.12), 14, 80)
+	Crayon.line(pen, Vector2(638, 262), Vector2(600, 226), Color(0.15, 0.12, 0.12), 7, 81)
+	Crayon.line(pen, Vector2(637, 248), Vector2(672, 214), Color(0.15, 0.12, 0.12), 6, 82)
+	# the fence, broken, and torn bunting hanging off one post
+	for k in 26:
+		var x := -10.0 + k * 52.0
+		if (x > 30 and x < 340) or (x > 980 and x < 1250) or k % 3 == 1:
+			continue
+		var lean := (fmod(k * 37.0, 7.0) - 3.0) * 0.06
+		Crayon.line(pen, Vector2(x + 12, HORIZON + 6), Vector2(x + 12 + lean * 50.0, HORIZON - 44), Color(0.3, 0.27, 0.27), 8, 51 + k)
+	for k in 3:
+		var a := Vector2(400 + k * 40, 150 + k * 22)
+		Crayon.poly(pen, PackedVector2Array([a, a + Vector2(26, 6), a + Vector2(8, 34)]), Crayon.INK, 2, Color(0.4, 0.38, 0.36), 70 + k)
+	# craters
+	for k in 9:
+		var cp := _field_feet(140.0 + fmod(k * 397.0, 1000.0), 0.08 + fmod(k * 0.23, 0.6))
+		var r := 40.0 + fmod(k * 13.0, 30.0) + cp.y * 0.08
+		Crayon.ellipse(pen, cp, Vector2(r, r * 0.3), Crayon.INK, 3, mud.darkened(0.3), 120 + k)
+	# barbed wire, two rows
+	for row in 2:
+		var y := HORIZON + 40.0 + row * 120.0
+		var posts := 9 if row == 0 else 7
+		for k in posts:
+			var x := 60.0 + k * (1160.0 / (posts - 1))
+			Crayon.line(pen, Vector2(x, y + 10), Vector2(x + 4, y - 24 - row * 8), Color(0.28, 0.22, 0.18), 5, 140 + k + row * 10)
+		var pts := PackedVector2Array()
+		for k in 60:
+			pts.append(Vector2(40.0 + k * 20.0, y - 14 - row * 4 + (6.0 if k % 2 == 0 else -6.0)))
+		Crayon.path(pen, pts, Color(0.2, 0.2, 0.22), 2, 160 + row)
+	# our trench: sandbags along the bottom
+	for k in 9:
+		var pc := Vector2(70 + k * 150, 712 + (k % 2) * 8)
+		Crayon.ellipse(pen, pc, Vector2(88, 34), Crayon.INK, 4, Color(0.5, 0.45, 0.36), 170 + k)
 
 
-## A party guest who has been at the party for a very long time. Arms out, holding a slice
-## of cake for you. feet = ground point, h = height. Also used by the finale cast.
-static func draw_guest(ci: CanvasItem, feet: Vector2, h: float, shirt: Color, hat: Color, ph: float, sd: int, a: float = 1.0, sitting: bool = false) -> void:
-	var ink := Color(Crayon.INK, a)
-	var w := maxf(3.0, h * 0.035)
-	var skin := Color(0.78, 0.86, 0.74, a)
-	var hip := feet + Vector2(0, -h * 0.42)
-	if sitting:
-		hip = feet + Vector2(0, -h * 0.12)
-		Crayon.line(ci, hip, hip + Vector2(-h * 0.22, h * 0.02), ink, w, sd)
-		Crayon.line(ci, hip, hip + Vector2(h * 0.22, h * 0.02), ink, w, sd + 1)
-	else:
-		var sway := sin(ph) * h * 0.06
-		Crayon.line(ci, hip, feet + Vector2(-h * 0.12 + sway, 0), ink, w, sd)
-		Crayon.line(ci, hip, feet + Vector2(h * 0.12 + sway, 0), ink, w, sd + 1)
-	var neck := hip + Vector2(sin(ph * 0.5) * h * 0.02, -h * 0.33)
-	Crayon.rect(ci, Rect2(neck + Vector2(-h * 0.11, h * 0.02), Vector2(h * 0.22, h * 0.31)), ink, w, Color(shirt, a), sd + 2)
-	var head := neck + Vector2(0, -h * 0.12)
-	var hr := h * 0.11
-	if sitting:
-		Crayon.line(ci, neck + Vector2(-h * 0.1, h * 0.06), neck + Vector2(-h * 0.2, h * 0.25), ink, w, sd + 3)
-		Crayon.line(ci, neck + Vector2(h * 0.1, h * 0.06), neck + Vector2(h * 0.2, h * 0.25), ink, w, sd + 4)
-	else:
-		# arms out in front, holding a slice of cake on a plate
-		var reach := Vector2(0, -h * 0.02 + sin(ph * 0.8) * h * 0.02)
-		var hl := neck + Vector2(-h * 0.16, h * 0.1) + reach
-		var hrp := neck + Vector2(h * 0.16, h * 0.1) + reach
-		Crayon.line(ci, neck + Vector2(-h * 0.1, h * 0.05), hl, ink, w, sd + 3)
-		Crayon.line(ci, neck + Vector2(h * 0.1, h * 0.05), hrp, ink, w, sd + 4)
-		var plate := (hl + hrp) * 0.5 + Vector2(0, -h * 0.01)
-		Crayon.ellipse(ci, plate, Vector2(h * 0.13, h * 0.025), ink, maxf(2.0, w * 0.6), Color(1, 1, 1, a), sd + 5)
-		Crayon.poly(ci, PackedVector2Array([plate + Vector2(-h * 0.07, -h * 0.01), plate + Vector2(h * 0.07, -h * 0.01), plate + Vector2(-h * 0.03, -h * 0.08)]),
-			ink, maxf(2.0, w * 0.6), Color(0.98, 0.6, 0.75, a), sd + 6)
-		Crayon.disc(ci, hl, w * 1.2, skin)
-		Crayon.disc(ci, hrp, w * 1.2, skin)
-	Crayon.circle(ci, head, hr, ink, w, skin, sd + 7)
-	if sitting:
-		Crayon.face(ci, head + Vector2(0, hr * 0.1), hr * 0.9, "sleep", Vector2.ZERO, sd + 8, ink)
-	else:
-		Crayon.face(ci, head + Vector2(0, hr * 0.1), hr * 0.9, "wide", Vector2.ZERO, sd + 8, ink)
-	if hat.a > 0.0:
-		Crayon.party_hat(ci, head + Vector2(0, -hr * 0.8), hr * 0.9, Color(hat, a), sd + 9, 0.2)
+func _war() -> void:
+	# far-off guns
+	for fl in flashes:
+		var a: float = 1.0 - fl.t / 0.5
+		Crayon.disc(pen, Vector2(fl.x, HORIZON - 10), 60.0, Color(1.0, 0.75, 0.4, 0.25 * a))
+	# where they fell: just their helmets
+	for hm in helmets:
+		var p := _field_feet(hm.x, hm.z)
+		var sc := _field_h(hm.z) / 300.0
+		_helmet_at(pen, p + Vector2(0, -8 * sc), 20.0 * sc, 1.0, 2500 + int(hm.x) % 50, 0.5)
+	if poppies > 0.0:
+		# in the morning, poppies all over the field, and a cross for every one of them
+		for k in 46:
+			var z := 0.08 + fmod(k * 0.137, 0.8)
+			var p := _field_feet(60.0 + fmod(k * 263.0, 1160.0), z)
+			_poppy(p, (4.0 + z * 9.0) * clampf(poppies * 2.0 - fmod(k * 0.31, 1.0), 0.0, 1.0))
+		var n := helmets.size()
+		for k in n:
+			var x := 640.0 + (k - (n - 1) * 0.5) * minf(170.0, 1000.0 / maxf(n, 1))
+			_cross(Vector2(x, 640), clampf(poppies * 1.6 - k * 0.1, 0.0, 1.0), helmets[k].name)
+	# incoming: a shadow on the ground that grows until it lands
+	for sh in shells:
+		if sh.boom or sh.t < 0.0:
+			continue
+		var p := _field_feet(sh.x, sh.z)
+		var f: float = clampf(sh.t / sh.warn, 0.0, 1.0)
+		var r: float = (30.0 + f * 60.0) * (0.6 + float(sh.z))
+		Crayon.ellipse(pen, p, Vector2(r, r * 0.3), Color(0.8, 0.15, 0.1, 0.5 + 0.4 * f), 3, Color(0, 0, 0, 0.15 + 0.3 * f), 2600)
+		Crayon.text(pen, p + Vector2(0, -r * 0.3 - 30), "!", 40, Color(1, 0.3, 0.2, 0.5 + 0.5 * sin(t * 14.0)), 1, 2601, Crayon.title_font(), 0.3, false)
+	# the squad, far ones first
+	var order := squad.filter(func(f): return f.state in ["pinned", "run", "charge"])
+	order.sort_custom(func(a, b): return a.z < b.z)
+	for f in order:
+		_friend(f)
+	for b in blasts:
+		var k: float = b.t / 1.6
+		var r: float = b.r * (0.5 + k)
+		if b.t < 0.25:
+			Crayon.star(pen, b.p + Vector2(0, -r * 0.3), r, Crayon.INK, Color(1, 0.75, 0.3, 1.0 - b.t * 3.0), 2610)
+		for j in 5:
+			var d := Vector2(cos(j * 1.3), -absf(sin(j * 1.3 + 0.5))) * r * 0.8
+			Crayon.disc(pen, b.p + d * k + Vector2(0, -k * 40.0), r * 0.35 * (1.0 - k * 0.5), Color(0.3, 0.27, 0.26, 0.6 * (1.0 - k)))
+	# rain (not at dawn)
+	if not dawn:
+		for i in 70:
+			var x := fmod(i * 137.0 + t * 260.0, W + 200.0) - 100.0
+			var y := fmod(i * 89.0 + t * 720.0, H)
+			pen.draw_line(Vector2(x, y), Vector2(x - 8, y + 22), Color(0.75, 0.8, 0.9, 0.3), 2.0)
+	if flash > 0.0:
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(1, 0.95, 0.85, flash * 0.5))
+	if phase == "front" and wave == 0 and not pulled_said:
+		Crayon.text(pen, Vector2(640, 668), "TAP YOUR FRIENDS TO PULL THEM BACK!", 30, Crayon.WHITE, 1, 2620, Crayon.title_font())
+
+
+## One of Chumbo's friends out on the field: hiding in a crater, running back, or walking away.
+func _friend(f: Dictionary) -> void:
+	var p := _field_feet(f.x, f.z) + Vector2(sin(t * 60.0) * 3.0 * float(f.shake > 0.0), 0)
+	var h := _field_h(f.z) * 0.75
+	match f.state:
+		"pinned":
+			Crayon.ellipse(pen, p, Vector2(h * 0.75, h * 0.2), Crayon.INK, 3, Color(0.22, 0.17, 0.14), int(f.seed) + 1)
+			draw_soldier(pen, p + Vector2(0, h * 0.18), h * 0.85, "o", "stand", t, int(f.seed))
+			# the near lip of the crater hides their legs
+			Crayon.poly(pen, PackedVector2Array([p + Vector2(-h * 0.8, 0), p + Vector2(h * 0.8, 0), p + Vector2(h * 0.7, h * 0.18), p + Vector2(-h * 0.7, h * 0.18)]), Crayon.INK, 3, Color(0.36, 0.28, 0.22), int(f.seed) + 2)
+		"run":
+			draw_soldier(pen, p, h, "o", "walk", t * 9.0, int(f.seed))
+		"charge":
+			draw_soldier(pen, p, h, "flat", "walk", t * 5.0, int(f.seed))
+	# name tag
+	var tag := p + Vector2(0, -h * 1.12)
+	var fs := int(clampf(h * 0.16, 18, 28))
+	Crayon.text(pen, tag + Vector2(2, 2), f.name, fs, Color(0, 0, 0, 0.7), 1, int(f.seed) + 3, Crayon.title_font(), 0.3, false)
+	Crayon.text(pen, tag, f.name, fs, Crayon.WHITE, 1, int(f.seed) + 3, Crayon.title_font(), 0.3, false)
+
+
+func _poppy(p: Vector2, r: float) -> void:
+	if r <= 0.5:
+		return
+	Crayon.line(pen, p, p + Vector2(0, r * 2.0), Color(0.25, 0.45, 0.2), maxf(1.5, r * 0.25), 2630)
+	for k in 4:
+		var a := k * TAU / 4.0 + 0.4
+		Crayon.disc(pen, p + Vector2(cos(a), sin(a)) * r * 0.6, r * 0.7, Color(0.85, 0.12, 0.12))
+	Crayon.disc(pen, p, r * 0.35, Color(0.1, 0.08, 0.08))
+
+
+## A little wooden cross with their name, and a party hat on top.
+func _cross(p: Vector2, sc: float, name: String) -> void:
+	if sc <= 0.05:
+		return
+	var wood := Color(0.62, 0.5, 0.36)
+	Crayon.line(pen, p, p + Vector2(0, -120 * sc), Crayon.INK, 16 * sc + 2, 2640)
+	Crayon.line(pen, p, p + Vector2(0, -120 * sc), wood, 12 * sc, 2641)
+	Crayon.line(pen, p + Vector2(-46 * sc, -80 * sc), p + Vector2(46 * sc, -80 * sc), Crayon.INK, 26 * sc + 2, 2642)
+	Crayon.line(pen, p + Vector2(-46 * sc, -80 * sc), p + Vector2(46 * sc, -80 * sc), wood, 22 * sc, 2643)
+	Crayon.party_hat(pen, p + Vector2(0, -122 * sc), 20 * sc, Crayon.RED, 2644, 0.2)
+	_helmet_at(pen, p + Vector2(0, -6 * sc), 22 * sc, 1.0, 2646, 0.3)
+	Crayon.text(pen, p + Vector2(0, -80 * sc), name, int(maxf(10.0, 20 * sc)), Crayon.INK, 1, 2645, Crayon.title_font(), 0.3, false)
+
+
+func _letter() -> void:
+	var r := Rect2(340, 230, 600, 230)
+	var a := letter_a
+	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, 0.4 * a))
+	Crayon.rect(pen, r, Color(Crayon.INK, a), 4, Color(0.96, 0.93, 0.84, a), 2650)
+	for k in 5:
+		pen.draw_line(Vector2(r.position.x + 20, r.position.y + 70 + k * 34), Vector2(r.end.x - 20, r.position.y + 70 + k * 34), Color(0.6, 0.7, 0.9, 0.5 * a), 2.0)
+	var lines := letter.split("\n")
+	Crayon.text(pen, r.position + Vector2(30, 46), lines[0], 30, Color(Crayon.INK, a), 0, 2651, null, 0.5, false)
+	Crayon.text_block(pen, r.position + Vector2(r.size.x * 0.5, 100), lines[1] if lines.size() > 1 else "", 28, r.size.x - 60, Color(Crayon.INK, a), 1, 2652, 1.2)
+	Crayon.text(pen, r.end - Vector2(40, 26), "Love, Chumbo", 26, Color(Crayon.INK, a), 2, 2653, null, 0.5, false)
+	# a muddy thumbprint
+	Crayon.disc(pen, r.position + Vector2(r.size.x - 70, 40), 16, Color(0.35, 0.27, 0.2, 0.5 * a))
+
+
+func _war_hud() -> void:
+	Crayon.text(pen, Vector2(110, 30), "MISSION 3: THE FRONT", 30, Crayon.WHITE, 0, 736, null, 0.5, false)
+	if day > 0:
+		Crayon.text(pen, Vector2(110, 66), "DAY %d" % day, 30, Color(0.95, 0.85, 0.7), 0, 737, null, 0.5, false)
+	# the squad: who is still here
+	var y := 34.0 + (120.0 if Narrator.top and Narrator.is_active() else 0.0)
+	for k in squad.size():
+		var f: Dictionary = squad[k]
+		var gone: bool = f.state == "lost"
+		var p := Vector2(W - 30, y + k * 30)
+		var col := Crayon.WHITE if not gone else Color(0.6, 0.55, 0.55)
+		var w := Crayon.text(pen, p, f.name, 22, col, 2, 738 + k, Crayon.title_font(), 0.3, false)
+		_helmet_at(pen, p + Vector2(-w - 20, 2), 11.0, 1.0 if not gone else 0.5, 760 + k)
+		if gone:
+			Crayon.line(pen, p + Vector2(-w - 4, -2), p + Vector2(4, -2), Color(0.85, 0.2, 0.2), 3, 770 + k)
+
+
+## One of Chumbo's friends at the front: a kid in a helmet that is too big for them.
+## Also the finale/title mascot (with a party hat stuck on the helmet).
+static func draw_soldier(ci: CanvasItem, feet: Vector2, h: float, mood: String, pose: String, ph: float, sd: int, a: float = 1.0) -> void:
+	Crayon.person(ci, feet, h, Color(Crayon.INK, a), mood, Color(0, 0, 0, 0), pose, ph, sd)
+	_helmet_at(ci, feet + Vector2(0, -h * 0.87 - h * 0.04), h * 0.17, a, sd + 50)
+
+
+static func _helmet_at(ci: CanvasItem, c: Vector2, r: float, a: float, sd: int, tilt: float = 0.0) -> void:
+	var pts := PackedVector2Array()
+	for k in 11:
+		var ang := PI + k * PI / 10.0 + tilt
+		pts.append(c + Vector2(cos(ang) * r, sin(ang) * r * 0.85))
+	Crayon.poly(ci, pts, Color(Crayon.INK, a), maxf(2.0, r * 0.12), Color(0.42, 0.47, 0.3, a), sd)
+	var brim := Vector2(cos(tilt), sin(tilt)) * r * 1.25
+	Crayon.line(ci, c - brim, c + brim, Color(Crayon.INK, a), maxf(2.0, r * 0.15), sd + 1)
 
 
 static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float) -> void:
-	draw_guest(ci, feet, 170.0 * sc, Color(0.55, 0.7, 0.55), Crayon.PINK, tm * 3.0, 4321)
+	var h := 170.0 * sc
+	draw_soldier(ci, feet, h, "happy", "stand", tm * 3.0, 4321)
+	Crayon.party_hat(ci, feet + Vector2(4, -h * 1.02), h * 0.1, Crayon.PINK, 4330, 0.25)
 
 
 func _blaster() -> void:
+	if war:
+		return
 	var back := Vector2(0, 26.0 * recoil).rotated(aim_rot)
 	pen.draw_set_transform(PIVOT + back, aim_rot, Vector2.ONE)
 	var sleeve := Color(0.3, 0.6, 0.3) if not night else Color(0.2, 0.35, 0.22)

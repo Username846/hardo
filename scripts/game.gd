@@ -43,7 +43,8 @@ var title_dead := false
 ## Secrets found in the games: id -> true.
 var eggs := {}
 var hub_lines_heard := -1
-var muted := false
+## Master volume, 0..1 (the slider in the party room). 0 is silent.
+var volume := 1.0
 var main: Node = null
 
 
@@ -104,7 +105,7 @@ func save_game() -> void:
 	cf.set_value("p", "title_dead", title_dead)
 	cf.set_value("p", "eggs", eggs)
 	cf.set_value("p", "heard", hub_lines_heard)
-	cf.set_value("p", "muted", muted)
+	cf.set_value("p", "volume", volume)
 	cf.save(SAVE_PATH)
 
 
@@ -124,7 +125,8 @@ func load_game() -> void:
 	title_dead = cf.get_value("p", "title_dead", false)
 	eggs = cf.get_value("p", "eggs", {})
 	hub_lines_heard = cf.get_value("p", "heard", -1)
-	muted = cf.get_value("p", "muted", false)
+	# (older saves only had a mute switch)
+	volume = cf.get_value("p", "volume", 0.0 if cf.get_value("p", "muted", false) else 1.0)
 
 
 func reset() -> void:

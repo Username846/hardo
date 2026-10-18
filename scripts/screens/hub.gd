@@ -34,6 +34,10 @@ var shake_i := -1
 var shake_t := 0.0
 var p := 0
 var guests: Array = []
+var vol_open := false
+var vol_drag := false
+const VOL_PANEL := Rect2(1280 - 98, 80, 88, 272)
+const VOL_TRACK := Rect2(1280 - 54 - 4, 118, 8, 190)
 
 
 func enter() -> void:
@@ -43,8 +47,9 @@ func enter() -> void:
 	use_back_layer()
 	p = Game.progress()
 	Audio.play_music("hub" if p < 5 else "hub_dark")
-	add_button("mute", Rect2(W - 92, 10, 76, 60), "", _mute, Crayon.WHITE)
+	add_button("mute", Rect2(W - 92, 10, 76, 60), "", _volume, Crayon.WHITE)
 	add_button("full", Rect2(W - 180, 10, 76, 60), "", _full, Crayon.WHITE)
+	add_button("title", Rect2(14, 12, 74, 64), "", _to_title, Crayon.WHITE)
 	var n := 4 + p * 2
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
@@ -68,8 +73,35 @@ func enter() -> void:
 	_talk()
 
 
-func _mute() -> void:
-	Audio.toggle_mute()
+## The speaker button pops a volume slider out underneath it.
+func _volume() -> void:
+	vol_open = not vol_open
+	vol_drag = false
+
+
+func _to_title() -> void:
+	Audio.sfx("whoosh", -6)
+	Game.goto("title")
+
+
+func _set_volume_at(y: float) -> void:
+	var v := clampf((VOL_TRACK.end.y - y) / VOL_TRACK.size.y, 0.0, 1.0)
+	if absf(v - Game.volume) > 0.001:
+		Audio.set_volume(v, false)
+		if fmod(t, 0.12) < get_process_delta_time():
+			Audio.sfx("blip", -10, 0.8 + v * 0.6)
+
+
+func drag(pos: Vector2) -> void:
+	if vol_drag:
+		_set_volume_at(pos.y)
+
+
+func release(_pos: Vector2) -> void:
+	if vol_drag:
+		vol_drag = false
+		Game.save_game()
+		Audio.sfx("blip", -8, 0.8 + Game.volume * 0.6)
 
 
 func _full() -> void:
@@ -120,6 +152,13 @@ func next_index() -> int:
 
 
 func press(pos: Vector2) -> void:
+	if vol_open:
+		if VOL_PANEL.grow(10).has_point(pos):
+			vol_drag = true
+			_set_volume_at(pos.y)
+		else:
+			vol_open = false
+		return
 	if opening >= 0:
 		return
 	for i in Game.GAMES.size():
@@ -310,12 +349,21 @@ func paint_top() -> void:
 	var mb := get_button("mute")
 	var c: Vector2 = mb.rect.get_center()
 	Crayon.poly(pen, PackedVector2Array([c + Vector2(-20, -8), c + Vector2(-8, -8), c + Vector2(4, -20), c + Vector2(4, 20), c + Vector2(-8, 8), c + Vector2(-20, 8)]), Crayon.INK, 3, Crayon.GREY, 50)
-	if Game.muted:
+	if Game.volume <= 0.001:
 		Crayon.line(pen, c + Vector2(10, -12), c + Vector2(26, 12), Crayon.RED, 5, 51)
 		Crayon.line(pen, c + Vector2(26, -12), c + Vector2(10, 12), Crayon.RED, 5, 52)
 	else:
 		Crayon._arc(pen, c + Vector2(6, 0), 14, -0.9, 0.9, Crayon.INK, 3, 53)
-		Crayon._arc(pen, c + Vector2(6, 0), 22, -0.9, 0.9, Crayon.INK, 3, 54)
+		if Game.volume > 0.45:
+			Crayon._arc(pen, c + Vector2(6, 0), 22, -0.9, 0.9, Crayon.INK, 3, 54)
+	if vol_open:
+		_volume_panel()
+	# back to the title screen: an arrow over a little carousel
+	var tb := get_button("title")
+	var tc: Vector2 = tb.rect.get_center()
+	Crayon.poly(pen, PackedVector2Array([tc + Vector2(-20, -8), tc + Vector2(-2, -24), tc + Vector2(-2, 8)]), Crayon.INK, 3, Crayon.RED, 70)
+	Crayon.line(pen, tc + Vector2(-4, -8), tc + Vector2(16, -8), Crayon.INK, 7, 71)
+	Crayon.text(pen, tc + Vector2(0, 17), "TITLE", 15, Crayon.INK, 1, 72, Crayon.title_font())
 	var fb := get_button("full")
 	var fc: Vector2 = fb.rect.get_center()
 	for k in 4:
@@ -324,6 +372,22 @@ func paint_top() -> void:
 		var corner := fc + Vector2(sx * 20, sy * 16)
 		Crayon.line(pen, corner, corner - Vector2(sx * 12, 0), Crayon.INK, 4, 60 + k)
 		Crayon.line(pen, corner, corner - Vector2(0, sy * 10), Crayon.INK, 4, 64 + k)
+
+
+## The slider that pops out under the speaker: drag the knob up and down.
+func _volume_panel() -> void:
+	Crayon.rect(pen, VOL_PANEL, Crayon.INK, 4, Crayon.WHITE, 75)
+	var v := Game.volume
+	var top := VOL_TRACK.position.y
+	var bot := VOL_TRACK.end.y
+	var x := VOL_TRACK.get_center().x
+	Crayon.line(pen, Vector2(x, top), Vector2(x, bot), Crayon.GREY.lightened(0.3), 12, 76, 0.3)
+	if v > 0.0:
+		Crayon.line(pen, Vector2(x, bot - v * VOL_TRACK.size.y), Vector2(x, bot), Crayon.GREEN, 12, 77, 0.3)
+	var knob := Vector2(x, bot - v * VOL_TRACK.size.y)
+	Crayon.circle(pen, knob, 16, Crayon.INK, 4, Crayon.YELLOW, 78)
+	Crayon.text(pen, Vector2(x, VOL_PANEL.position.y + 18), "%d%%" % roundi(v * 100.0), 20, Crayon.INK, 1, 79, Crayon.title_font())
+	Crayon.text(pen, Vector2(x, VOL_PANEL.end.y - 18), "VOLUME", 15, Crayon.INK, 1, 80, Crayon.title_font())
 
 
 func _present(i: int) -> void:

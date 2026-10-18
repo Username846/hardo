@@ -11,7 +11,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 - **The title screen.** A party carousel turning at dusk to the game's own theme song: a waltz called "It's Your Birthday" (with words to sing along). Each pole carries a rider from one of the presents, still wrapped up as a **?** present until you've played that game. In a browser, the first tap switches the party on, because browsers don't allow sound until you tap. Tap the riders to hear them, then press **PLAY!**
 - **Name check.** The game asks for your name. The only correct answer is `I'm Chumbo` (any capitalization). Anything else gets you a boxing glove, a falling cake, or a hole in the ground. After three wrong tries the game types it for you. Once it's been got right, the game remembers and skips straight to the party.
 - **The calendar.** The game uses the device's date, so whatever day he plays is his birthday. Try telling it otherwise.
-- **The party.** Ten presents, opened in order. The party room changes a little every time you come back.
+- **The party.** Ten presents, opened in order. The party room changes a little every time you come back. The arrow at the top left goes back to the title screen, and the speaker button at the top right pops out a volume slider.
 - **Ten mini-games**, each starting cute and ending... slightly less cute:
 
 | # | Game | Genre | Music |
@@ -20,12 +20,12 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | 2 | TONY HONK'S PRO SKATER 2 | one-minute skate sessions: tricks + combos | ska punk (dub when it gets weird) |
 | 3 | DIJIMON | digital pet that dijivolves | anime rock theme song |
 | 4 | Card Checkpoint | document inspection | bossa nova vibraphone |
-| 5 | CALL OF BIRTHDAY: MODERN PARTYFARE | foam-dart shooting gallery + party zombies | epic orchestral |
+| 5 | CALL OF BIRTHDAY: MODERN PARTYFARE | foam-dart shooting gallery, then the front: shells, mud and rain, pulling your friends back to the trench (the pain of war, without gore) | epic orchestral |
 | 6 | FORTNIGHT: Birthday Royale | battle-royale build defence | EDM supersaws |
 | 7 | ROBLOCKS Birthday Obby | obstacle-course runner | tropical marimba + steel drum |
 | 8 | POKeMANS | creature-catching battles | Game Boy chiptune |
 | 9 | R.E.P.O. (Retrieve Every Party Object) | robot hauling valuables to the extraction truck (then selling all of Chumbo's own things to the Taxman) | sea shanty |
-| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake (who malfunctions on stage at the end) | Vocaloid J-pop |
+| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake (who malfunctions on stage at the end; the song goes on without her, in a slow grey whisper) | Vocaloid J-pop |
 
 The end credits roll with the karaoke song, and its lyrics show at the bottom so you can sing along.
 
@@ -89,7 +89,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=hubui` tries the volume slider and the way back to the title, `--bot=eggs` finds every game's secret, `--bot=titleegg` the title screen's, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```

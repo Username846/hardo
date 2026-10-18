@@ -56,6 +56,35 @@ func _ready() -> void:
 		await _sync_probe()
 		get_tree().quit()
 		return
+	if which == "hubui":
+		# the party room's volume slider and the way back to the title screen
+		Game.done.fill(true)
+		Game.finale_seen = true
+		Game.secret_done = true
+		Game.main._open("hub", null)
+		var hu: Node = Game.main.current
+		await get_tree().create_timer(1.5).timeout
+		_skip_narration()
+		g = hu
+		_btn("mute")
+		var tr: Rect2 = hu.VOL_TRACK
+		var at := Vector2(tr.get_center().x, tr.end.y - tr.size.y * 0.3)
+		hu.press(at)
+		hu.drag(at + Vector2(0, -2))
+		await get_tree().create_timer(0.5).timeout
+		await _snap("hubui_volume")
+		hu.release(at)
+		print("HUBUI open=", hu.vol_open, " volume=", snappedf(Game.volume, 0.01), " bus_db=", snappedf(AudioServer.get_bus_volume_db(0), 0.1))
+		hu.press(Vector2(640, 300))
+		print("HUBUI closed=", not hu.vol_open)
+		Audio.set_volume(1.0)
+		_btn("title")
+		await get_tree().create_timer(2.0).timeout
+		var tl: Node = Game.main.current
+		await _snap("hubui_title")
+		print("HUBUI title -> ", tl.get_script().resource_path, " awake=", tl.get("awake"))
+		get_tree().quit()
+		return
 	if which == "radio":
 		# after the secret game: the radio on the party table opens the party radio
 		Game.done.fill(true)

@@ -22,7 +22,7 @@ const LYRIC_Y := 588.0
 var chart: Array = []
 var hits := {}
 var song := ""
-var phase := "intro"   # intro, cute, dark, malfunction, candles_wait, candles, wish
+var phase := "intro"   # intro, cute, dark, malfunction, grey, candles_wait, candles, wish
 var score := 0
 var combo := 0
 var best := 0
@@ -44,6 +44,8 @@ var mal_glitch := 0.0
 var broken := 0.0
 var frozen_beat := 0.0
 var err_text := ""
+## The grey spotlight on her while the song goes on without her (0..1).
+var grey_light := 0.0
 var sparks: Array = []      # {p, v, t}
 var smoke: Array = []       # {p, t}
 ## (Tap her leek a few times in a row during the first song and she does the leek spin.)
@@ -307,8 +309,26 @@ func _malfunction() -> void:
 	await wait(1.0)
 	err_text = "NO\nSIGNAL"
 	await say("The singer has stopped working. The birthday song will go on without her.", Narrator.HYPE_DARK)
+	await _grey_verse()
 	await say("She sang your birthday song so many times that she broke.", Narrator.DARK)
 	_candles()
+
+
+## And it does go on: one slow verse in a grey whisper, while she just stands there, switched off.
+func _grey_verse() -> void:
+	phase = "grey"
+	var tw := create_tween()
+	tw.tween_property(self, "grey_light", 1.0, 2.0)
+	Audio.play_music("karaoke_grey", 1.0, 0.0, false)
+	var dur := Audio.song_length()
+	var t0 := Time.get_ticks_msec()
+	# it doesn't loop: wait for the last note to ring out
+	while Audio.song == "karaoke_grey" and Audio.song_pos < dur - 0.4 and Time.get_ticks_msec() - t0 < (dur + 8.0) * 1000.0:
+		await get_tree().process_frame
+	Audio.stop_music(1.0)
+	var tw2 := create_tween()
+	tw2.tween_property(self, "grey_light", 0.35, 1.0)
+	await wait(1.0)
 
 
 func _spark_burst(n: int) -> void:
@@ -436,6 +456,11 @@ func paint() -> void:
 	if mal_glitch > 0.0:
 		feet += Vector2(randf_range(-8, 8), randf_range(-3, 3)) * mal_glitch
 	var glitch := 0.18 if phase == "dark" else mal_glitch
+	if grey_light > 0.0:
+		# one cold spotlight on the empty performance
+		var top := Vector2(640, -20)
+		Crayon.poly(pen, PackedVector2Array([top + Vector2(-40, 0), top + Vector2(40, 0), MIKAKE_FEET + Vector2(170, 20), MIKAKE_FEET + Vector2(-170, 20)]), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.13 * grey_light), 4460)
+		Crayon.ellipse(pen, MIKAKE_FEET + Vector2(0, 14), Vector2(170, 26), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.18 * grey_light), 4461)
 	draw_mikake(pen, feet, 330.0, beat, dk, sing, 600, glitch, broken, spin_ang if leek_spin > 0.0 else NAN)
 	if leek_spin > 0.0:
 		# a ring of little leeks spinning round her
@@ -459,6 +484,8 @@ func paint() -> void:
 
 
 func paint_top() -> void:
+	if phase == "grey":
+		_grey_lyrics()
 	if phase == "cute" or phase == "dark":
 		var dark := phase == "dark"
 		pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
@@ -690,6 +717,23 @@ func _lyrics(now: float) -> void:
 		if sung and float(chart[i][0]) + float(chart[i][1]) > now:
 			Crayon.disc(pen, Vector2(x + w * 0.4, LYRIC_Y - 40 - absf(sin(now * 10.0)) * 12), 9, TEAL if not dark else Crayon.RED)
 		x += w
+
+
+## The words of the grey verse, in grey.
+func _grey_lyrics() -> void:
+	var ls := Audio.lyric_state()
+	if ls.is_empty():
+		return
+	var parts: PackedStringArray = ls.parts
+	var sung: int = ls.sung
+	var font := Crayon.body()
+	var size := 38
+	var text_all := "".join(parts)
+	pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
+	var x := 640.0 - font.get_string_size(text_all, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5
+	for i in parts.size():
+		var col := Color(0.85, 0.85, 0.88) if i < sung else Color(0.5, 0.5, 0.54)
+		x += Crayon.text(pen, Vector2(x, LYRIC_Y), parts[i], size, col, 0, 4470 + i, null, 0.4, false)
 
 
 const MIKAKE_FEET := Vector2(640, 540)
