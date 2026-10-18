@@ -395,10 +395,15 @@ func _rocko(choice: String = "") -> void:
 				if not g.locked:
 					_btn(choice)
 			"gone":
-				# the leave ending stays black for good: nothing left to press
-				await get_tree().create_timer(4.0).timeout
+				# after the leave ending: black, then back to the title screen, with a gold star
 				await _snap("rocko_gone")
-				print("ROCKO gone: buttons=", g.buttons.size(), " black=", g.black, " eyes=", g.eyes)
+				var tg := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tg < 20000 and (Game.main.current == g or Game.main.current == null):
+					await get_tree().process_frame
+				await get_tree().create_timer(3.0).timeout
+				await _snap("rocko_title_star")
+				var tl: Node = Game.main.current
+				print("ROCKO after leaving: ", tl.get_script().resource_path if tl else "?", " title_star=", Game.title_star, " shown=", tl.get("star_k"))
 				break
 		if g.gap < last_gap:
 			hits += 1

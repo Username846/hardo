@@ -40,6 +40,10 @@ var secret_started := false
 var radio_seen := false
 ## Chumbo on the title screen was tapped once too often. The title stays grim until a new party.
 var title_dead := false
+## Chumbo walked away from the party (and came back to the start): a gold star on the title screen.
+var title_star := false
+## (not saved) the title screen pops the star in the first time it's shown
+var title_star_new := false
 ## Secrets found in the games: id -> true.
 var eggs := {}
 var hub_lines_heard := -1
@@ -122,6 +126,7 @@ func save_game() -> void:
 	cf.set_value("p", "radio_seen", radio_seen)
 	cf.set_value("p", "title_dead", title_dead)
 	cf.set_value("p", "eggs", eggs)
+	cf.set_value("p", "title_star", title_star)
 	cf.set_value("p", "heard", hub_lines_heard)
 	cf.set_value("p", "volume", volume)
 	cf.save(SAVE_PATH)
@@ -142,6 +147,7 @@ func load_game() -> void:
 	radio_seen = cf.get_value("p", "radio_seen", false)
 	title_dead = cf.get_value("p", "title_dead", false)
 	eggs = cf.get_value("p", "eggs", {})
+	title_star = cf.get_value("p", "title_star", false)
 	hub_lines_heard = cf.get_value("p", "heard", -1)
 	# (older saves only had a mute switch)
 	volume = cf.get_value("p", "volume", 0.0 if cf.get_value("p", "muted", false) else 1.0)
@@ -156,6 +162,7 @@ func reset() -> void:
 	secret_started = false
 	radio_seen = false
 	title_dead = false
+	title_star = false
 	eggs = {}
 	hub_lines_heard = -1
 	save_game()

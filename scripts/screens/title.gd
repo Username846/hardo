@@ -50,6 +50,7 @@ var ghost_spin := 0.0
 var grim := 0.0
 var _baked_grim := 0.0
 var pops: Array = []     # {p, txt, t}
+var star_k := 0.0
 
 
 func enter() -> void:
@@ -65,6 +66,12 @@ func enter() -> void:
 		_baked_grim = 1.0
 	use_back_layer()
 	lyrics_y = 676.0
+	star_k = 1.0 if Game.title_star else 0.0
+	if Game.title_star_new:
+		# just earned: it drops in
+		Game.title_star_new = false
+		star_k = 0.0
+		_star_in()
 	add_button("full", Rect2(16, H - 64, 168, 50), "full screen", _fullscreen, Crayon.WHITE, 24)
 	if Game.player_name != "":
 		add_button("forget", Rect2(W - 184, H - 64, 168, 50), "new party", _forget, Crayon.WHITE, 24)
@@ -133,6 +140,15 @@ func _forget() -> void:
 		return
 	forget_armed = 3.0
 	b.label = "tap again!"
+
+
+func _star_in() -> void:
+	await wait(1.6)
+	Audio.sfx("sparkle")
+	Audio.sfx("levelup", -6)
+	var tw := create_tween()
+	tw.tween_property(self, "star_k", 1.0, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	confetti_burst(Vector2(CX, PEAK_Y - 50), 30)
 
 
 ## A new party: Chumbo is back, and so is the colour.
@@ -332,7 +348,14 @@ func paint() -> void:
 		if on:
 			Crayon.disc(pen, p, 12.0, Color(1, 0.9, 0.4, 0.25))
 	var flap := sin(t * 5.0) * 4.0 * (0.3 + 0.7 * spin)
-	Crayon.poly(pen, PackedVector2Array([Vector2(CX, PEAK_Y - 30), Vector2(CX + 34, PEAK_Y - 22 + flap + grim * 14), Vector2(CX, PEAK_Y - 14)]), Crayon.INK, 2, _fade(Crayon.RED), 181)
+	if star_k > 0.0 and Game.title_star:
+		# the gold star for walking away (and ending up right back here)
+		var sp := Vector2(CX, PEAK_Y - 34 - (1.0 - star_k) * 140.0)
+		Crayon.disc(pen, sp, 32 * star_k, Color(1, 0.9, 0.4, 0.16 + 0.08 * sin(t * 3.0)))
+		Crayon.star(pen, sp, 26 * star_k, Crayon.INK, Color(1.0, 0.8, 0.12), 182, -PI / 2 + sin(t * 1.5) * 0.08)
+		Crayon.star(pen, sp + Vector2(-8, -7) * star_k, 7 * star_k, Color(1, 1, 1, 0), Color(1, 1, 1, 0.85), 183)
+	else:
+		Crayon.poly(pen, PackedVector2Array([Vector2(CX, PEAK_Y - 30), Vector2(CX + 34, PEAK_Y - 22 + flap + grim * 14), Vector2(CX, PEAK_Y - 14)]), Crayon.INK, 2, _fade(Crayon.RED), 181)
 	# riders, back half first, then the middle pole, then the front half
 	_rider_pos.clear()
 	var order: Array = []

@@ -6,7 +6,6 @@ extends Screen
 ## With all ten gold stars, Rocko doesn't lead him back to the party this time: he leads him to a
 ## fork in the road at the edge of town and lets Chumbo choose. Back to the party, or away. Away
 ## is a long walk in the dark... and every road bends back. You can't escape your birthday.
-## (After that the screen just stays black until the game is restarted.)
 
 const LANES := [470.0, 565.0, 660.0]
 const ME_X := 640.0
@@ -630,8 +629,9 @@ func _choose_back() -> void:
 	finish_game(-1, "SECRET FOUND!")
 
 
-## He walks away, down the dark road, while the lights go out behind him. No party, no one,
-## nothing... until the road bends round and there's a sign: WELCOME TO BIRTHDAY TOWN.
+## He walks away, down the dark road, while the lights go out behind him, until there's nothing
+## left but the dark. Then the eyes... and then he's back where it all starts: the title screen,
+## with a gold star on top of the carousel.
 func _choose_leave() -> void:
 	if phase != "fork":
 		return
@@ -661,12 +661,15 @@ func _choose_leave() -> void:
 	await say("You can't escape your birthday, Chumbo. Nobody ever leaves the party.", Narrator.CREEPY)
 	await wait(1.0)
 	Game.secret_done = true
+	Game.title_star = true
 	Game.save_game()
-	# the eyes close one by one, and then there's nothing: just black, with no way out, until
-	# the game is started again
+	# the eyes close one by one, the dark stays a while... and it all starts again
 	phase = "gone"
 	remove_button("home")
 	_tw("eyes", 0.0, 3.0)
+	await wait(5.0)
+	Game.title_star_new = true
+	Game.goto("title")
 
 
 func _fork_back() -> void:
@@ -717,16 +720,6 @@ func _paint_fork() -> void:
 		Crayon.circle(pen, Vector2(1064, 302), 8, Crayon.INK, 2, Color(1, 0.95, 0.6) if flick > 0.0 else Color(0.3, 0.3, 0.3), 2061)
 	if lights_out < 0.4:
 		Crayon.disc(pen, Vector2(290, 280), 70, Color(1, 0.8, 0.4, 0.12 * (1.0 - lights_out / 0.4)))
-	# far down the dark road, the road bends... and there's a sign
-	if fork_walk > 0.55:
-		var a := clampf((fork_walk - 0.55) * 3.0, 0.0, 1.0)
-		var sp := Vector2(1010, 318)
-		Crayon.line(pen, sp + Vector2(-40, 30), sp + Vector2(-40, 0), Color(Crayon.INK, a), 4, 2070)
-		Crayon.line(pen, sp + Vector2(40, 30), sp + Vector2(40, 0), Color(Crayon.INK, a), 4, 2071)
-		Crayon.rect(pen, Rect2(sp + Vector2(-80, -42), Vector2(160, 46)), Color(Crayon.INK, a), 3, Color(0.85, 0.35, 0.5, a), 2072)
-		Crayon.text(pen, sp + Vector2(0, -28), "WELCOME TO", 15, Color(1, 1, 1, a), 1, 2073, Crayon.title_font())
-		Crayon.text(pen, sp + Vector2(0, -9), "BIRTHDAY TOWN", 15, Color(1, 1, 1, a), 1, 2074, Crayon.title_font())
-		Crayon.balloon(pen, sp + Vector2(90, -56), 11, Color(Crayon.RED, a), 36, 2075)
 	# Rocko waits at the fork (and follows, if Chumbo goes back)
 	var cat := Vector2(500, 600).lerp(Vector2(330, 352), fork_back)
 	draw_cat(pen, cat, 0.8 * (1.0 - fork_back * 0.6), 1.0, "sit" if fork_back <= 0.0 else "walk", 0.0, t)
