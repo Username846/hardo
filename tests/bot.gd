@@ -56,36 +56,109 @@ func _ready() -> void:
 		await _sync_probe()
 		get_tree().quit()
 		return
-	if which == "finale":
-		# the credits scene with the whole cast (one mascot from each present)
-		Game.main._open("finale", null)
-		var f: Node = Game.main.current
-		var t0 := Time.get_ticks_msec()
-		while is_instance_valid(f) and not f.cheer and Time.get_ticks_msec() - t0 < 60000:
-			await get_tree().process_frame
-			_skip_narration()
-		await get_tree().create_timer(1.0).timeout
-		await _snap("finale_cast")
-		print("FINALE cheer=", is_instance_valid(f) and f.cheer)
-		# the credits roll with the song's lyrics, then "back to the party" starts the secret game
-		while is_instance_valid(f) and f.get_button("back").is_empty() and Time.get_ticks_msec() - t0 < 90000:
-			await get_tree().process_frame
-		# wait for a sung line to be part-way through, so the lyric bar is on screen
-		var t2 := Time.get_ticks_msec()
-		while Time.get_ticks_msec() - t2 < 40000 and (Audio.lyric_state().is_empty() or Audio.lyric_state().sung < 3 or Time.get_ticks_msec() - t2 < 6000):
-			await get_tree().process_frame
-		await _snap("finale_credits")
-		var ls := Audio.lyric_state()
-		print("FINALE credits=", is_instance_valid(f) and f.credits, " lyrics_y=", f.lyrics_y if is_instance_valid(f) else -1.0, " line=", " ".join(ls.get("parts", PackedStringArray())))
-		g = f
-		_btn("back")
-		var t1 := Time.get_ticks_msec()
-		while Time.get_ticks_msec() - t1 < 10000 and (Game.main.current == f or Game.main.current == null):
-			await get_tree().process_frame
+	if which == "radio":
+		# after the secret game: the radio on the party table opens the party radio
+		Game.done.fill(true)
+		Game.finale_seen = true
+		Game.secret_done = true
+		Game.radio_seen = false
+		Game.main._open("hub", null)
+		var hb: Node = Game.main.current
 		await get_tree().create_timer(2.0).timeout
-		await _snap("finale_secret")
-		var cur: Node = Game.main.current
-		print("FINALE secret=", cur != null and cur.get_script() != null and String(cur.get_script().resource_path).ends_with("rocko.gd"))
+		_skip_narration()
+		await _snap("radio_hub")
+		hb.press(hb.RADIO_RECT.get_center())
+		var tr := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tr < 10000 and (Game.main.current == hb or Game.main.current == null):
+			await get_tree().process_frame
+		var rd: Node = Game.main.current
+		await get_tree().create_timer(1.5).timeout
+		print("RADIO screen=", rd.get_script().resource_path, " song=", Audio.song, " seen=", Game.radio_seen)
+		await _snap("radio_cute")
+		g = rd
+		_btn("e11")
+		tr = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tr < 30000 and (Audio.lyric_state().is_empty() or Audio.lyric_state().sung < 3):
+			await get_tree().process_frame
+		await _snap("radio_evil")
+		print("RADIO evil song=", Audio.song, " lyric=", " ".join(Audio.lyric_state().get("parts", PackedStringArray())))
+		# the last song ending moves on to the first
+		_btn("t13")
+		await get_tree().create_timer(2.0).timeout
+		Audio.stop_music(0.0)
+		Audio.play_music("rocko", 0.0, 118.0)
+		await get_tree().create_timer(20.0).timeout
+		print("RADIO after end: cur=", rd.cur, " song=", Audio.song)
+		get_tree().quit()
+		return
+	if which == "title":
+		# the title screen: the "tap to start" gate (what the web shows before sound is allowed),
+		# then the party switched on, then PLAY goes to the name screen
+		Game.main._open("title", null)
+		var ts: Node = Game.main.current
+		await get_tree().create_timer(0.5).timeout
+		ts.awake = false
+		ts.lights = 0.0
+		ts.spin = 0.0
+		ts.remove_button("play")
+		Audio.stop_music(0.1)
+		await get_tree().create_timer(1.0).timeout
+		await _snap("title_gate")
+		ts.press(Vector2(640, 400))
+		await get_tree().create_timer(3.0).timeout
+		await _snap("title_awake")
+		print("TITLE awake=", ts.awake, " music=", Audio.song, " play=", not ts.get_button("play").is_empty())
+		var tl := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tl < 30000 and (Audio.lyric_state().is_empty() or Audio.lyric_state().sung < 4):
+			await get_tree().process_frame
+		await _snap("title_awake2")
+		print("TITLE lyric=", " ".join(Audio.lyric_state().get("parts", PackedStringArray())))
+		g = ts
+		_btn("play")
+		await get_tree().create_timer(2.0).timeout
+		var nm: Node = Game.main.current
+		print("TITLE play -> ", nm.get_script().resource_path if nm and nm.get_script() else "?")
+		get_tree().quit()
+		return
+	if which == "finale":
+		# the credits scene with the whole cast (one mascot from each present). The first time,
+		# "Continue" goes straight into the secret game; after that it's "back to the party".
+		Game.secret_started = false
+		for round in 2:
+			Game.main._open("finale", null)
+			var f: Node = Game.main.current
+			var t0 := Time.get_ticks_msec()
+			while is_instance_valid(f) and not f.cheer and Time.get_ticks_msec() - t0 < 60000:
+				await get_tree().process_frame
+				_skip_narration()
+			await get_tree().create_timer(1.0).timeout
+			if round == 0:
+				await _snap("finale_cast")
+				print("FINALE cheer=", is_instance_valid(f) and f.cheer)
+			while is_instance_valid(f) and f.get_button("back").is_empty() and Time.get_ticks_msec() - t0 < 90000:
+				await get_tree().process_frame
+			var label: String = f.get_button("back").get("label", "")
+			if round == 0:
+				# wait for a sung line to be part-way through, so the lyric bar is on screen
+				var t2 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - t2 < 40000 and (Audio.lyric_state().is_empty() or Audio.lyric_state().sung < 3 or Time.get_ticks_msec() - t2 < 6000):
+					await get_tree().process_frame
+				await _snap("finale_credits")
+				var ls := Audio.lyric_state()
+				print("FINALE credits=", f.credits, " lyrics_y=", f.lyrics_y, " line=", " ".join(ls.get("parts", PackedStringArray())))
+			g = f
+			_btn("back")
+			var t1 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - t1 < 10000 and (Game.main.current == f or Game.main.current == null):
+				await get_tree().process_frame
+			await get_tree().create_timer(2.0).timeout
+			var cur: Node = Game.main.current
+			var path: String = cur.get_script().resource_path if cur != null and cur.get_script() != null else ""
+			if round == 0:
+				await _snap("finale_secret")
+				print("FINALE first button=", label, " secret=", path.ends_with("rocko.gd"))
+			else:
+				print("FINALE again button=", label, " hub=", path.ends_with("hub.gd"))
 		get_tree().quit()
 		return
 	if which == "rockoshots":

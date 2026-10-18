@@ -37,6 +37,60 @@ LONG_FORM = [
 
 SONGS = []
 
+# ---------------------------------------------------------------- THEME: the title screen's party waltz
+SONGS.append(dict(
+    id="theme", title="It's Your Birthday", bpm=168, key=65, beats=3, scale="major",
+    sections=dict(
+        verse=dict(
+            melody="1:2 3:1 | 5:1 5:1 6:0.5 5:0.5 | 4:1.5 3:0.5 2:1 | 3:3 | "
+                   "2:2 4:1 | 6:1 6:1 7:0.5 6:0.5 | 5:1.5 4:0.5 3:1 | 2:3 | "
+                   "1:2 3:1 | 5:1 5:1 6:0.5 5:0.5 | 1':1.5 7:0.5 6:1 | 5:3 | "
+                   "6:2 6:1 | 5:1 5:1 3:0.5 1:0.5 | 2:1.5 3:0.5 2:1 | 1:3",
+            chords="I | I | V | I | ii | ii | I | V | I | I | IV | I | IV | I | V | I",
+            lyrics="Wake up, wake up, it's a beau-ti-ful day, / Bal-loons and ban-ners are wav-ing hoo-ray! / "
+                   "Ten lit-tle pres-ents all tied up with bows, / ev-ery-one's here and it's all just for you!",
+            lyrics2="Bring all your friends and your fam-i-ly too, / ev-ery-one's com-ing to cel-e-brate you! / "
+                    "Rib-bons to pull and a wish to be made, / games in the gar-den and cake in the shade!",
+            dark="Wake up, wake up, it's the same old birth-day. / Bal-loons on the ceil-ing won't float a-way. / "
+                 "Ten lit-tle pres-ents you o-pened be-fore, / all wrapped up a-gain and piled by the door.",
+            dark2="Count all the can-dles, there's al-ways one more. / Some-one keeps lock-ing the par-ty room door. / "
+                  "Cake on the ta-ble that nev-er gets old. / Sing it a-gain, Chum-bo, do as you're told.",
+        ),
+        chorus=dict(
+            melody="1:1 3:1 5:1 | 1':2 6:1 | 5:1 3:1 1:1 | 2:1 5:2 | "
+                   "1:1 3:1 5:1 | 1':2 6:1 | 5:1 6:1 5:1 | 3:1 2:2 | "
+                   "6:1 6:1 6:1 | 1':2 6:1 | 5:1 5:1 3:1 | 1:1 3:2 | "
+                   "4:1 4:1 6:1 | 1':2 7:1 | 5:1 5:1 2:1 | 2:1 1:2",
+            chords="I | IV | I | V | I | IV | I | V | IV | IV | I | vi | ii | I | V | V:1 I:2",
+            lyrics="It's your birth-day, Chum-bo, hip hip hoo-ray! / Come to the par-ty and stay for the day! / "
+                   "Can-dles and cake and a song just for you, / hap-py birth-day, Chum-bo, to-mor-row too!",
+            lyrics2="It's your birth-day, Chum-bo, hip hip hoo-ray! / All of your friends came to sing and to play! / "
+                    "Blow out the can-dles and make a big wish, / hap-py birth-day, Chum-bo, to-mor-row too!",
+            dark="It's your birth-day, Chum-bo, a-gain, a-gain. / The par-ty start-ed, it nev-er will end. / "
+                 "Can-dles re-light and the song starts a-new. / Hap-py birth-day, Chum-bo, the whole year through.",
+        ),
+    ),
+    form=LONG_FORM,
+    parts=[
+        P("lead", "calliope", "melody", sections=["intro", "break"], vol=-15, oct=1),
+        P("bells", "glock", "melody", sections=["chorus"], vol=-26, oct=2, pan=0.3),
+        P("strings", "strings", "pad", vol=-25),
+        P("oom", "tuba", "bass", pattern="R...........", oct=-1, vol=-16),
+        P("pah", "pizz", "strum", pattern="....x...x...", oct=0, vol=-21, pan=-0.2),
+        P("brass", "brass", "strum", pattern="....x...x...", sections=["chorus", "break"], oct=0, vol=-27, pan=0.2),
+        P("harp", "harp", "arp", rate=0.5, shape="updown", sections=["verse"], oct=1, vol=-28, pan=-0.35),
+        P("drums", None, "drums", kit=dict(kick="x...........", tamb="....x...x...", timpani="x...........",
+                                            crash="x..........."), crash_every=8, vol=-21),
+    ],
+    # the evil version: a broken-down carousel, still going round
+    dark=dict(scale="harm_minor", bpm_mul=0.72, detune=25,
+              drop=["drums", "pah", "brass", "harp"],
+              add=[P("box", "music_box", "melody", oct=2, vol=-23),
+                   P("drone", "choir", "drone", oct=0, vol=-24),
+                   P("heart", None, "drums", kit=dict(heart="x..........."), vol=-17)],
+              fx=dict(wow=0.012, lowpass=3200, crackle=0.04, reverb=0.55)),
+))
+
 # ---------------------------------------------------------------- TITLE: kazoo march
 SONGS.append(dict(
     id="title", title="Who's That?", bpm=120, key=65 - 12, beats=4, scale="major",

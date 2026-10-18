@@ -3,6 +3,9 @@ extends Screen
 ## every time you come back.
 
 const Rocko := preload("res://scripts/games/rocko.gd")
+const Radio := preload("res://scripts/screens/radio.gd")
+## Where the party radio sits on the table (after the secret game).
+const RADIO_RECT := Rect2(366, 326, 148, 74)
 
 var LINES := [
 	["Everyone brought you a present! Ten presents, all for you! Start with number one!", Narrator.CUTE],
@@ -85,6 +88,8 @@ func _talk() -> void:
 			await say("Happy birthday, Chumbo. See you tomorrow. It's your birthday tomorrow, too.", Narrator.DARK)
 		if not Game.secret_done:
 			say_bg("Psst. Chumbo. Tap the cake.", Narrator.WHISPER)
+		elif not Game.radio_seen:
+			say_bg("The party radio works now! Tap it to play any song from the party.")
 		else:
 			say_bg("Pick any present you like. They're all yours. Forever.")
 		return
@@ -121,6 +126,12 @@ func press(pos: Vector2) -> void:
 		if _present_rect(i).grow(12).has_point(pos):
 			_open_present(i)
 			return
+	# after the secret game, the radio on the table plays every song from the party
+	if Game.secret_done and RADIO_RECT.grow(16).has_point(pos):
+		locked = true
+		Audio.sfx("radio", -4)
+		Game.goto("radio")
+		return
 	# after the credits the cake hides a secret
 	if Game.finale_seen and Rect2(515, 100, 250, 310).has_point(pos):
 		_open_secret()
@@ -258,6 +269,17 @@ func paint() -> void:
 			# Rocko came to the party too
 			Rocko.draw_cat(pen, Vector2(830, 400), 0.8, -1.0, "sit", 0.0, t)
 			Crayon.party_hat(pen, Vector2(823, 320), 12, Crayon.GREEN, 4448, -0.2)
+			# ...and so did the radio
+			var kick := pow(1.0 - fmod(t * 2.0, 1.0), 3.0)
+			Radio.draw_boombox(pen, RADIO_RECT, kick, 4460)
+			for k in 2:
+				var ph := fmod(t * 0.6 + k * 0.5, 1.0)
+				Crayon.text(pen, RADIO_RECT.get_center() + Vector2(-30 + k * 60 + sin(ph * 6.0) * 8, -40 - ph * 50), "♪", 26, Color(Crayon.RAINBOW[k * 3], 1.0 - ph), 1, 4470 + k, null, 0.3, false)
+			if not Game.radio_seen:
+				var tag := Rect2(RADIO_RECT.get_center() + Vector2(-62, -96 - absf(sin(t * 4.0)) * 8), Vector2(124, 40))
+				Crayon.rect(pen, tag, Crayon.INK, 3, Crayon.WHITE, 4475)
+				Crayon.line(pen, Vector2(tag.get_center().x, tag.end.y), Vector2(tag.get_center().x, RADIO_RECT.position.y - 14), Crayon.INK, 3, 4476)
+				Crayon.text(pen, tag.get_center(), "tap me!", 26, Crayon.RED, 1, 4477, Crayon.title_font())
 	# balloons tied to the table
 	var cols := [Crayon.RED, Crayon.BLUE, Crayon.YELLOW, Crayon.GREEN]
 	for i in 4:

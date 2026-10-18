@@ -8,6 +8,7 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 ## What's inside
 
+- **The title screen.** A party carousel turning at dusk, with a rider from the presents on every pole, to the game's own theme song: a waltz called "It's Your Birthday" (with words to sing along). In a browser, the first tap switches the party on, because browsers don't allow sound until you tap. Tap the riders to hear them, then press **PLAY!**
 - **Name check.** The game asks for your name. The only correct answer is `I'm Chumbo` (any capitalization). Anything else gets you a boxing glove, a falling cake, or a hole in the ground. After three wrong tries the game types it for you.
 - **The calendar.** The game uses the device's date, so whatever day he plays is his birthday. Try telling it otherwise.
 - **The party.** Ten presents, opened in order. The party room changes a little every time you come back.
@@ -28,7 +29,11 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 
 The end credits roll with the karaoke song, and its lyrics show at the bottom so you can sing along.
 
-**Secret (spoilers):** pressing **back to the party** after the credits starts the secret game right away (and later the cake on the party table shows **???** so you can play it again). Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
+Mikake is in the credits cast too, still switched off from the karaoke: slumped over, X eyes, a little smoke, and an OUT OF ORDER sign.
+
+**Secret (spoilers):** the first time the credits finish, the button says **Continue** and starts the secret game right away. After that it says **back to the party**, and the cake on the party table shows **???** so you can play the secret game again. Chumbo closes the game on his phone and relaxes on the couch with his cat **Rocko**... who would very much like Chumbo to go back to his party. It's a three-lane chase down the street: tap above or below Chumbo (or swipe, or use the arrow keys) to dodge trash cans, puddles, party guests and flying cake. It has its own song too ("Oh Hi Rocko"): a cozy couch version and a frantic chase version.
+
+**Party radio:** beat the secret game and a radio turns up on the party table. Tap it to play any song from the game, the cute version or the evil one, with the words to sing along. When a song ends, the next one comes on.
 
 Every line of dialogue shows who is talking (PARTY HOST, ANNOUNCER, SGT. SPRINKLES, CHUMBO, ROCKO, DIJIMON, TONY HONK, PIP, TAXMAN or EVERYONE, the guests speaking together), and every character keeps the same voice all game. The party host has three (a good voice, an evil voice and a whisper for its grey lines) and the announcer two (good and evil). Every song is sung by the same two singers, and every dark version by the same two spooky ones.
 
@@ -67,7 +72,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits and that they lead into the secret game, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game, `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```

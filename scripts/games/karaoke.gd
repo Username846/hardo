@@ -200,7 +200,7 @@ func tick(dt: float) -> void:
 		sm.p += Vector2(sin(sm.t * 3.0 + sm.p.x) * 12.0, -40.0) * dt
 	smoke = smoke.filter(func(sm): return sm.t < 3.0)
 	if broken > 0.6 and randf() < dt * 3.0:
-		smoke.append({"p": MIKAKE_FEET + Vector2(randf_range(-30, 30), -330.0 * 0.8), "t": 0.0})
+		smoke.append({"p": mikake_head(MIKAKE_FEET, 330.0, broken) + Vector2(randf_range(-20, 20), -20), "t": 0.0})
 	if phase == "cute" or phase == "dark":
 		var now: float = Audio.song_pos
 		for i in range(_lo, chart.size()):
@@ -265,7 +265,7 @@ func _malfunction() -> void:
 
 
 func _spark_burst(n: int) -> void:
-	var head := MIKAKE_FEET + Vector2(0, -330.0 * 0.86)
+	var head := mikake_head(MIKAKE_FEET, 330.0, broken)
 	for k in n:
 		var a := randf_range(-PI, 0.0)
 		sparks.append({"p": head + Vector2(randf_range(-40, 40), randf_range(-30, 20)), "v": Vector2(cos(a), sin(a)) * randf_range(150, 420), "t": randf() * 0.2})
@@ -626,9 +626,38 @@ func _lyrics(now: float) -> void:
 const MIKAKE_FEET := Vector2(640, 540)
 
 
-## For the finale cast.
-static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float) -> void:
-	draw_mikake(ci, feet, 210.0 * sc, tm * 2.0, 0.0, false, 9100)
+## For the finale cast: since the karaoke she's switched off, still smoking a little, with
+## the odd spark.
+static func draw_mascot(ci: CanvasItem, feet: Vector2, sc: float, tm: float, broken: float = 1.0) -> void:
+	var h := 210.0 * sc
+	draw_mikake(ci, feet, h, tm * 2.0, 0.0, false, 9100, 0.0, broken)
+	if broken <= 0.0:
+		return
+	var head := mikake_head(feet, h, broken)
+	# a hand-written sign taped to her
+	var lean := 0.32 * broken
+	var chest := feet + Vector2(sin(lean), -cos(lean)) * h * 0.52 + Vector2(0, h * 0.05 * broken)
+	var sign := Rect2(chest - Vector2(h * 0.3, h * 0.11), Vector2(h * 0.6, h * 0.22))
+	Crayon.rect(ci, sign, Crayon.INK, 2, Color(1, 1, 0.94), 9180)
+	Crayon.line(ci, sign.position + Vector2(sign.size.x * 0.4, -3), sign.position + Vector2(sign.size.x * 0.6, -3), Color(0.8, 0.75, 0.6), 5, 9181)
+	Crayon.text(ci, sign.get_center() + Vector2(0, -sign.size.y * 0.2), "OUT OF", int(h * 0.088), Crayon.RED, 1, 9182, Crayon.title_font(), 0.3, false)
+	Crayon.text(ci, sign.get_center() + Vector2(0, sign.size.y * 0.24), "ORDER", int(h * 0.088), Crayon.RED, 1, 9183, Crayon.title_font(), 0.3, false)
+	for k in 3:
+		var ph := fmod(tm * 0.45 + k / 3.0, 1.0)
+		var p := head + Vector2(sin(ph * 6.0 + k) * 8.0, -h * 0.1 - ph * h * 0.35)
+		Crayon.disc(ci, p, h * (0.04 + ph * 0.07), Color(0.4, 0.4, 0.45, 0.5 * (1.0 - ph)))
+	var sp := fmod(tm, 2.6)
+	if sp < 0.4:
+		for k in 6:
+			var a := -PI + (k + 0.5) * PI / 6.0
+			var p := head + Vector2(cos(a), sin(a)) * (h * 0.08 + sp * h * 0.5) + Vector2(0, sp * sp * h * 0.8)
+			ci.draw_rect(Rect2(p - Vector2(2, 2), Vector2(4, 4)), Color(1, 0.95, 0.5) if k % 2 == 0 else Color(0.6, 0.95, 1.0))
+
+
+## Where her head is, when she's slumped over by `broken` (0..1).
+static func mikake_head(feet: Vector2, h: float, broken: float) -> Vector2:
+	var a := 0.32 * broken
+	return feet + Vector2(sin(a), -cos(a)) * h * 0.86 + Vector2(0, h * 0.05 * broken)
 
 
 ## Hatsune Mikake: teal twin-tails down to the floor, headset, grey top, teal tie, a leek.
@@ -729,9 +758,10 @@ static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, da
 		var e := head + Vector2(side * hr * 0.4, hr * 0.18)
 		if broken > 0.5:
 			# X X
-			var d := hr * 0.15
-			Crayon.line(ci, e + Vector2(-d, -d), e + Vector2(d, d), ink, 3, sd + 56 + int(side + 1), 0.3)
-			Crayon.line(ci, e + Vector2(d, -d), e + Vector2(-d, d), ink, 3, sd + 58 + int(side + 1), 0.3)
+			var d := hr * 0.2
+			var xw := maxf(3.0, hr * 0.1)
+			Crayon.line(ci, e + Vector2(-d, -d), e + Vector2(d, d), ink, xw, sd + 56 + int(side + 1), 0.3)
+			Crayon.line(ci, e + Vector2(d, -d), e + Vector2(-d, d), ink, xw, sd + 58 + int(side + 1), 0.3)
 		elif dark > 0.5:
 			Crayon.ellipse(ci, e, Vector2(hr * 0.17, hr * 0.22), ink, 2, Crayon.WHITE, sd + 54 + int(side + 1))
 		else:

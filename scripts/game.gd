@@ -25,6 +25,7 @@ const SCREENS := {
 	"hub": "res://scripts/screens/hub.gd",
 	"finale": "res://scripts/screens/finale.gd",
 	"rocko": "res://scripts/games/rocko.gd",
+	"radio": "res://scripts/screens/radio.gd",
 }
 
 var player_name := ""
@@ -33,6 +34,10 @@ var intro_done := false
 var finale_seen := false
 ## The secret game (tap the cake after the credits) was beaten.
 var secret_done := false
+## The first time the credits finish, "Continue" goes straight into the secret game.
+var secret_started := false
+## The party radio (after the secret game) has been opened at least once.
+var radio_seen := false
 var hub_lines_heard := -1
 var muted := false
 var main: Node = null
@@ -81,6 +86,8 @@ func save_game() -> void:
 	cf.set_value("p", "intro", intro_done)
 	cf.set_value("p", "finale", finale_seen)
 	cf.set_value("p", "secret", secret_done)
+	cf.set_value("p", "secret_started", secret_started)
+	cf.set_value("p", "radio_seen", radio_seen)
 	cf.set_value("p", "heard", hub_lines_heard)
 	cf.set_value("p", "muted", muted)
 	cf.save(SAVE_PATH)
@@ -97,6 +104,8 @@ func load_game() -> void:
 	intro_done = cf.get_value("p", "intro", false)
 	finale_seen = cf.get_value("p", "finale", false)
 	secret_done = cf.get_value("p", "secret", false)
+	secret_started = cf.get_value("p", "secret_started", secret_done)
+	radio_seen = cf.get_value("p", "radio_seen", false)
 	hub_lines_heard = cf.get_value("p", "heard", -1)
 	muted = cf.get_value("p", "muted", false)
 
@@ -107,6 +116,8 @@ func reset() -> void:
 	intro_done = false
 	finale_seen = false
 	secret_done = false
+	secret_started = false
+	radio_seen = false
 	hub_lines_heard = -1
 	save_game()
 
