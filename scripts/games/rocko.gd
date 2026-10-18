@@ -6,6 +6,7 @@ extends Screen
 ## With all ten gold stars, Rocko doesn't lead him back to the party this time: he leads him to a
 ## fork in the road at the edge of town and lets Chumbo choose. Back to the party, or away. Away
 ## is a long walk in the dark... and every road bends back. You can't escape your birthday.
+## (After that the screen just stays black until the game is restarted.)
 
 const LANES := [470.0, 565.0, 660.0]
 const ME_X := 640.0
@@ -661,7 +662,11 @@ func _choose_leave() -> void:
 	await wait(1.0)
 	Game.secret_done = true
 	Game.save_game()
-	Game.back_to_party()
+	# the eyes close one by one, and then there's nothing: just black, with no way out, until
+	# the game is started again
+	phase = "gone"
+	remove_button("home")
+	_tw("eyes", 0.0, 3.0)
 
 
 func _fork_back() -> void:

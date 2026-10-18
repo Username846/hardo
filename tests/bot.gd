@@ -394,6 +394,12 @@ func _rocko(choice: String = "") -> void:
 			"fork":
 				if not g.locked:
 					_btn(choice)
+			"gone":
+				# the leave ending stays black for good: nothing left to press
+				await get_tree().create_timer(4.0).timeout
+				await _snap("rocko_gone")
+				print("ROCKO gone: buttons=", g.buttons.size(), " black=", g.black, " eyes=", g.eyes)
+				break
 		if g.gap < last_gap:
 			hits += 1
 		last_gap = g.gap
