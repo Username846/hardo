@@ -655,15 +655,15 @@ SONGS.append(dict(
             melody="5:1 5:1 4:1 3:1 | 2:1 3:1 1:2 | 1:1 2:1 3:1 4:1 | 3:1 2:1 2:2 | "
                    "5:1 5:1 6:1 5:1 | 4:1 3:1 2:2 | 3:1 2:1 1:1 7,:1 | 2:1 7,:1 1:2",
             chords="I | V | IV | V | I | IV | V | I",
-            lyrics="Walk-ing down the emp-ty road, / lights go out be-hind my back. / "
-                   "Not a star and not a sound, / just the dark that's all a-round.",
+            lyrics="Walk-ing down the emp-ty road, / lights a-round me start to fade. / "
+                   "Get-ting dark and get-ting cold, / still they say it's my birth-day.",
         ),
         chorus=dict(
             melody="1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 4:1 5:1 6:1 | 5:1 4:1 3:2 | "
                    "1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 3:1 2:1 1:1 | 2:1 7,:1 1:2",
             chords="IV | I | IV | V | IV | I | V | I",
-            lyrics="Ev-ery road I try to take / bends a-round and leads me back. / "
-                   "Still the can-dles burn a-way, / still they sing it's my birth-day.",
+            lyrics="Ev-ery road I try to take / leads me back to the same place. / "
+                   "Los-ing hope that I'll be saved, / on-ly one way to es-cape.",
         ),
     ),
     form=[
