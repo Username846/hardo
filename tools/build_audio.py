@@ -5,9 +5,12 @@
     python3 tools/build_audio.py music      # just one group (music | sfx | voice)
     python3 tools/build_audio.py music race # just one song
     python3 tools/build_audio.py voice force # re-record every narration line
+    python3 tools/build_audio.py text       # after editing dialogue.txt: voices for new or changed
+                                            # lines, and the songs whose words changed
 
 Needs: python3, numpy, scipy, espeak-ng, oggenc (vorbis-tools).
 """
+import hashlib
 import json
 import os
 import sys
@@ -24,13 +27,66 @@ MUSIC_DIR = os.path.join(ROOT, "assets", "music")
 GEN_DIR = os.path.join(ROOT, "scripts", "gen")
 
 
+def words_hash(song):
+    """Fingerprint of a song's words (from dialogue.txt), kept in songs.json, so the songs whose
+    words were changed can be found and made again."""
+    parts = []
+    for name, sec in sorted(song["sections"].items()):
+        for f in ("lyrics", "lyrics2", "dark", "dark2"):
+            if f in sec:
+                parts.append(f"{name}.{f}={sec[f]}")
+    return hashlib.md5("\n".join(parts).encode("utf-8")).hexdigest()[:12]
+
+
 def _render_one(args):
     sid, dark = args
     song = [s for s in songs.SONGS if s["id"] == sid][0]
     x, meta = music.render_song(song, dark)
+    meta["words"] = words_hash(song)
     name = sid + ("_dark" if dark else "")
     S.write_ogg(os.path.join(MUSIC_DIR, name + ".ogg"), x, quality=0)
     return name, meta
+
+
+def _try_render(args):
+    try:
+        return args, _render_one(args), None
+    except Exception as e:  # noqa: BLE001 - reported, and the old recording is kept
+        return args, None, str(e)
+
+
+def build_changed_words():
+    """Makes again just the songs whose words in dialogue.txt changed since they were made. A
+    song whose new words can't be sung (say a line has more syllables than the tune has notes)
+    keeps its old recording, and a warning says why."""
+    meta_path = os.path.join(GEN_DIR, "songs.json")
+    with open(meta_path) as fh:
+        all_meta = json.load(fh)
+    jobs = []
+    for s in songs.SONGS:
+        h = words_hash(s)
+        for dark in ([False, True] if s.get("dark") else [False]):
+            name = s["id"] + ("_dark" if dark else "")
+            m = all_meta.get(name)
+            if m is not None and "words" not in m:
+                # made before songs.json kept track of the words: they're the ones in dialogue.txt
+                m["words"] = h
+            elif m is None or m["words"] != h or not os.path.exists(os.path.join(MUSIC_DIR, name + ".ogg")):
+                jobs.append((s["id"], dark))
+    if jobs:
+        with ProcessPoolExecutor(max_workers=os.cpu_count()) as ex:
+            for (sid, dark), res, err in ex.map(_try_render, jobs):
+                if err:
+                    print(f"::warning title=dialogue.txt::the song {sid}{' (evil)' if dark else ''} kept its old words: {err}")
+                    continue
+                name, meta = res
+                print("  music", name, meta["length"], "s (new words)")
+                all_meta[name] = meta
+    else:
+        print("  music: no song's words have changed")
+    with open(meta_path, "w") as fh:
+        json.dump(all_meta, fh, indent=0)
+    write_song_gd(all_meta)
 
 
 def build_music(only=None):
@@ -102,9 +158,11 @@ def main():
     if what in ("all", "sfx"):
         import sfx
         sfx.build(os.path.join(ROOT, "assets", "sfx"), set(sys.argv[2:]) or None)
-    if what in ("all", "voice"):
+    if what in ("all", "voice", "text"):
         import voices
         voices.build(ROOT, force="force" in sys.argv[2:])
+    if what == "text":
+        build_changed_words()
 
 
 if __name__ == "__main__":

@@ -125,15 +125,15 @@ func _run() -> void:
 	locked = true
 	await wait(0.6)
 	Audio.sfx("honk")
-	await say("Present number two! It's TONY HONK'S PRO SKATER 2! The birthday skate park is open!")
+	await line("welcome")
 	honk_t = 4.0
 	honk_txt = "HONK!"
 	Audio.sfx("honk", 0, 1.1)
-	await say("HONK! I'm Tony Honk! Show me your sickest birthday tricks!", Narrator.HONK)
+	await line("honk_im_tony_honk")
 	var tw := create_tween()
 	tw.tween_property(self, "title_k", 0.0, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	await say("Tap to ollie. Tap again in the air to flip. Hold to grab. Land on a rail to grind!")
-	await say("You have one minute. Finish your tricks before you land, or you'll bail!")
+	await line("tap_to_ollie_tap")
+	await line("you_have_one_minute")
 	_start_session(1)
 
 
@@ -189,7 +189,7 @@ func _goal(id: String) -> void:
 				_banner("GOAL!  " + String(g.t))
 				Audio.sfx("levelup", -2)
 				Audio.sfx("honk", -2, 1.15)
-				_line(["HONK! Goal complete!", Narrator.HONK], true)
+				_line("honk_goal_complete", true)
 			else:
 				honk_txt = "honk."
 				_banner("GOAL. AGAIN.")
@@ -202,13 +202,13 @@ func _banner(s: String) -> void:
 	banner_t = 2.4
 
 
-## Queue a background line so lines don't cut each other off (pairs keep them voiced).
-func _line(pair: Array, again: bool = false) -> void:
-	if said.has(pair[0]) and not again:
+## Queue a background line (from dialogue.txt) so lines don't cut each other off.
+func _line(name: String, again: bool = false) -> void:
+	if said.has(name) and not again:
 		return
-	said[pair[0]] = true
+	said[name] = true
 	if line_q.size() < 3:
-		line_q.append(pair)
+		line_q.append(name)
 
 
 # ------------------------------------------------------------------ input
@@ -297,7 +297,7 @@ func _trick(name: String, pts: int) -> void:
 	if special < 1.0:
 		special = minf(1.0, special + pts / 1400.0)
 		if special >= 1.0 and session == 1:
-			_line(["Special meter full! Tap in the air for a 900!", Narrator.HONK])
+			_line("special_meter_full")
 
 
 func _bank() -> void:
@@ -337,14 +337,14 @@ func _bail(cake: bool) -> void:
 		splat = 4.0
 		Audio.sfx("splat", -2)
 		if session == 1:
-			_line(["Splat! Tap before the cake to jump over it!", Narrator.CUTE])
+			_line("splat_tap_before")
 	else:
 		vy = -260.0
 		bail_vx = maxf(vx * 0.7, 120.0)
 		if session == 1:
-			_line(["Ouch! Finish your trick before you land!", Narrator.CUTE])
+			_line("ouch_finish_your")
 	if session == 2:
-		_line(["Get up, Chumbo. They're still watching.", Narrator.DARK])
+		_line("get_up_chumbo_theyre")
 	_pop("BAIL!", Crayon.RED, 64)
 
 
@@ -363,7 +363,7 @@ func _goose_900() -> void:
 	Audio.sfx("cheer", -8)
 	score += 2000
 	_pop("GOOSE 900!  +2,000", Crayon.YELLOW, 48)
-	_line(["HONK! Too slow, birthday boy! That's how you do a 900!", Narrator.HONK], true)
+	_line("honk_too_slow_birthday", true)
 	await wait(1.2)
 	goose_fly = -1.0
 
@@ -452,8 +452,7 @@ func _time_to_land() -> float:
 func tick(dt: float) -> void:
 	Crayon.shake = 1.0 if session == 1 else 1.35
 	if not line_q.is_empty() and not Narrator.is_active() and phase != "end":
-		var p: Array = line_q.pop_front()
-		say_bg(p[0], p[1])
+		line_bg(line_q.pop_front())
 	banner_t = maxf(0.0, banner_t - dt)
 	honk_t = maxf(0.0, honk_t - dt)
 	goose_k = move_toward(goose_k, 1.0 if honk_t > 0.4 else 0.0, dt * 3.0)
@@ -493,19 +492,19 @@ func _clock_events() -> void:
 	var el := SESSION - time_left
 	if session == 1:
 		if time_left <= 30.0:
-			_line(["Thirty seconds left!", Narrator.HONK])
+			_line("thirty_seconds_left")
 		if time_left <= 10.0:
-			_line(["Ten seconds! Big finish!", Narrator.HONK])
+			_line("ten_seconds_big_finish")
 		if time_left <= 0.0 and phase == "s1":
 			_end_session_1()
 		return
 	night = clampf(0.45 + el / SESSION * 0.55, 0.0, 1.0) if not reset_done else 1.0
 	if el > 10.0:
-		_line(["They don't clap. They just watch.", Narrator.DARK])
+		_line("they_dont_clap_they")
 	if el > 34.0:
-		_line(["It's the same cake again. It's always the same cake.", Narrator.DARK])
+		_line("its_the_same_cake")
 	if time_left <= 15.0 and not reset_done:
-		_line(["Almost over. Almost.", Narrator.DARK])
+		_line("almost_over_almost")
 	if time_left <= 0.0 and not reset_done:
 		reset_done = true
 		time_left = SESSION
@@ -514,7 +513,7 @@ func _clock_events() -> void:
 		_banner("ONE MORE SESSION!")
 		banner_t = 6.0
 		line_q.clear()
-		_line(["One more session. There's always one more session.", Narrator.DARK])
+		_line("one_more_session")
 		end_in = 9.0
 
 
@@ -660,7 +659,7 @@ func _land_rail(r: Dictionary) -> void:
 	Audio.sfx("grind", -2)
 	grind_snd = 0.7
 	if session == 1:
-		_line(["Grinding! Sick!", Narrator.HONK])
+		_line("grinding_sick")
 
 
 func _step_grind(h: float) -> void:
@@ -708,7 +707,7 @@ func _pickups(ox: float) -> void:
 			Audio.sfx("sparkle", -8)
 			_pop(word[i], Crayon.YELLOW, 70)
 			if session == 2:
-				_line(["S. T. A. Y. The letters spell stay.", Narrator.DARK])
+				_line("s_t_a_y")
 			if not got.slice(0, word.length()).has(false):
 				_goal("letters")
 	if not tape_got and absf(body.x - TAPE_POS.x) < 70.0 and absf(body.y - TAPE_POS.y) < 90.0:
@@ -717,9 +716,9 @@ func _pickups(ox: float) -> void:
 		_pop("SECRET TAPE!", Crayon.PINK, 56)
 		if session == 1:
 			_goal("tape")
-			_line(["You found the secret tape! Radical!", Narrator.HONK])
+			_line("you_found_the_secret")
 		else:
-			_line(["It's a tape of you. Skating here. Yesterday. And the day before.", Narrator.DARK])
+			_line("its_a_tape_of")
 	if state == "bail":
 		return
 	for f: Dictionary in PARK:
@@ -730,7 +729,7 @@ func _pickups(ox: float) -> void:
 					_pop("CAKE GAP!", Crayon.PINK, 48)
 					_goal("cake")
 					if session == 1:
-						_line(["You jumped the cake! Happy birthday, cake!", Narrator.HONK])
+						_line("you_jumped_the_cake")
 			"arch":
 				if state == "air" and _crossed(ox, x, float(f.x) + float(f.w) * 0.5):
 					_trick("BALLOON GAP", 300)
@@ -770,7 +769,7 @@ func _end_session_1() -> void:
 	Audio.sfx("tada")
 	honk_t = 6.0
 	honk_txt = "HONK HONK!"
-	await say("Time's up! What a session! Look at all those tricks!", Narrator.HONK)
+	await line("times_up_what_a")
 	await wait(0.6)
 	_twist()
 
@@ -780,7 +779,7 @@ func _twist() -> void:
 	Audio.play_music("skate_dark", 2.0)
 	var tw := create_tween()
 	tw.tween_property(self, "night", 0.45, 3.0)
-	await say("Wait. Where are you going, Chumbo? The session isn't over.", Narrator.DARK)
+	await line("wait_where_are_you")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "tally", 0.0, 0.4)
 	await wait(0.45)
@@ -795,7 +794,7 @@ func _twist() -> void:
 	state = "ground"
 	cam_x = x - ME_X
 	visits += 1
-	await say("One more session, Chumbo. Everyone came to watch you skate.", Narrator.DARK)
+	await line("one_more_session_chumbo")
 	_start_session(2)
 
 
@@ -812,9 +811,9 @@ func _ending() -> void:
 	honk_txt = "HONK."
 	Audio.sfx("honk", -2, 0.75)
 	await wait(0.8)
-	await say("HONK.", Narrator.HONK)
-	await say("The session never ends, Chumbo. The park will be right here tomorrow. On your birthday.", Narrator.DARK)
-	await say("Present number two, done! Sick tricks, Chumbo!")
+	await line("honk")
+	await line("session_never_ends")
+	await line("done")
 	finish_game(IDX, "SICK TRICKS!")
 
 

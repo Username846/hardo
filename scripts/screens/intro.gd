@@ -24,13 +24,13 @@ func _run() -> void:
 	locked = true
 	await wait(0.5)
 	talk = true
-	await say("Do you know what day it is today?")
+	await line("do_you_know_what")
 	stage = 1
 	Audio.sfx("scribble")
 	await wait(0.5)
 	Audio.sfx("cheer")
 	confetti_burst(Vector2(420, 360), 60)
-	await say("It's your birthday!")
+	await line("its_your_birthday")
 	talk = false
 	_buttons()
 	locked = false
@@ -49,7 +49,7 @@ func _yay() -> void:
 	Audio.sfx("cheer")
 	confetti_burst(Vector2(1010, 500), 60)
 	talk = true
-	await say("That's right! Happy birthday, Chumbo! Everyone is waiting for you.")
+	await line("thats_right_happy")
 	talk = false
 	Game.intro_done = true
 	Game.save_game()
@@ -67,15 +67,15 @@ func _no() -> void:
 		1:
 			Audio.sfx("scribble")
 			stage = 2
-			await say("Yes it is.")
+			await line("yes_it_is")
 			nb.label = "No really, it's NOT my birthday!"
 		2:
 			Audio.sfx("scribble")
 			stage = 3
-			await say("Everyone remembered. Your friends remembered. Even the dog remembered. Did you forget your own birthday?")
+			await line("everyone_remembered")
 			nb.label = "...maybe it is my birthday?"
 		_:
-			await say("See? It has always been your birthday.", Narrator.DARK)
+			await line("see_it_has_always")
 			nb.label = "YAY!!!"
 			nb.col = Crayon.GREEN
 			nb.size = 44

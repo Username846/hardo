@@ -59,7 +59,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number seven! Welcome to ROBLOCKS! Beat the Birthday Obby! Tap to jump. Tap again in the air to double jump!")
+	await line("welcome")
 	running = true
 	banner_t = 2.5
 	locked = false
@@ -144,7 +144,7 @@ func _golden_crown() -> void:
 			chat.pop_front()
 		Audio.sfx("coin", -6, randf_range(0.9, 1.3))
 		await wait(0.45)
-	say_bg("Ooh, a golden crown! Fancy!")
+	line_bg("ooh_a_golden_crown")
 
 
 func _die() -> void:
@@ -155,10 +155,10 @@ func _die() -> void:
 	deaths_here += 1
 	Audio.sfx("oof")
 	if deaths == 1:
-		say_bg("Oof! Don't worry, you go back to the last flag.")
+		line_bg("oof_dont_worry_you")
 	if deaths_here == 3:
 		mercy_until = stage_x[cp + 1] if cp + 1 < stage_x.size() else pad.position.x
-		say_bg("The obby feels sorry for you. Here's a bridge!")
+		line_bg("obby_feels_sorry")
 
 
 func _respawn() -> void:
@@ -234,9 +234,9 @@ func tick(dt: float) -> void:
 			match i:
 				2:
 					Audio.play_music("obby_dark", 2.0)
-					say_bg("Where did everybody go?", Narrator.DARK)
+					line_bg("where_did_everybody")
 				3:
-					say_bg("There's another player up ahead. It has your name.", Narrator.DARK)
+					line_bg("theres_another_player")
 	# chat
 	while chat_at.size() > 0 and pos.x >= float(chat_at[0][0]):
 		var c: Array = chat_at.pop_front()
@@ -262,9 +262,9 @@ func _end() -> void:
 	Audio.sfx("levelup")
 	Audio.sfx("cheer", -6)
 	await wait(1.6)
-	await say("Only one Chumbo can leave the obby.", Narrator.DARK)
-	await say("Just kidding! Probably.", Narrator.DARK)
-	await say("Present number seven, done! You beat the obby!")
+	await line("only_one_chumbo_can")
+	await line("just_kidding_probably")
+	await line("done")
 	finish_game(IDX, "OBBY BEATEN!")
 
 

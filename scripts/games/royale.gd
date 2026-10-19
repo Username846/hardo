@@ -8,10 +8,10 @@ const ME := Vector2(640, 410)
 const SPOTS := ["Cake Castle", "Balloon Park", "Pinata Peaks", "Sprinkle Springs"]
 ## One voiced line per landing spot (same order as SPOTS).
 var LANDED := [
-	["You landed at Cake Castle! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
-	["You landed at Balloon Park! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
-	["You landed at Pinata Peaks! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
-	["You landed at Sprinkle Springs! Tap to build walls. Tap a player to throw cake!", Narrator.CUTE],
+	"you_landed_at_cake",
+	"you_landed_at_balloon",
+	"you_landed_at_pinata",
+	"you_landed_at_sprinkle",
 ]
 const NAMES := ["xX_CakeLord_Xx", "BalloonBoi99", "sprinkle_queen", "PinataSlayer", "DefaultDancer", "LlamaLover",
 	"Frosting_Fiend", "GiftWrapGamer", "CandleCrusher", "PartyHat_Pro", "NoScopeNapkin", "ConfettiKid"]
@@ -60,7 +60,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number six! It's FORTNIGHT! Jump off the party bus, build walls to block the water balloons, and throw cake at everyone else!")
+	await line("welcome")
 	phase = "bus"
 	locked = false
 	Audio.sfx("horn")
@@ -93,8 +93,7 @@ func _jump() -> void:
 	await wait(1.6)
 	Audio.sfx("thud")
 	phase = "fight"
-	var landed: Array = LANDED[SPOTS.find(spot)]
-	say_bg(landed[0], landed[1])
+	line_bg(LANDED[SPOTS.find(spot)])
 
 
 func _poke_me() -> void:
@@ -118,7 +117,7 @@ func _emote() -> void:
 	_feed("Emote: DEFAULT DANCE")
 	_feed("Everyone stopped to dance!")
 	if Game.found_egg("royale"):
-		say_bg("Dance off! Nobody throws a water balloon during a dance off.", Narrator.HYPE)
+		line_bg("dance_off_nobody")
 
 
 func _build(p: Vector2) -> void:
@@ -174,7 +173,7 @@ func _fight(dt: float) -> void:
 		var a := randf() * TAU
 		llama = {"pos": ME + Vector2(cos(a) * 230.0, sin(a) * 150.0), "t": 0.0}
 		Audio.sfx("sparkle")
-		say_bg("A loot llama! Tap it for a surprise!")
+		line_bg("loot_llama_tap_it")
 	if not llama.is_empty():
 		llama.t += dt
 		if llama.t > 18.0:
@@ -228,7 +227,7 @@ func _move_projectiles(dt: float) -> void:
 			Audio.sfx("ow", -8)
 			if hp <= 0:
 				hp = 50
-				say_bg("You got back up! The party never stops!")
+				line_bg("you_got_back_up")
 	shots = shots.filter(func(s): return not s.get("dead", false) and s.pos.x > -100 and s.pos.x < W + 100)
 	walls = walls.filter(func(w): return w.hp > 0)
 	for c in cakes:
@@ -261,7 +260,7 @@ func _smash_llama() -> void:
 func _twist() -> void:
 	twisted = true
 	Audio.play_music("royale_dark", 2.0)
-	say_bg("The storm is getting darker. Where are all the other players going?", Narrator.DARK)
+	line_bg("storm_is_getting")
 
 
 func _final() -> void:
@@ -271,13 +270,13 @@ func _final() -> void:
 	left = 1
 	Audio.sfx("levelup")
 	await wait(1.5)
-	await say("One player left. Just you.", Narrator.HYPE_DARK)
+	await line("one_player_left_just")
 	await wait(0.6)
 	Audio.sfx("glitch")
 	left = 2
 	_feed("??? joined the party")
 	await wait(1.0)
-	await say("Wait. Two players left.", Narrator.HYPE_DARK)
+	await line("wait_two_players")
 	Audio.sfx("giggle_low")
 	await wait(1.5)
 	phase = "win"
@@ -286,8 +285,8 @@ func _final() -> void:
 	Audio.sfx("cheer")
 	confetti_burst(ME + Vector2(0, -80), 80)
 	await wait(1.5)
-	await say("You won, Chumbo! Everyone else went home. Well... almost everyone.", Narrator.DARK)
-	await say("Present number six, done! Birthday Royale!")
+	await line("you_won_chumbo_everyone")
+	await line("done")
 	finish_game(IDX, "#1 ...OF 2")
 
 

@@ -285,7 +285,9 @@ func _song_lines(name: String) -> Array:
 			var tt := float(sy[0])
 			ln.start = minf(ln.start, tt)
 			ln.end = maxf(ln.end, tt + float(sy[1]))
-			ln.parts.append(String(sy[2]) + (" " if bool(sy[3]) else ""))
+			# (a syllable ending in a newline ends a row: that window of words has two rows)
+			var txt := String(sy[2])
+			ln.parts.append(txt if txt.ends_with("\n") else txt + (" " if bool(sy[3]) else ""))
 			ln.times.append(tt)
 	_lyric_lines[name] = out
 	return out

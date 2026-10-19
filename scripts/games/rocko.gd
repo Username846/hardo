@@ -77,16 +77,16 @@ var fork_dark := 0.0
 var eyes := 0.0
 
 var LINES := [
-	["Come back, Chumbo! The cake is getting cold!", Narrator.ROCKO],
-	["Why does every house have balloons now?", Narrator.DARK],
-	["Everybody is waiting for you, Chumbo.", Narrator.ROCKO],
-	["This street looks familiar. Didn't we already pass that mailbox?", Narrator.DARK],
-	["Don't look at the guests. Keep running.", Narrator.DARK],
-	["Your party misses you. Your party always misses you.", Narrator.ROCKO],
-	["Every street sign says Party Lane now.", Narrator.DARK],
-	["You can't run away from your birthday!", Narrator.ROCKO],
-	["Every year you run. Every year I bring you back.", Narrator.ROCKO],
-	["Look! A house! Hide in there!", Narrator.DARK],
+	"come_back_chumbo",
+	"why_does_every_house",
+	"everybody_is_waiting",
+	"this_street_looks",
+	"dont_look_at_the",
+	"your_party_misses",
+	"every_street_sign",
+	"you_cant_run_away",
+	"every_year_you_run",
+	"look_a_house_hide",
 ]
 ## How far down the street (0..1) each of the LINES is said.
 const LINE_AT := [0.06, 0.15, 0.24, 0.34, 0.44, 0.54, 0.64, 0.74, 0.84, 0.93]
@@ -109,11 +109,11 @@ func _chasing() -> bool:
 func _run() -> void:
 	locked = true
 	await wait(0.6)
-	await say("The party is over. Chumbo is home on his comfy couch, playing a game on his phone.")
+	await line("party_is_over_chumbo")
 	phase = "phone"
 	_tw("phone_k", 1.0, 0.45)
 	await wait(0.5)
-	await say("That's enough birthday for today. Tap the X to close the game.")
+	await line("thats_enough_birthday")
 	locked = false
 
 
@@ -138,7 +138,7 @@ func _close_phone() -> void:
 	_tw("phone_k", 0.0, 0.35)
 	await wait(0.5)
 	phase = "rest"
-	await say("Ahh. Finally. Peace and quiet.", Narrator.CHUMBO)
+	await line("ahh_finally_peace")
 	await wait(0.3)
 	# here comes Rocko
 	phase = "cat"
@@ -149,7 +149,7 @@ func _close_phone() -> void:
 	cat_pose = "sit"
 	_meow("Meow!")
 	await wait(1.0)
-	await say("Oh hi Rocko!", Narrator.CHUMBO)
+	await line("oh_hi_rocko")
 	# hop up onto the couch
 	cat_pose = "walk"
 	var tw2 := create_tween().set_parallel(true)
@@ -158,7 +158,7 @@ func _close_phone() -> void:
 	Audio.sfx("boing", -10, 1.4)
 	await wait(0.6)
 	cat_pose = "sit"
-	await say("Rocko wants pets! Tap Rocko to pet him.")
+	await line("rocko_wants_pets")
 	phase = "pets"
 	locked = false
 
@@ -204,12 +204,12 @@ func _turn() -> void:
 	me_mood = "o"
 	_tw("demon", 1.0, 2.4)
 	_tw("grow", 2.1, 2.4)
-	await say("Rocko? Why is Rocko getting bigger?", Narrator.DARK)
+	await line("rocko_why_is_rocko")
 	await wait(0.4)
-	await say("You closed the party, Chumbo.", Narrator.ROCKO)
-	await say("Nobody leaves the party.", Narrator.ROCKO)
+	await line("you_closed_the_party")
+	await line("nobody_leaves_the")
 	Audio.sfx("hiss")
-	await say("Nope! Nope nope nope!", Narrator.CHUMBO)
+	await line("nope_nope_nope_nope")
 	# out the door!
 	phase = "flee"
 	me_pose = "run"
@@ -227,7 +227,7 @@ func _turn() -> void:
 	me_mood = "o"
 	_tw("black", 0.0, 0.5)
 	await wait(0.3)
-	await say("Run, Chumbo! Tap above or below Chumbo to dodge everything!", Narrator.DARK)
+	await line("run_chumbo_tap_above")
 	phase = "chase"
 	locked = false
 
@@ -343,7 +343,7 @@ func _laser() -> void:
 	Audio.sfx("meow", -2, 1.25)
 	pops.append({"p": Vector2(rocko_x, rocko_y - 250.0), "t": 1.2, "s": "!", "c": Crayon.RED})
 	if Game.found_egg("rocko"):
-		say_bg("Ooh! A red dot! Must... catch... the red dot!", Narrator.ROCKO)
+		line_bg("ooh_a_red_dot")
 
 
 func _move(d: int) -> void:
@@ -417,9 +417,9 @@ func _chase_tick(dt: float) -> void:
 		if k >= LINE_AT[i] and not said.has(i):
 			said[i] = true
 			if i == LINES.size() - 1 and Game.all_gold():
-				say_bg("Not that way, Chumbo. Follow me. I want to show you something.", Narrator.ROCKO)
+				line_bg("not_that_way_chumbo")
 			else:
-				say_bg(LINES[i][0], LINES[i][1])
+				line_bg(LINES[i])
 	# new things in the road
 	spawn_t -= dt
 	if spawn_t <= 0.0 and dist < RUN_TIME - 3.0:
@@ -432,7 +432,7 @@ func _chase_tick(dt: float) -> void:
 		Audio.sfx("throw", -4)
 		if not said.has("throw"):
 			said["throw"] = true
-			say_bg("Rocko is throwing cake! Move!", Narrator.DARK)
+			line_bg("rocko_is_throwing")
 	# bumping into things
 	if hurt <= 0.0 and absf(me_y - LANES[lane]) < 30.0:
 		for o in obstacles:
@@ -497,7 +497,7 @@ func _hit(kind: String) -> void:
 	var words := ["OOF!", "OUCH!", "WHOA!", "AAH!"]
 	pops.append({"p": Vector2(ME_X, me_y - 190), "t": 1.0, "s": words[randi() % words.size()], "c": Crayon.RED})
 	if kind == "guest":
-		say_bg("Join us, Chumbo.", Narrator.CREEPY)
+		line_bg("join_us_chumbo")
 	if gap <= 0:
 		_caught()
 
@@ -512,11 +512,11 @@ func _caught() -> void:
 	await wait(0.8)
 	obstacles.clear()
 	throws.clear()
-	await say("Rocko caught you! He's dragging you back to the party!", Narrator.DARK)
+	await line("rocko_caught_you")
 	_tw("black", 0.85, 0.3)
 	await wait(0.6)
 	_tw("black", 0.0, 0.3)
-	await say("Wait, you wiggled free! Run, Chumbo, run!")
+	await line("wait_you_wiggled")
 	gap = 2
 	hurt = 1.5
 	dist = maxf(0.0, dist - RUN_TIME * 0.06)
@@ -542,7 +542,7 @@ func _knock() -> void:
 	_tw("demon", 0.0, 2.0)
 	_tw("grow", 1.15, 2.0)
 	me_mood = "o"
-	await say("You made it to a house! Quick, knock on the door!")
+	await line("you_made_it_to")
 	phase = "knock"
 	locked = false
 
@@ -563,12 +563,12 @@ func _party() -> void:
 	_tw("guests_out", 1.0, 0.6)
 	confetti_burst(Vector2(house_x, 300), 60)
 	me_mood = "o"
-	await say("SURPRISE! Happy birthday, Chumbo!")
-	await say("Rocko brought you back to your party. Good kitty.", Narrator.DARK)
+	await line("surprise_happy_birthday")
+	await line("rocko_brought_you")
 	_meow("Meow.")
-	await say("Meow.", Narrator.ROCKO)
+	await line("meow")
 	me_mood = "happy"
-	await say("Oh hi, everyone.", Narrator.CHUMBO)
+	await line("oh_hi_everyone")
 	Game.secret_done = true
 	Game.save_game()
 	finish_game(-1, "SECRET FOUND!")
@@ -595,9 +595,9 @@ func _to_fork() -> void:
 	Audio.sfx("wind", -6)
 	_tw("black", 0.0, 1.5)
 	await wait(1.6)
-	await say("Chumbo. Every year I chase you back to the party.", Narrator.ROCKO)
-	await say("Not this time. This time, you choose.", Narrator.ROCKO)
-	await say("Back to the party, where everyone is waiting for you. Or away, where nobody is. It's your choice, Chumbo.", Narrator.WHISPER)
+	await line("chumbo_every_year")
+	await line("not_this_time_this")
+	await line("back_to_the_party")
 	phase = "fork"
 	add_button("back", Rect2(60, 600, 400, 84), "BACK TO THE PARTY", _choose_back, Crayon.YELLOW, 32)
 	add_button("leave", Rect2(820, 600, 400, 84), "LEAVE THE PARTY", _choose_leave, Color(0.7, 0.7, 0.76), 32)
@@ -613,7 +613,7 @@ func _choose_back() -> void:
 	remove_button("leave")
 	Audio.play_music("hub", 1.5)
 	_tw("fork_back", 1.0, 4.0)
-	await say("You came back. They always come back.", Narrator.DARK)
+	await line("you_came_back_they")
 	await wait(2.0)
 	_tw("black", 1.0, 1.0)
 	await wait(1.2)
@@ -621,9 +621,9 @@ func _choose_back() -> void:
 	Audio.sfx("tada", -3)
 	confetti_burst(Vector2(640, 300), 70)
 	_tw("black", 0.55, 0.6)
-	await say("SURPRISE! Happy birthday, Chumbo!")
+	await line("surprise_happy_birthday")
 	_meow("Meow.")
-	await say("Meow.", Narrator.ROCKO)
+	await line("meow")
 	Game.secret_done = true
 	Game.save_game()
 	finish_game(-1, "SECRET FOUND!")
@@ -639,7 +639,7 @@ func _choose_leave() -> void:
 	locked = true
 	remove_button("back")
 	remove_button("leave")
-	await say("Okay, Chumbo.", Narrator.ROCKO)
+	await line("okay_chumbo")
 	Audio.play_music("rocko_leave", 2.0, 0.0, false)
 	var dur := Audio.song_length()
 	_tw("fork_walk", 1.0, dur * 0.85)
@@ -656,9 +656,9 @@ func _choose_leave() -> void:
 	Audio.sfx("heartbeat", -4)
 	_tw("eyes", 1.0, 3.0)
 	await wait(3.2)
-	await say("Chumbo.", Narrator.CREEPY)
-	await say("Where did you think you were going?", Narrator.CREEPY)
-	await say("You can't escape your birthday, Chumbo. Nobody ever leaves the party.", Narrator.CREEPY)
+	await line("chumbo")
+	await line("where_did_you_think")
+	await line("you_cant_escape_your")
 	await wait(1.0)
 	Game.secret_done = true
 	Game.title_star = true

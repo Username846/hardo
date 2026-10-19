@@ -111,8 +111,8 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number five! It's CALL OF BIRTHDAY! Here's your foam dart blaster. Tap anywhere to shoot!")
-	await say("Listen up, recruit! Knock down sixteen cardboard party crashers. Do NOT shoot Grandma!", Narrator.SARGE)
+	await line("welcome")
+	await line("listen_up_recruit")
 	_banner("MISSION 1", "BOOT CAMP", Crayon.YELLOW, 2.5)
 	Audio.sfx("horn", -6)
 	phase = "m1"
@@ -167,7 +167,7 @@ func _fire(p: Vector2) -> void:
 			failed_joke = true
 			_banner("MISSION FAILED", "...just kidding!", Crayon.RED, 2.5)
 			Audio.sfx("wrong", -4)
-			say_bg("Mission failed. Just kidding! We'll get 'em next time!", Narrator.SARGE)
+			line_bg("mission_failed_just")
 	else:
 		misses_row = 0
 		_on_hit(h, p)
@@ -205,7 +205,7 @@ func _teddy_song() -> void:
 		var tw := create_tween()
 		tw.tween_method(func(v: float): td.down = v, 1.0, 0.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await wait(0.6)
-	say_bg("Soldier! Who put the radio on? Was it the teddy bears?", Narrator.SARGE)
+	line_bg("soldier_who_put_the")
 
 
 func _reload() -> void:
@@ -269,20 +269,20 @@ func _downed() -> void:
 			uab = 10.0
 			Audio.sfx("streak")
 			_banner("3 STREAK", "UAB ONLINE", Crayon.SKY, 2.0)
-			say_bg("Spy balloon online!", Narrator.SARGE)
+			line_bg("spy_balloon_online")
 		5:
 			Audio.sfx("streak")
 			Audio.sfx("radio", -6)
 			_banner("5 STREAK", "CARE PACKAGE", Crayon.GREEN, 2.0)
 			care = {"pos": Vector2(randf_range(330, 900), -80), "landed": false, "t": 0.0}
-			say_bg("Care package inbound! Tap the present!", Narrator.SARGE)
+			line_bg("care_package_inbound")
 		7:
 			Audio.sfx("streak")
 			Audio.sfx("radio", -6)
 			_banner("7 STREAK", "CAKE STRIKE", Crayon.PINK, 2.0)
 			strike = 0.0
 			streak = 0
-			say_bg("Cake strike inbound!", Narrator.SARGE)
+			line_bg("cake_strike_inbound")
 	if downed >= goal:
 		_mission_done()
 
@@ -298,9 +298,9 @@ func _friendly_fire(o: Dictionary) -> void:
 	Audio.sfx("wrong", -4)
 	Audio.sfx("oof", -8, 1.5)
 	if grandma_hits == 1:
-		say_bg("FRIENDLY FIRE! That's Grandma, soldier! She brought snacks!", Narrator.SARGE)
+		line_bg("friendly_fire_thats")
 	elif grandma_hits == 3:
-		say_bg("Grandma again?! She's knitting you a sweater!", Narrator.SARGE)
+		line_bg("grandma_again_shes")
 
 
 func _pop_drone(d: Dictionary, p: Vector2) -> void:
@@ -376,10 +376,10 @@ func _clear_field() -> void:
 
 func _mission2() -> void:
 	await wait(1.2)
-	await say("Mission complete! Outstanding work, recruit!", Narrator.SARGE)
+	await line("mission_complete")
 	night = false
 	refresh_back()
-	await say("Mission two: capture the cake! The crashers want the birthday cake. Pop the balloon drones before they grab a slice!", Narrator.SARGE)
+	await line("mission_two_capture")
 	_banner("MISSION 2", "CAPTURE THE CAKE", Crayon.YELLOW, 2.5)
 	Audio.sfx("horn", -6)
 	ammo = MAG
@@ -395,7 +395,7 @@ func _twist() -> void:
 	Audio.sfx("tada")
 	Audio.sfx("cheer", -8)
 	await wait(1.2)
-	await say("Mission complete! The cake is safe! You're a birthday hero!", Narrator.SARGE)
+	await line("mission_complete_cake_safe")
 	loading = 0.0
 	var tw := create_tween()
 	tw.tween_property(self, "loading", 0.72, 2.2)
@@ -412,8 +412,8 @@ func _twist() -> void:
 	loading = -1.0
 	_banner("MISSION 3", "THE FRONT", Color(0.85, 0.8, 0.7), 4.0)
 	Audio.sfx("thud", -2, 0.5)
-	await say("This isn't a game any more, Chumbo. It's a war.", Narrator.DARK)
-	await say("Incoming! Your friends are pinned down out there. Tap them to pull them back to the trench!", Narrator.SARGE)
+	await line("this_isnt_a_game")
+	await line("incoming_your_friends")
 	squad.clear()
 	for k in SQUAD.size():
 		squad.append({"name": SQUAD[k], "state": "trench", "x": 640.0, "z": 0.3, "t": 0.0, "seed": 3000 + k * 37, "shake": 0.0})
@@ -447,9 +447,9 @@ func _day(i: int) -> void:
 	_banner("DAY %d" % day, "", Color(0.85, 0.8, 0.7), 2.2)
 	match i:
 		1:
-			say_bg("Day forty. It hasn't stopped raining.", Narrator.DARK)
+			line_bg("day_forty_it_hasnt")
 		2:
-			say_bg("Day three hundred and sixty five. Happy birthday, soldier.", Narrator.SARGE)
+			line_bg("day_three_hundred")
 	phase = "front"
 	locked = false
 
@@ -463,7 +463,7 @@ func _pull(p: Vector2) -> void:
 			Audio.sfx("whoosh", -12)
 			if not pulled_said:
 				pulled_said = true
-				say_bg("Go, go, go! Back to the trench!", Narrator.SARGE)
+				line_bg("go_go_go_back")
 			return
 
 
@@ -486,7 +486,7 @@ func _lose(f: Dictionary) -> void:
 	lost_today += 1
 	if phase == "front" and not lost_said:
 		lost_said = true
-		say_bg("No. No, no, no.", Narrator.CHUMBO)
+		line_bg("no_no_no_no")
 
 
 func _tick_front(dt: float) -> void:
@@ -538,20 +538,20 @@ func _end_of_day() -> void:
 	locked = true
 	await wait(1.6)
 	if lost_today > 0:
-		await say("We lost good people today.", Narrator.SARGE)
+		await line("we_lost_good_people")
 	else:
-		await say("Everyone made it back. This time.", Narrator.SARGE)
+		await line("everyone_made_it")
 	letter = LETTERS[wave]
 	var tw := create_tween()
 	tw.tween_property(self, "letter_a", 1.0, 0.6)
 	await wait(0.7)
 	match wave:
 		0:
-			await say("Dear Mom. It's my birthday today. We had mud instead of cake. I'll be home soon.", Narrator.CHUMBO)
+			await line("dear_mom_its_my")
 		1:
-			await say("Dear Mom. Some of the guys aren't here any more. Nobody talks about it.", Narrator.CHUMBO)
+			await line("dear_mom_some_of")
 		2:
-			await say("Dear Mom. I can't remember what cake tastes like. Please don't forget me.", Narrator.CHUMBO)
+			await line("dear_mom_i_cant")
 	await wait(0.8)
 	var tw2 := create_tween()
 	tw2.tween_property(self, "letter_a", 0.0, 0.6)
@@ -566,8 +566,8 @@ func _end_of_day() -> void:
 func _over_the_top() -> void:
 	phase = "charge"
 	locked = true
-	await say("New orders. Everyone goes over the top at dawn.", Narrator.SARGE)
-	await say("Nobody asked them if they wanted to go.", Narrator.DARK)
+	await line("new_orders_everyone")
+	await line("nobody_asked_them")
 	var going := squad.filter(func(f): return f.state == "trench")
 	for k in going.size():
 		var f: Dictionary = going[k]
@@ -616,11 +616,11 @@ func _ending() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "poppies", 1.0, 4.0)
 	await wait(1.5)
-	await say("It's quiet now. It wasn't supposed to be this quiet.", Narrator.SARGE)
-	await say("They only came to a birthday party, Chumbo.", Narrator.DARK)
-	await say("Dear Mom. I'm the only one left. Happy birthday to me.", Narrator.CHUMBO)
+	await line("its_quiet_now_it")
+	await line("they_only_came_to")
+	await line("dear_mom_im_the")
 	await wait(0.6)
-	await say("Present number five. Done.", Narrator.WHISPER)
+	await line("done")
 	finish_game(IDX, "REMEMBER THEM")
 
 
@@ -802,7 +802,7 @@ func _tick_drones(dt: float) -> void:
 						Audio.sfx("chomp", -6)
 						if not slice_said and not locked:
 							slice_said = true
-							say_bg("They took a slice! Don't worry, there's plenty.")
+							line_bg("they_took_a_slice")
 				else:
 					d.pos += to.normalized() * d.speed * dt
 				d.pos.y += sin(d.ph) * 12.0 * dt

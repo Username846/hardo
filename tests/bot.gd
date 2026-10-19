@@ -87,6 +87,26 @@ func _ready() -> void:
 		print("HUBUI title -> ", tl.get_script().resource_path, " awake=", tl.get("awake"))
 		get_tree().quit()
 		return
+	if which == "text":
+		# every line in dialogue.txt can be read, splits into its boxes, and has its voices
+		var GT := preload("res://scripts/game_text.gd")
+		var ln: Dictionary = GT.get_line("karaoke", "red_failed")
+		print("TEXT red_failed boxes=", ln.boxes.size(), " mood=", ln.mood, " -> ", " | ".join(ln.boxes))
+		var two: PackedStringArray = GT.boxes("Hello \\n there \\\\n again")
+		print("TEXT split test: ", two.size(), " boxes, first=", two[0].replace("\n", "/"))
+		var missing := 0
+		var total := 0
+		for sec in GT._lines:
+			for name in GT._lines[sec]:
+				var e: Dictionary = GT._lines[sec][name]
+				for b in e.boxes:
+					total += 1
+					if not ResourceLoader.exists("res://assets/voice/%s.ogg" % Narrator.key_for(b, e.mood)):
+						missing += 1
+						print("TEXT no voice: [", sec, "] ", name, ": ", b)
+		print("TEXT sections=", GT._lines.size(), " boxes=", total, " without a voice=", missing)
+		get_tree().quit()
+		return
 	if which == "credloop":
 		# the credits song must keep looping even when the browser has it down as a song that
 		# plays once (the karaoke plays it once through first): pretend that's happened here

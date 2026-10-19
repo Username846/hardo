@@ -5,6 +5,7 @@ extends Node2D
 
 const W := 1280.0
 const H := 720.0
+const GameText := preload("res://scripts/game_text.gd")
 
 var t := 0.0
 var arg: Variant = null
@@ -312,6 +313,25 @@ func say(text: String, mood: int = Narrator.CUTE, blocking: bool = true) -> void
 ## Fire-and-forget subtitle that does not stop gameplay.
 func say_bg(text: String, mood: int = Narrator.CUTE) -> void:
 	say(text, mood, false)
+
+
+## Says a line from dialogue.txt (from this screen's section): each of its boxes in turn, and
+## waits until the last one is finished.
+func line(name: String, blocking: bool = true) -> void:
+	var ln := GameText.get_line(text_section(), name)
+	for box in ln.boxes:
+		await say(box, ln.mood, blocking)
+
+
+## A line from dialogue.txt that doesn't stop the game (its boxes come up one after another).
+func line_bg(name: String) -> void:
+	line(name, false)
+
+
+## Which section of dialogue.txt this screen's lines are in: the script's name (karaoke.gd ->
+## [karaoke]).
+func text_section() -> String:
+	return get_script().resource_path.get_file().get_basename()
 
 
 func paper_bg(col: Color = Crayon.PAPER) -> void:

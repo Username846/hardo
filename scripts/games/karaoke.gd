@@ -1,13 +1,15 @@
 extends Screen
 ## Present 10: MIKAKE KARAOKE (a Project DIVA-style rhythm game). Hatsune Mikake sings your
-## birthday song on stage. There's a button on each side of the stage (tap that side of the
-## screen, or press A or D) and a ring shrinks onto a button when its note is due. Miss too many
+## birthday song on stage. Notes fly in from both sides of the screen to the two targets beside
+## her: tap that side of the screen (or press A or D) as a note reaches its target. Miss too many
 ## and the voltage runs out: the song fails and starts again. In the solos the buttons make her
-## dance. Halfway through, the song changes its mind about the words. Then: make a wish.
+## dance. Halfway through, the song changes its mind about the words (and the buttons make her
+## glitch instead). Then: make a wish.
 
 const IDX := 9
 const SongData := preload("res://scripts/gen/song_data.gd")
-## A ring starts shrinking this long before its note is due, and lands on its button on time.
+## A note comes in from the edge of the screen this long before it's due, and reaches its
+## target on time.
 const APPEAR := 1.4
 ## Timing windows (seconds either side of the note).
 const COOL := 0.08
@@ -17,11 +19,11 @@ const SAD := 0.28
 const TEAL := Color(0.22, 0.78, 0.76)
 const TEAL_DK := Color(0.08, 0.42, 0.45)
 const SKIN := Color(1.0, 0.9, 0.8)
-## The two buttons, in front of the LED screens: left (the left half of the screen, or A) and
-## right (the right half, or D).
-const PADS := [Vector2(165, 300), Vector2(1115, 300)]
-const PAD_R := 62.0
-const RING_R0 := 172.0
+## The two targets, either side of her: left (tap the left half of the screen, or press A) and
+## right (the right half, or D). Notes start at the edge of the screen on their side.
+const TARGETS := [Vector2(450, 330), Vector2(830, 330)]
+const TARGET_R := 44.0
+const NOTE_FROM := [-30.0, 1310.0]
 const PAD_KEY := ["A", "D"]
 const LANE_COL := [Color(0.98, 0.45, 0.72), Color(0.22, 0.78, 0.76)]
 ## The voltage is the life bar: good hits fill it, misses drain it, and empty fails the song.
@@ -33,6 +35,9 @@ const MOVES := [
 	[["pirouette", 1.0, "PIROUETTE!"], ["slide", 1.2, "SLIDE!"], ["axel", 1.3, "TRIPLE AXEL!"]],
 	[["leap", 0.9, "BIG LEAP!"], ["slide", 1.2, "SLIDE!"], ["break", 1.2, "DANCE BREAK!"]],
 ]
+## In the red song there's no dancing: the buttons make her break down a little more, in turn.
+const DARK_MOVES := [["twitch", 1.0, "ERROR"], ["slump", 1.6, "PLEASE STOP"], ["tilt", 1.5, "HELP ME"],
+	["flicker", 1.3, "I CAN'T STOP SINGING"]]
 ## How dark the room is when the cake comes out (it's lit by the candles from then on).
 const ROOM_DIM := 0.3
 const LYRIC_Y := 588.0
@@ -57,7 +62,7 @@ var pops: Array = []       # {p, t, txt, col}
 var bursts: Array = []     # {p, t, col}
 var bounce := 0.0
 var pad_flash := [0.0, 0.0]
-## The buttons fade away when she breaks down.
+## The targets fade away when she breaks down.
 var pads_k := 1.0
 ## Failing: how many times each song has failed, the score to go back to, and the sign.
 var fails := {}
@@ -71,6 +76,7 @@ var dance_len := 1.0
 var dance_dir := 1.0
 var dance_next := -1
 var moves_done := [0, 0]
+var dark_moves_done := 0
 ## Mikake breaking down after the last song: glitching (0..1), switched off (0..1), the beat
 ## she froze on, what the stage screens say, and the sparks and smoke coming off her.
 var mal_glitch := 0.0
@@ -111,7 +117,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.6)
-	await say("The last present! It's a concert! Hatsune Mikake is singing your birthday song. When a ring shrinks onto a button, tap that side of the screen, or press A or D. Don't let the voltage run out!")
+	await line("welcome")
 	_start("karaoke")
 	phase = "cute"
 	locked = false
@@ -218,7 +224,7 @@ func _leek_spin() -> void:
 	Audio.sfx("sparkle", -2)
 	Audio.sfx("yay_small", -4)
 	if Game.found_egg("karaoke"):
-		say_bg("Leek spin! The crowd goes wild!", Narrator.HYPE)
+		line_bg("leek_spin")
 
 
 ## Nothing to sing for a while (a solo, or before the words start): the buttons are for dancing.
@@ -292,7 +298,7 @@ func _button(lane: int) -> void:
 		best = maxi(best, combo)
 	voltage = clampf(voltage, 0.0, 1.0)
 	pops.append({"p": _pop_at(lane), "t": 0.0, "txt": txt, "col": col})
-	bursts.append({"p": PADS[lane], "t": 0.0, "col": LANE_COL[lane]})
+	bursts.append({"p": TARGETS[lane], "t": 0.0, "col": LANE_COL[lane]})
 	Audio.sfx("key", -8, 1.5 if txt == "COOL" else 1.2)
 	if combo > 0 and combo % 10 == 0:
 		Audio.sfx("yay_small", -6)
@@ -309,29 +315,45 @@ func _miss(i: int, txt: String) -> void:
 		_fail()
 
 
-## Where COOL / FINE / ... pops up for a button: beside it, on the side towards the stage.
+## Where COOL / FINE / ... pops up for a button: above its target.
 func _pop_at(lane: int) -> Vector2:
-	return PADS[lane] + Vector2((PAD_R + 112.0) * (1.0 if lane == 0 else -1.0), 10.0)
+	return TARGETS[lane] + Vector2(0, -TARGET_R - 40.0)
 
 
 func _dance(lane: int) -> void:
 	if dance != "":
 		dance_next = lane
 		return
-	var mv: Array = MOVES[lane][moves_done[lane] % MOVES[lane].size()]
-	moves_done[lane] += 1
+	var dark := phase == "dark"
+	var mv: Array
+	if dark:
+		mv = DARK_MOVES[dark_moves_done % DARK_MOVES.size()]
+		dark_moves_done += 1
+	else:
+		mv = MOVES[lane][moves_done[lane] % MOVES[lane].size()]
+		moves_done[lane] += 1
 	dance = mv[0]
 	dance_len = mv[1]
 	dance_t = 0.0
 	dance_dir = -1.0 if lane == 0 else 1.0
-	score += 150
 	voltage = minf(1.0, voltage + 0.02)
-	var dark := phase == "dark"
-	pops.append({"p": Vector2(640, 220), "t": 0.0, "txt": mv[2], "col": Color(1, 0.35, 0.35) if dark else Crayon.YELLOW, "life": 1.2})
+	if dark:
+		pops.append({"p": Vector2(640, 220), "t": 0.0, "txt": mv[2], "col": Color(1, 0.3, 0.3), "life": 1.4})
+		match dance:
+			"twitch":
+				Audio.sfx("glitch", -4, randf_range(0.8, 1.2))
+			"slump":
+				Audio.sfx("slide_down", -4, 0.7)
+			"tilt":
+				Audio.sfx("creak", -4, 0.8)
+			_:
+				Audio.sfx("static", -6)
+		return
+	score += 150
+	pops.append({"p": Vector2(640, 220), "t": 0.0, "txt": mv[2], "col": Crayon.YELLOW, "life": 1.2})
 	Audio.sfx("whoosh", -6, 0.9 if dance == "leap" or dance == "axel" else 1.25)
-	if not dark:
-		Audio.sfx("yay_small", -9)
-		_spark_burst(12)
+	Audio.sfx("yay_small", -9)
+	_spark_burst(12)
 
 
 ## The voltage ran out: the music grinds to a halt, and the song starts again from the top.
@@ -354,13 +376,13 @@ func _fail() -> void:
 	if was == "cute":
 		Audio.sfx("uh_oh", -4)
 		if n == 1:
-			await say("Oh no! The voltage ran out and the song failed. That's okay, Mikake will sing it again. From the top!")
+			await line("failed")
 		else:
-			await say("The song failed again! Don't worry. Mikake will sing it as many times as it takes.")
+			await line("failed_again")
 	elif n == 1:
-		await say("Did you think the song would stop if you stopped playing? From the top, Chumbo.", Narrator.DARK)
+		await line("red_failed")
 	else:
-		await say("Again.", Narrator.DARK)
+		await line("red_failed_again")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "fail_k", 0.0, 0.3)
 	score = score_at_start
@@ -375,7 +397,12 @@ func tick(dt: float) -> void:
 	for k in 2:
 		pad_flash[k] = maxf(0.0, pad_flash[k] - dt * 5.0)
 	if dance != "":
+		var was_t := dance_t
 		dance_t += dt
+		if dance == "slump" and was_t < dance_len * 0.75 and dance_t >= dance_len * 0.75:
+			# jerked back up, to keep singing
+			Audio.sfx("glitch", -2, 0.7)
+			_spark_burst(16)
 		if dance_t >= dance_len:
 			dance = ""
 			if dance_next >= 0:
@@ -421,9 +448,12 @@ func tick(dt: float) -> void:
 			_lo += 1
 		if now >= end_time:
 			if phase == "cute":
+				# (no dancing into the red song)
 				phase = "dark"
+				dance = ""
+				dance_next = -1
 				_start("karaoke_dark")
-				say_bg("Wait. Those aren't the words.", Narrator.DARK)
+				line_bg("wrong_words")
 			else:
 				_malfunction()
 	if phase == "dark":
@@ -450,7 +480,7 @@ func _malfunction() -> void:
 		_spark_burst(14)
 		await wait(0.32)
 	err_text = "FATAL\nERROR"
-	await say("Mikake? Mikake, are you okay?", Narrator.DARK)
+	await line("are_you_okay")
 	err_text = "SINGER.EXE\nHAS\nSTOPPED"
 	Audio.music_pitch(0.2, 1.6)
 	Audio.sfx("slide_down", -1, 0.55)
@@ -464,7 +494,7 @@ func _malfunction() -> void:
 	Audio.sfx("switch", -4, 0.6)
 	await wait(1.0)
 	err_text = "NO\nSIGNAL"
-	await say("The singer has stopped working. The birthday song will go on without her.", Narrator.HYPE_DARK)
+	await line("singer_stopped")
 	await _grey_verse()
 	_candles()
 
@@ -506,7 +536,7 @@ func _candles() -> void:
 	tw.tween_property(self, "candle_dark", ROOM_DIM, 1.8)
 	tw.tween_property(self, "grey_light", 0.3, 1.8)
 	await wait(1.8)
-	await say("Make a wish, Chumbo. Blow out the candles.", Narrator.DARK)
+	await line("make_a_wish")
 	phase = "candles"
 	locked = false
 
@@ -543,9 +573,9 @@ func _relight(c: Dictionary) -> void:
 	_room_light()
 	Audio.sfx("whoosh", -4, 1.5)
 	if relights == 1:
-		say_bg("Trick candle! What a laugh!")
+		line_bg("trick_candle")
 	else:
-		say_bg("It doesn't want to leave the party.", Narrator.DARK)
+		line_bg("doesnt_want_to_leave")
 
 
 func _wish() -> void:
@@ -554,7 +584,7 @@ func _wish() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "black", 1.0, 0.5)
 	await wait(1.5)
-	await say("What did you wish for?", Narrator.WHISPER)
+	await line("what_did_you_wish")
 	await wait(1.5)
 	Audio.sfx("heartbeat")
 	await wait(1.0)
@@ -612,11 +642,14 @@ func paint() -> void:
 	if int(dark) != _baked_dark:
 		refresh_back()
 	var beat := _beat()
-	_lights(beat, dark)
+	if gloom <= 0.0:
+		_lights(beat, dark)
 	_screens(beat, dark)
 	if gloom > 0.0:
-		# the grey verse: nothing left but her in the spotlight, and the glow sticks
+		# the grey verse: nothing left but her in the red spotlight, the red stage lights and the
+		# glow sticks
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, gloom))
+		_lights(beat, dark)
 	# Hatsune Mikake herself
 	var sing := false
 	if phase == "cute" or phase == "dark":
@@ -632,14 +665,16 @@ func paint() -> void:
 		feet += Vector2(randf_range(-8, 8), randf_range(-3, 3)) * mal_glitch
 	var glitch := 0.18 if phase == "dark" else mal_glitch
 	if grey_light > 0.0:
-		# one cold spotlight on the empty performance
+		# one red spotlight on the empty performance
 		var top := Vector2(640, -20)
-		Crayon.poly(pen, PackedVector2Array([top + Vector2(-40, 0), top + Vector2(40, 0), MIKAKE_FEET + Vector2(170, 20), MIKAKE_FEET + Vector2(-170, 20)]), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.13 * grey_light), 4460)
-		Crayon.ellipse(pen, MIKAKE_FEET + Vector2(0, 14), Vector2(170, 26), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.18 * grey_light), 4461)
-	# a dance move in a solo
+		Crayon.poly(pen, PackedVector2Array([top + Vector2(-40, 0), top + Vector2(40, 0), MIKAKE_FEET + Vector2(170, 20), MIKAKE_FEET + Vector2(-170, 20)]), Color(0, 0, 0, 0), 0.0, Color(0.95, 0.22, 0.25, 0.16 * grey_light), 4460)
+		Crayon.ellipse(pen, MIKAKE_FEET + Vector2(0, 14), Vector2(170, 26), Color(0, 0, 0, 0), 0.0, Color(0.95, 0.25, 0.28, 0.22 * grey_light), 4461)
+	# a dance move in a solo (or in the red song, something worse)
 	var spin := 1.0
 	var lean := 0.0
 	var mbeat := beat
+	var slump := broken
+	var shown := true
 	if dance != "":
 		var f := clampf(dance_t / dance_len, 0.0, 1.0)
 		var hop := sin(f * PI)
@@ -660,10 +695,32 @@ func paint() -> void:
 				lean = hop * 0.16 * dance_dir
 			"break":
 				mbeat = beat + dance_t * 7.0
+			"twitch":
+				# violent jerks, a few times a second
+				glitch = 1.0
+				if fmod(dance_t * 9.0, 1.0) < 0.45:
+					feet += Vector2(randf_range(-14, 14), randf_range(-5, 3))
+					lean = randf_range(-0.14, 0.14)
+			"slump":
+				# she folds over, switches off... and is jerked back up to keep singing
+				if f < 0.75:
+					slump = maxf(broken, sin(f / 0.75 * PI * 0.5) * 0.85)
+				else:
+					feet.x += randf_range(-6, 6)
+			"tilt":
+				# her whole body tips over, much too far, shaking, then snaps back
+				lean = dance_dir * (smoothstep(0.0, 0.5, f) * 0.55 if f < 0.85 else 0.0) + sin(t * 47.0) * 0.025
+			"flicker":
+				# the signal keeps dropping out
+				glitch = 1.0
+				shown = fmod(dance_t * 13.0, 1.0) > 0.45
+				if fmod(dance_t * 5.0, 1.0) < 0.3:
+					feet.x += randf_range(-22, 22)
 		if feet.y < MIKAKE_FEET.y - 2.0:
 			var up := clampf((MIKAKE_FEET.y - feet.y) / 160.0, 0.0, 1.0)
 			Crayon.ellipse(pen, Vector2(feet.x, MIKAKE_FEET.y + 4), Vector2(60.0 * (1.0 - up * 0.5), 10), Color(0, 0, 0, 0), 0.0, Color(0, 0, 0, 0.35 * (1.0 - up * 0.5)), 4462)
-	draw_mikake(pen, feet, 330.0, mbeat, dk, sing, 600, glitch, broken, spin_ang if leek_spin > 0.0 else NAN, spin, lean)
+	if shown:
+		draw_mikake(pen, feet, 330.0, mbeat, dk, sing and slump < 0.5, 600, glitch, slump, spin_ang if leek_spin > 0.0 else NAN, spin, lean)
 	if leek_spin > 0.0:
 		# a ring of little leeks spinning round her
 		var fade := clampf(leek_spin, 0.0, 1.0)
@@ -682,9 +739,9 @@ func paint() -> void:
 	if cake_in > 0.0:
 		_cake()
 	if pads_k > 0.0 and phase in ["intro", "cute", "dark", "fail", "malfunction"]:
-		_pads(song == "karaoke_dark")
+		_targets(song == "karaoke_dark")
 		if phase == "cute" or phase == "dark":
-			_rings(Audio.song_pos, dark)
+			_notes(Audio.song_pos, song == "karaoke_dark")
 	if black > 0.0:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, black))
 
@@ -695,14 +752,13 @@ func paint_top() -> void:
 	if phase == "cute" or phase == "dark" or phase == "fail":
 		var dark := song == "karaoke_dark"
 		if phase != "fail":
-			pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
 			_lyrics(Audio.song_pos)
 		hud("SCORE: %d" % score, Crayon.WHITE)
 		Crayon.text(pen, Vector2(W - 24, 170 if Narrator.is_active() else 90), "COMBO %d" % combo, 30, Crayon.YELLOW if not dark else Color(1, 0.35, 0.35), 2, 4300, Crayon.title_font())
 		_voltage(dark)
 		for pp in pops:
 			var a := clampf(1.0 - pp.t / float(pp.get("life", 0.7)), 0.0, 1.0)
-			Crayon.text(pen, pp.p + Vector2(0, -pp.t * 40.0), pp.txt, 42, Color(pp.col, a), 1, 4310, Crayon.title_font())
+			Crayon.text(pen, pp.p + Vector2(0, -pp.t * 40.0), pp.txt, 42, Color(pp.col, a), 1, 4310, Crayon.title_font(), 0.5, false)
 		var now: float = Audio.song_pos
 		if phase == "fail":
 			pass
@@ -750,9 +806,6 @@ func _voltage(dark: bool) -> void:
 
 ## Spotlight beams swinging to the beat (cheap: one quad each).
 func _lights(beat: float, dark: bool) -> void:
-	if broken > 0.5:
-		# the stage lights went out with her
-		return
 	for k in 4:
 		var top := Vector2(220.0 + k * 280.0, 70)
 		var sw := sin(beat * PI * 0.5 + k * 1.3) * 160.0
@@ -812,35 +865,42 @@ func _screens(beat: float, dark: bool) -> void:
 			for k in 7:
 				var y := r.position.y + fmod(k * 41.0 + t * 90.0, r.size.y - 20.0)
 				pen.draw_rect(Rect2(r.position.x, y, r.size.x * (0.3 + 0.7 * fmod(k * 0.37 + t, 1.0)), 6), Color(0.6, 0.1, 0.12, 0.6))
-			# (above the button while the buttons are up)
-			var ty := lerpf(r.get_center().y, r.position.y + 50.0, pads_k)
-			Crayon.text(pen, Vector2(r.get_center().x + (8 if glitch else 0), ty), "ERROR" if glitch else "AGAIN", 46, Color(1, 0.25, 0.25), 1, 4410 + int(sx), Crayon.title_font())
+			Crayon.text(pen, r.get_center() + Vector2(8 if glitch else 0, 0), "ERROR" if glitch else "AGAIN", 46, Color(1, 0.25, 0.25), 1, 4410 + int(sx), Crayon.title_font())
 
 
-## The two buttons, A on the left and D on the right. They light up when pressed.
-func _pads(dark: bool) -> void:
+## The two targets beside her, A on the left and D on the right, each at the end of its lane.
+## They light up when pressed.
+func _targets(dark: bool) -> void:
 	var now: float = Audio.song_pos
 	var hint := phase == "intro" or (phase == "cute" and _lo == 0 and now < 8.0)
+	var pulse := pow(1.0 - fmod(maxf(_beat(), 0.0), 1.0), 3.0) if phase == "cute" or phase == "dark" else 0.0
 	for lane in 2:
-		var c: Vector2 = PADS[lane]
+		var c: Vector2 = TARGETS[lane]
 		var col: Color = LANE_COL[lane]
 		if dark:
-			col = col.lerp(Color(0.6, 0.08, 0.1), 0.6)
+			col = col.lerp(Color(0.85, 0.1, 0.14), 0.6)
+		# the lane the notes come along
+		var x0: float = NOTE_FROM[lane]
+		var lane_r := Rect2(minf(x0, c.x), c.y - 34, absf(c.x - x0), 68)
+		pen.draw_rect(lane_r, Color(col, 0.13 * pads_k))
+		pen.draw_line(Vector2(lane_r.position.x, c.y - 34), Vector2(lane_r.end.x, c.y - 34), Color(col, 0.35 * pads_k), 2.0)
+		pen.draw_line(Vector2(lane_r.position.x, c.y + 34), Vector2(lane_r.end.x, c.y + 34), Color(col, 0.35 * pads_k), 2.0)
 		var fl: float = pad_flash[lane]
-		var r := PAD_R * (1.0 - 0.08 * fl)
-		Crayon.disc(pen, c, PAD_R + 18.0, Color(col, (0.18 + 0.35 * fl) * pads_k))
-		Crayon.circle(pen, c, r, Color(1, 1, 1, pads_k), 6, Color(col.darkened(0.3).lerp(col.lightened(0.45), fl), pads_k), 470 + lane)
-		Crayon.text(pen, c + Vector2(0, 2), PAD_KEY[lane], 60, Color(1, 1, 1, pads_k), 1, 474 + lane, Crayon.title_font())
+		var r := TARGET_R * (1.0 + 0.06 * pulse - 0.1 * fl)
+		Crayon.disc(pen, c, TARGET_R + 16.0, Color(col, (0.2 + 0.4 * fl) * pads_k))
+		Crayon.circle(pen, c, r, Color(1, 1, 1, pads_k), 7, Color(col.darkened(0.35).lerp(col.lightened(0.45), fl), 0.9 * pads_k), 470 + lane)
+		Crayon.text(pen, c + Vector2(0, 2), PAD_KEY[lane], 46, Color(1, 1, 1, pads_k), 1, 474 + lane, Crayon.title_font())
 		if hint:
-			Crayon.text(pen, c + Vector2(0, PAD_R + 34), "tap this side", 26, Crayon.WHITE, 1, 476 + lane, null, 0.3, false)
-			Crayon.text(pen, c + Vector2(0, PAD_R + 64), "or press " + PAD_KEY[lane], 24, Color(1, 1, 1, 0.75), 1, 478 + lane, null, 0.3, false)
+			var hx := c.x + (-150.0 if lane == 0 else 150.0)
+			Crayon.text(pen, Vector2(hx, c.y + 70), "tap this side", 26, Crayon.WHITE, 1, 476 + lane, null, 0.3, false)
+			Crayon.text(pen, Vector2(hx, c.y + 100), "or press " + PAD_KEY[lane], 24, Color(1, 1, 1, 0.75), 1, 478 + lane, null, 0.3, false)
 	for b in bursts:
 		var f: float = b.t / 0.35
-		Crayon.circle(pen, b.p, PAD_R + f * 50.0, Color(b.col, 1.0 - f), 7, Color(0, 0, 0, 0), 620)
+		Crayon.circle(pen, b.p, TARGET_R + f * 50.0, Color(b.col, 1.0 - f), 7, Color(0, 0, 0, 0), 620)
 
 
-## The rings: each one shrinks onto its button and touches the edge exactly when the note is due.
-func _rings(now: float, dark: bool) -> void:
+## The notes: big music notes coming in along each lane, reaching the target just as they're due.
+func _notes(now: float, dark: bool) -> void:
 	for i in range(_lo, chart.size()):
 		var nt := float(chart[i][0])
 		if nt - now > APPEAR:
@@ -849,16 +909,29 @@ func _rings(now: float, dark: bool) -> void:
 			continue
 		var lane: int = _lane[i]
 		var k := 1.0 - (nt - now) / APPEAR
-		var r := lerpf(RING_R0, PAD_R, clampf(k, 0.0, 1.0))
-		if k > 1.0:
-			# late: it carries on shrinking into the button
-			r = PAD_R * (1.0 - (k - 1.0) * 2.0)
+		var c: Vector2 = TARGETS[lane]
+		var p := Vector2(lerpf(float(NOTE_FROM[lane]), c.x, k), c.y)
 		var col: Color = LANE_COL[lane]
 		if dark:
-			col = col.lerp(Color(0.85, 0.1, 0.14), 0.55)
-		col = col.lightened(0.25)
-		col.a = clampf(k * 4.0, 0.0, 1.0)
-		Crayon.circle(pen, PADS[lane], r, col, 7, Color(0, 0, 0, 0), 500 + i % 50)
+			col = col.lerp(Color(0.85, 0.1, 0.14), 0.5)
+		var a := clampf(k * 6.0, 0.0, 1.0)
+		if k > 1.0:
+			# late: it carries on past the target, fading
+			a = clampf(1.0 - (k - 1.0) * 5.0, 0.0, 1.0)
+		_note_icon(p, col, a, 500 + i % 50)
+
+
+## A big crayon eighth note; p = the middle of its head.
+func _note_icon(p: Vector2, col: Color, a: float, sd: int) -> void:
+	var ink := Color(Crayon.INK, a)
+	var fill := Color(col.lightened(0.15), a)
+	Crayon.ellipse(pen, p, Vector2(24, 18), ink, 4, fill, sd)
+	var stem := p + Vector2(20, 0)
+	pen.draw_line(stem, stem + Vector2(0, -66), ink, 9.0)
+	pen.draw_line(stem, stem + Vector2(0, -66), fill, 5.0)
+	var flag := PackedVector2Array([stem + Vector2(0, -66), stem + Vector2(26, -44), stem + Vector2(20, -24), stem + Vector2(4, -42)])
+	Crayon.poly(pen, flag, ink, 3, fill, sd + 50)
+	Crayon.disc(pen, p + Vector2(-8, -6), 5, Color(1, 1, 1, 0.7 * a))
 
 
 ## The crowd at the front of the stage, glow sticks up. In the dark verse they stop and stare.
@@ -866,10 +939,8 @@ func _crowd(beat: float, dark: bool) -> void:
 	var stick := TEAL.lightened(0.2) if not dark else Color(0.95, 0.15, 0.2)
 	if leek_spin > 0.0 and not dark:
 		stick = Crayon.GREEN.lightened(0.25)
-	# in the grey verse, in the dark, they hold her colour up for her, swaying slowly
+	# in the grey verse, in the dark, they hold their red glow sticks up, swaying slowly
 	var grey := gloom > 0.3
-	if grey:
-		stick = TEAL.lightened(0.15)
 	for k in 16:
 		var x := 40.0 + k * 80.0 + (20.0 if k % 2 == 1 else 0.0)
 		var y := H + 6.0 - (k % 3) * 8.0 - crowd_k * 26.0
@@ -934,26 +1005,36 @@ func _lyrics(now: float) -> void:
 			cur_line = int(chart[i][4])
 			break
 	if cur_line < 0:
+		pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
 		return
-	var parts: Array = []
+	var idx: Array = []
+	var parts := PackedStringArray()
 	for i in range(maxi(0, _lo - 20), mini(chart.size(), _lo + 30)):
 		if int(chart[i][4]) == cur_line:
-			parts.append(i)
-	var text_all := ""
-	for i in parts:
-		text_all += String(chart[i][2]) + (" " if bool(chart[i][3]) else "")
+			idx.append(i)
+			var txt := String(chart[i][2])
+			parts.append(txt if txt.ends_with("\n") else txt + (" " if bool(chart[i][3]) else ""))
 	var font := Crayon.body()
 	var size := 40
-	var x := 640.0 - font.get_string_size(text_all, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5
+	var lh := 50.0
+	var rows := Narrator.lyric_rows(parts)
+	var top_y := LYRIC_Y - (rows.size() - 1) * lh
+	pen.draw_rect(Rect2(150, top_y - 34, W - 300, 66 + (rows.size() - 1) * lh), Color(0, 0, 0, 0.55))
 	var dark := phase == "dark"
-	for i in parts:
-		var piece := String(chart[i][2]) + (" " if bool(chart[i][3]) else "")
-		var sung := float(chart[i][0]) <= now
-		var col := (TEAL.lightened(0.25) if not dark else Color(1, 0.3, 0.3)) if sung else Crayon.WHITE
-		var w := Crayon.text(pen, Vector2(x, LYRIC_Y), piece, size, col, 0, 400 + i % 60, null, 0.6 if not dark else 1.5, false)
-		if sung and float(chart[i][0]) + float(chart[i][1]) > now:
-			Crayon.disc(pen, Vector2(x + w * 0.4, LYRIC_Y - 40 - absf(sin(now * 10.0)) * 12), 9, TEAL if not dark else Crayon.RED)
-		x += w
+	for ri in rows.size():
+		var row_text := ""
+		for j in range(rows[ri][0], rows[ri][1]):
+			row_text += parts[j].trim_suffix("\n")
+		var x := 640.0 - font.get_string_size(row_text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5
+		var y := top_y + ri * lh
+		for j in range(rows[ri][0], rows[ri][1]):
+			var i: int = idx[j]
+			var sung := float(chart[i][0]) <= now
+			var col := (TEAL.lightened(0.25) if not dark else Color(1, 0.3, 0.3)) if sung else Crayon.WHITE
+			var w := Crayon.text(pen, Vector2(x, y), parts[j].trim_suffix("\n"), size, col, 0, 400 + i % 60, null, 0.6 if not dark else 1.5, false)
+			if sung and float(chart[i][0]) + float(chart[i][1]) > now:
+				Crayon.disc(pen, Vector2(x + w * 0.4, y - 40 - absf(sin(now * 10.0)) * 12), 9, TEAL if not dark else Crayon.RED)
+			x += w
 
 
 ## The words of the grey verse, in grey.
@@ -965,12 +1046,18 @@ func _grey_lyrics() -> void:
 	var sung: int = ls.sung
 	var font := Crayon.body()
 	var size := 38
-	var text_all := "".join(parts)
-	pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
-	var x := 640.0 - font.get_string_size(text_all, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5
-	for i in parts.size():
-		var col := Color(0.85, 0.85, 0.88) if i < sung else Color(0.5, 0.5, 0.54)
-		x += Crayon.text(pen, Vector2(x, LYRIC_Y), parts[i], size, col, 0, 4470 + i, null, 0.4, false)
+	var lh := 48.0
+	var rows := Narrator.lyric_rows(parts)
+	var top_y := LYRIC_Y - (rows.size() - 1) * lh
+	pen.draw_rect(Rect2(150, top_y - 34, W - 300, 66 + (rows.size() - 1) * lh), Color(0, 0, 0, 0.55))
+	for ri in rows.size():
+		var row_text := ""
+		for i in range(rows[ri][0], rows[ri][1]):
+			row_text += parts[i].trim_suffix("\n")
+		var x := 640.0 - font.get_string_size(row_text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.5
+		for i in range(rows[ri][0], rows[ri][1]):
+			var col := Color(0.85, 0.85, 0.88) if i < sung else Color(0.5, 0.5, 0.54)
+			x += Crayon.text(pen, Vector2(x, top_y + ri * lh), parts[i].trim_suffix("\n"), size, col, 0, 4470 + i, null, 0.4, false)
 
 
 const MIKAKE_FEET := Vector2(640, 540)

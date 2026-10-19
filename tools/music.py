@@ -81,12 +81,20 @@ def parse_chords(text, beats_per_bar):
 
 
 def parse_lyrics(text):
-    """-> list of (sung_text, display_text, word_end, line_idx), and display lines."""
+    """-> list of (sung_text, display_text, word_end, line_idx), and display lines.
+    A lone ¶ in a line breaks that window of the lyric bar in two: the syllable before it gets a
+    newline on the end of its display text."""
     syls = []
     lines = []
     for li, line in enumerate([l.strip() for l in text.split("/") if l.strip()]):
-        lines.append(re.sub(r"\{[^}]*\}", "", line).replace("-", ""))
+        shown = re.sub(r"\{[^}]*\}", "", line).replace("-", "")
+        lines.append(re.sub(r"\s*\u00b6\s*", "\n", shown))
         for word in line.split():
+            if word == "\u00b6":
+                if syls and syls[-1][3] == li:
+                    sung, disp, wend, _ = syls[-1]
+                    syls[-1] = (sung, disp + "\n", wend, li)
+                continue
             parts = word.split("-")
             for k, p in enumerate(parts):
                 override = re.search(r"\{([^}]*)\}", p)
@@ -193,8 +201,8 @@ def build_timeline(song, ctx):
             syls, disp_lines = parse_lyrics(text)
             n_notes = sum(1 for bar in mel for n in bar if n[2] is not None)
             if n_notes != len(syls):
-                raise ValueError(f"{song['id']}.{opt['src']} ({'dark' if ctx.dark else 'cute'}): "
-                                 f"{n_notes} notes vs {len(syls)} syllables")
+                raise ValueError(f"{song['id']} - {opt['src']}{' (evil)' if ctx.dark else ''}: the words have "
+                                 f"{len(syls)} syllables but the tune has {n_notes} notes")
             for li, l in enumerate(disp_lines):
                 lines_out.append([None, l, line_base + li])
         si = 0
@@ -506,6 +514,6 @@ def render_song(song, dark=False):
     meta = dict(length=round(length_s, 4), bpm=ctx.bpm, beats=ctx.beats,
                 lines=[[round(t, 3), txt] for (t, txt, _) in lines],
                 # [time, duration, text, ends a word, line, pitch (scale steps)]
-                syllables=[[round(ctx.t(n.beat), 3), round(n.dur * ctx.spb, 3), n.syl[1].strip(), n.word_end, n.line,
+                syllables=[[round(ctx.t(n.beat), 3), round(n.dur * ctx.spb, 3), n.syl[1].strip(" "), n.word_end, n.line,
                             n.deg + 7 * n.octv] for n in notes if n.syl is not None])
     return head, meta

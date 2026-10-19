@@ -66,7 +66,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number eight! A POKeMANS adventure! Walk in the tall grass to find wild Birthday Pokemans, then catch them with your party ball!")
+	await line("welcome")
 	mode = "walk"
 	locked = false
 
@@ -132,7 +132,7 @@ func _mewffin(k: int) -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "mew_pos", me + Vector2(140, -120), 1.0).set_trans(Tween.TRANS_SINE)
 	await wait(1.0)
-	say_bg("A wild MEWFFIN! It's super rare. It left you a golden party ball!")
+	line_bg("wild_mewffin_its")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "mew_a", TAU * 1.5, 2.2)
 	await wait(2.2)
@@ -171,7 +171,7 @@ func _encounter() -> void:
 	if dark and foe.kind != "chumbmon":
 		await _msg("It looks very tired. It has been in the grass a long time.")
 	if foe.kind == "chumbmon":
-		await say("That's not a Pokemans. It's smiling at you. It knows your name.", Narrator.DARK)
+		await line("thats_not_a_pokemans")
 	_main_menu()
 	locked = false
 
@@ -288,19 +288,19 @@ func _after_catch() -> void:
 	me_target = me
 	match caught.size():
 		1:
-			say_bg("You caught one! Find some more in the tall grass!")
+			line_bg("you_caught_one_find")
 		2:
-			say_bg("Two Pokemans! You're a real Pokemans trainer!")
+			line_bg("two_pokemans_youre")
 		3:
-			say_bg("Three! Your party ball shelf is filling up!")
+			line_bg("three_your_party")
 		DARK_AT:
 			dark = true
 			Audio.play_music("poke_dark", 2.0)
-			await say("The grass is getting taller. Something is moving in it. Keep walking.", Narrator.DARK)
+			await line("grass_is_getting")
 		5:
-			say_bg("This route never ends. You've walked past that sign a hundred times.", Narrator.DARK)
+			line_bg("this_route_never")
 		CATCH_ALL:
-			say_bg("Six. The grass is taller than you now. Something is waiting in it.", Narrator.DARK)
+			line_bg("six_the_grass_is")
 
 
 func _run_away() -> void:
@@ -326,13 +326,13 @@ func _chumbmon_caught() -> void:
 	tw.tween_property(self, "invert", 1.0, 0.6)
 	await _msg("...", 0.6)
 	await _msg("??? caught YOU.", 1.6)
-	await say("CHUMBMON. The Birthday Pokemans. It lives inside birthday cakes. It knows your name.", Narrator.DARK)
+	await line("chumbmon_the_birthday")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "invert", 0.0, 1.0)
 	await wait(1.0)
 	mode = "end"
 	msg = ""
-	await say("Present number eight, done! You caught them all! Or did they catch you?")
+	await line("done")
 	finish_game(IDX, "CAUGHT 'EM!")
 
 

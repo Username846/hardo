@@ -1,0 +1,878 @@
+# CHUMBO'S BIRTHDAY: everything anyone says, and the words to every song, level by level.
+#
+# Change the words and the game says the new ones. (The voices and the singing for anything
+# you change are made again automatically when the game is published.)
+#
+# DIALOGUE looks like this:
+#
+#     name (who): what they say
+#
+#   name   the game finds the line by this, so don't change it (or the game won't find it).
+#   who    who says it, which picks the voice and the box:
+#              host, evil host, grey host, announcer, evil announcer, chumbo, rocko,
+#              everyone, dijimon, evil dijimon, tony honk, pip, taxman, sarge
+#   what they say:
+#              \n   starts a new line in the same box
+#              \\n  starts a new box (the next box comes up after this one)
+#
+#   For example   hello (host): Hello \n there   is one box, "Hello" on top and "there" under it,
+#   and           hello (host): Hello \\n there  is two boxes, "Hello" and then "there".
+#
+# SONGS look like this:
+#
+#     song karaoke - verse:
+#         Mi{mee}-ka{kah}-ke{keh} on the stage to-night,
+#         teal twin-tails swing-ing in the light!
+#
+#   Each line under it is one window of the words at the bottom of the screen (\n and \\n
+#   work there too). Split words into the syllables that get sung with - (birth-day). Each
+#   sung line needs the same number of syllables as before: the tune has one note for each.
+#   {...} after a syllable says how to sing it.
+#   "(2nd time)" is the words for the second time round, "(evil)" the evil version of the song.
+#
+# Lines starting with # are notes for people, and the game ignores them.
+
+################################################################################################
+[title]  THE TITLE SCREEN
+################################################################################################
+
+ow_hey (chumbo): Ow! Hey!
+why_are_you_doing (chumbo): Why are you doing that?
+please_stop_it_really (chumbo): Please stop. It really hurts.
+i_dont_feel_so (chumbo): I don't feel so good.
+chumbo_chumbo_get (evil host): Chumbo? Chumbo, get up. It's your birthday.
+oh_well_the_party (evil host): Oh well. The party goes on. It always does.
+
+# the song: "It's Your Birthday"
+song theme - verse:
+    Wake up, wake up, it's a beau-ti-ful day,
+    Bal-loons and ban-ners are wav-ing hoo-ray!
+    Ten lit-tle pres-ents all tied up with bows,
+    ev-ery-one's here and it's all just for you!
+song theme - verse (2nd time):
+    Bring all your friends and your fam-i-ly too,
+    ev-ery-one's com-ing to cel-e-brate you!
+    Rib-bons to pull and a wish to be made,
+    games in the gar-den and cake in the shade!
+song theme - verse (evil):
+    Wake up, wake up, it's the same old birth-day.
+    Bal-loons on the ceil-ing won't float a-way.
+    Ten lit-tle pres-ents you o-pened be-fore,
+    all wrapped up a-gain and piled by the door.
+song theme - verse (evil, 2nd time):
+    Count all the can-dles, there's al-ways one more.
+    Some-one keeps lock-ing the par-ty room door.
+    Cake on the ta-ble that nev-er gets old.
+    Sing it a-gain, Chum-bo, do as you're told.
+song theme - chorus:
+    It's your birth-day, Chum-bo, hip hip hoo-ray!
+    Come to the par-ty and stay for the day!
+    Can-dles and cake and a song just for you,
+    hap-py birth-day, Chum-bo, to-mor-row too!
+song theme - chorus (2nd time):
+    It's your birth-day, Chum-bo, hip hip hoo-ray!
+    All of your friends came to sing and to play!
+    Blow out the can-dles and make a big wish,
+    hap-py birth-day, Chum-bo, to-mor-row too!
+song theme - chorus (evil):
+    It's your birth-day, Chum-bo, a-gain, a-gain.
+    The par-ty start-ed, it nev-er will end.
+    Can-dles re-light and the song starts a-new.
+    Hap-py birth-day, Chum-bo, the whole year through.
+
+################################################################################################
+[name_entry]  WHAT'S YOUR NAME?
+################################################################################################
+
+hi_there_welcome (host): Hi there! Welcome to the party! What's your name?
+you_have_to_type (host): You have to type something, silly!
+there_your_name_is (host): There! Your name is I'm Chumbo. What a beautiful name.
+i_knew_it_hi (host): I KNEW it! Hi, Chumbo! Happy birthday!
+wrong_thats_not_your (host): Wrong! That's not your name, silly. Try again!
+nope_think_really (host): Nope! Think really, really hard. What is your name?
+okay_thats_enough (evil host): Okay. That's enough of that. I'll do it for you.
+
+# the song: "Who's That?"
+song title - verse:
+    What's your name?
+    Type it in!
+    There's on-ly one name that will win!
+    Not Bob, not Sue, not Steve, no thank you!
+    Who could it be?
+    It's on-ly you!
+song title - verse (2nd time):
+    Tap the keys,
+    one by one,
+    type the name of the birth-day kid!
+    Type it wrong, a box-ing glove says hi!
+    Try it a-gain,
+    no need to cry!
+song title - chorus:
+    Is it Chum-bo?
+    Yes, it's Chum-bo!
+    No-bo-dy else could be!
+    Hap-py birth-day, Chum-bo!
+    Now type it in for me!
+
+################################################################################################
+[intro]  THE INTRO
+################################################################################################
+
+do_you_know_what (host): Do you know what day it is today?
+its_your_birthday (host): It's your birthday!
+thats_right_happy (host): That's right! Happy birthday, Chumbo! Everyone is waiting for you.
+yes_it_is (host): Yes it is.
+everyone_remembered (host): Everyone remembered. Your friends remembered. Even the dog remembered. Did you forget your own birthday?
+see_it_has_always (evil host): See? It has always been your birthday.
+
+################################################################################################
+[hub]  THE PARTY ROOM
+################################################################################################
+
+everyone_brought (host): Everyone brought you a present! Ten presents, all for you! Start with number one!
+wow_youre_so_good (host): Wow, you're so good at birthdays! Open the next one!
+guests_are_having (host): The guests are having so much fun. They don't want to leave.
+did_somebody_turn (host): Did somebody turn down the lights? No? Okay.
+dont_mind_the_guests (host): Don't mind the guests. They're only looking at you because they love you.
+halfway_there_nobody (evil host): Halfway there! Nobody has left the party yet. Nobody ever leaves.
+is_the_cake_supposed (evil host): Is the cake supposed to be warm? It's breathing a little. That's normal.
+three_more_presents (evil host): Three more presents. We are all so proud of you, Chumbo.
+candles_have_been (evil host): The candles have been burning for a very long time.
+one_more_present (evil host): One more present. The last one. It's for you, and it's for us.
+open_present_number_one (host): Open present number one!
+open_present_number_two (host): Open present number two!
+open_present_number_three (host): Open present number three!
+open_present_number_four (host): Open present number four!
+open_present_number_five (host): Open present number five!
+open_present_number_six (host): Open present number six!
+open_present_number_seven (host): Open present number seven!
+open_present_number_eight (host): Open present number eight!
+open_present_number_nine (host): Open present number nine!
+open_present_number_ten (host): Open present number ten!
+happy_birthday_chumbo (evil host): Happy birthday, Chumbo. See you tomorrow. It's your birthday tomorrow, too.
+psst_chumbo_tap_the (grey host): Psst. Chumbo. Tap the cake.
+party_radio_works (host): The party radio works now! Tap it to play any song from the party.
+pick_any_present (host): Pick any present you like. They're all yours. Forever.
+not_that_one_yet (host): Not that one yet! Open them in order!
+
+# the song: "Party Time"
+song hub - verse:
+    Bal-loons and cake and pre-sents too,
+    ev-ery-bo-dy came for you!
+    Ten big box-es tied with bows,
+    what's in-side them? No-bo-dy knows!
+song hub - verse (2nd time):
+    Tap a pre-sent, o-pen the lid,
+    games are hid-ing, yes they did!
+    One by one and two by two,
+    ten big sur-pris-es just for you!
+song hub - verse (evil):
+    The can-dles nev-er burn a-way,
+    ev-ery day is the same day.
+    Stale bal-loons that nev-er fall.
+    No-bo-dy leaves this par-ty hall.
+song hub - verse (evil, 2nd time):
+    One more pre-sent, and one more bow,
+    ten be-come e-lev-en now.
+    Ev-ery clock is stuck at three.
+    Hap-py birth-day, e-ter-nal-ly.
+song hub - chorus:
+    It's your birth-day, it's your day!
+    Hip hip hoo-ray, hip hip hoo-ray!
+    Ev-ery-bo-dy's glad you came,
+    Chum-bo, Chum-bo, that's your name!
+song hub - chorus (evil):
+    It's your birth-day. It's to-day.
+    Yes-ter-day was al-so to-day.
+    Ev-ery year will be the same.
+    Chum-bo, Chum-bo, just a name.
+
+################################################################################################
+[race]  PRESENT 1: KNEAD FOR SPEED
+################################################################################################
+
+welcome (host): Present number one! It's KNEAD FOR SPEED: UNDERGROUND! Street racing on Birthday Boulevard!
+first_the_garage (host): First, the garage! Pick a glow and a sticker for your race car. Then tap RACE!
+race_one_a_sprint (host): Race one! A sprint down Birthday Boulevard. Move left and right to steer, and tap NITRO to go super fast!
+first_place_chumbo (announcer): FIRST PLACE! Chumbo is the fastest racer on Birthday Boulevard!
+you_didnt_come_first (host): You didn't come first... but it's your birthday, so the trophy is yours anyway!
+race_two_a_drag (host): Race two! A drag race against Turbo Granny. No steering. When the needle is in the green, tap SHIFT!
+you_beat_turbo_granny (host): You beat Turbo Granny! She says happy birthday, and she wants a rematch next year.
+turbo_granny_won (host): Turbo Granny won! She's one hundred and two. She says you can keep the trophy anyway.
+last_race_three_laps (announcer): Last race! Three laps of the midnight circuit, against the B-DAY BOSS. Nobody has ever beaten him.
+you_crossed_the_finish (evil host): You crossed the finish line. Look. It's the start line. It was always the start line.
+and_the_party_is (host): And the party is right here, where you left it! Everyone waited for you. Present number one, done!
+secret_paint_job (announcer): Secret paint job! The golden birthday cake car!
+too_early_wait_until (host): Too early! Wait until the needle is in the green part.
+stay_on_the_road (host): Stay on the road, Chumbo! The grass is slow!
+near_miss_zooming (host): Near miss! Zooming past cars fills up your nitro!
+bonk_those_cars_are (host): Bonk! Those cars are going to the party too. Steer around them!
+watch_out_for_the (host): Watch out for the party traffic! Zoom past them to fill your nitro!
+every_sign_says_party (evil host): Every sign says PARTY. Every road goes back to the party.
+finish_line_moved (evil host): The finish line moved. It doesn't want you to finish. It wants you to stay.
+happy_birthday_chumbo (everyone): Happy birthday, Chumbo. Again. And again. And again.
+lap_two_the_b (announcer): Lap two! The B-DAY BOSS is right in front of you!
+final_lap_go_chumbo (announcer): Final lap! Go, Chumbo, go!
+lap_four_of_three (evil announcer): Lap four of three? That's not a real number. Keep driving, Chumbo.
+lap_five_of_three (evil announcer): Lap five of three. Nobody finishes this race. They just keep driving.
+last_lap_its_always (evil announcer): Last lap. It's always the last lap.
+
+# the song: "Knead for Speed"
+song race - verse:
+    Ne{nee}-on un-der-glow is green,
+    fast-est car you've ev-er seen!
+    Ni{nye}-tro bot-tles, hit the boost,
+    leave the ri-vals in the dust!
+song race - verse (2nd time):
+    Drag race, watch the nee-dle{dull} climb,
+    shift in the green, right on time!
+    Per-fect shift and per-fect start,
+    birth-day speed is in my heart!
+song race - verse (evil):
+    Lap four of three? It can't be.
+    Fin-ish line just runs from me.
+    Ev-ery sign says Par-ty Lane,
+    ev-ery lap the same a-gain.
+song race - verse (evil, 2nd time):
+    B{bee}-Day Boss with can-dle eyes
+    al-ways wins, I don't know why.
+    Gas runs out, the wheels still turn,
+    can-dles on the dash-board burn.
+song race - chorus:
+    Knead for speed, knead for speed,
+    un-der-ground on Birth-day Street!
+    Ze{zee}-ro to six-ty, near miss, flash!
+    Chum-bo wins the mid-night dash!
+song race - chorus (evil):
+    No es{ess}-cape, no es{ess}-cape,
+    ev-ery road's the same old shape.
+    Ze{zee}-ro to six-ty, nev-er there,
+    go-ing no-where, ev-ery-where.
+
+################################################################################################
+[skate]  PRESENT 2: TONY HONK 2
+################################################################################################
+
+welcome (host): Present number two! It's TONY HONK'S PRO SKATER 2! The birthday skate park is open!
+honk_im_tony_honk (tony honk): HONK! I'm Tony Honk! Show me your sickest birthday tricks!
+tap_to_ollie_tap (host): Tap to ollie. Tap again in the air to flip. Hold to grab. Land on a rail to grind!
+you_have_one_minute (host): You have one minute. Finish your tricks before you land, or you'll bail!
+honk_goal_complete (tony honk): HONK! Goal complete!
+special_meter_full (tony honk): Special meter full! Tap in the air for a 900!
+splat_tap_before (host): Splat! Tap before the cake to jump over it!
+ouch_finish_your (host): Ouch! Finish your trick before you land!
+get_up_chumbo_theyre (evil host): Get up, Chumbo. They're still watching.
+honk_too_slow_birthday (tony honk): HONK! Too slow, birthday boy! That's how you do a 900!
+thirty_seconds_left (tony honk): Thirty seconds left!
+ten_seconds_big_finish (tony honk): Ten seconds! Big finish!
+they_dont_clap_they (evil host): They don't clap. They just watch.
+its_the_same_cake (evil host): It's the same cake again. It's always the same cake.
+almost_over_almost (evil host): Almost over. Almost.
+one_more_session (evil host): One more session. There's always one more session.
+grinding_sick (tony honk): Grinding! Sick!
+s_t_a_y (evil host): S. T. A. Y. The letters spell stay.
+you_found_the_secret (tony honk): You found the secret tape! Radical!
+its_a_tape_of (evil host): It's a tape of you. Skating here. Yesterday. And the day before.
+you_jumped_the_cake (tony honk): You jumped the cake! Happy birthday, cake!
+times_up_what_a (tony honk): Time's up! What a session! Look at all those tricks!
+wait_where_are_you (evil host): Wait. Where are you going, Chumbo? The session isn't over.
+one_more_session_chumbo (evil host): One more session, Chumbo. Everyone came to watch you skate.
+honk (tony honk): HONK.
+session_never_ends (evil host): The session never ends, Chumbo. The park will be right here tomorrow. On your birthday.
+done (host): Present number two, done! Sick tricks, Chumbo!
+
+# the song: "One Minute Session"
+song skate - verse:
+    One whole min-ute on the clock,
+    kick-flip, heel-flip, ol-lie{lee}, rock!
+    Grind the can-dle, jump the cake,
+    Ton-y Honk says: sick! Great skate!
+song skate - verse (2nd time):
+    Spell the let-ters, S{ess}, K{kay}, A{ay},
+    T{tee} and E{ee} are on the way!
+    Find the se{see}-cret tape up high,
+    spin nine hun-dred through the sky!
+song skate - verse (evil):
+    One whole min-ute, nev-er done.
+    Ses-sion's{shunz} o-ver, just be-gun.
+    Same old ramp and same old rail,
+    ev-ery land-ing bound to fail.
+song skate - verse (evil, 2nd time):
+    Guests in hats line up to see.
+    No one claps and no one's free.
+    Let-ters say: S{ess}, T{tee}, A{ay}, Y{why}.
+    Ton-y Honk won't say good-bye.
+song skate - chorus:
+    Skate! Skate! Skate a-round the park,
+    kick-flip, grind, and make your mark!
+    Spell it out: S{ess}, K{kay}, A{ay}, T{tee}, E{ee}!
+    Hon-ky, hon-ky, yes sir-ee!
+song skate - chorus (evil):
+    Skate, skate, skate a-round the park,
+    round and round in-to the dark.
+    Spell it out, it's S{ess}, T{tee}, A{ay}, Y{why}.
+    No more ses-sions{shunz}, no good-bye.
+
+################################################################################################
+[digi]  PRESENT 3: DIJIMON
+################################################################################################
+
+welcome (host): Present number three! A Dijivice! There's a Dijiegg inside. Tap the egg to help it hatch!
+beep_beep_happy_birthday_chumbo (dijimon): Beep beep! Happy birthday, Chumbo!
+beep_beep_happy_birthday_again (evil dijimon): Beep. Beep. Happy birthday. Again.
+blip_blip (dijimon): Blip blip!
+its_a_baby_dijimon (host): It's a baby Dijimon! Its name is Blobmon! Feed it, train it and pet it, and it will dijivolve!
+its_ready_to_dijivolve (host): It's ready to dijivolve! But first, clean up that poop.
+its_too_big_for (evil host): It's too big for the screen now.
+screen_is_cracking (evil host): The screen is cracking. It wants to come out and play. Forever.
+training_time_tap (host): Training time! Tap when the arrow is in the green part!
+happy_birthday_chumbo (dijimon): Happy birthday, Chumbo!
+it_knows_your_name (host): It knows your name already! What a smart Dijimon.
+partymon_party_party (dijimon): Partymon! Party party!
+rookie_look_at_its (host): A rookie! Look at its little party hat! Keep going and it will become a champion!
+grrr_is_it_my (evil dijimon): Grrr. Is it my birthday too?
+champion_level_its (evil host): Champion level. It's so big now, and it's always hungry. Try not to look at its candle teeth.
+more (evil dijimon): MORE.
+it_ate_the_cake (evil host): It ate the cake. It ate the plate. It ate the calendar, so now it's always today.
+other_buttons_dont (evil host): The other buttons don't work anymore. Just feed it.
+im_chumbo (evil dijimon): I'm Chumbo.
+thats_not_a_dijimon (evil host): That's not a Dijimon anymore. It still wants something else.
+okay_just_a_little (evil host): Okay. Just a little bite.
+thats_not_right_you (evil host): That's not right. You are Chumbo.
+no_im_chumbo (evil dijimon): No. I'm Chumbo.
+which_one_of_you (evil host): Which one of you is the real Chumbo?
+see_we_are_both (evil dijimon): See? We are both Chumbo now.
+and_we_will_both (evil dijimon): And we will both have a birthday. Every day. Forever and ever.
+blip (dijimon): Blip!
+aww_its_a_baby (host): Aww, it's a baby again! Present number three, done! Feed it again next birthday. It will be hungry.
+look_at_its_age (evil host): Look at its age, Chumbo. So many birthdays. It can't remember the first one. Neither can you.
+uh_oh_blobmon_made (host): Uh oh. Blobmon made a poop! Tap CLEAN. Dijimon get grumpy when it's messy.
+
+# the song: "Dijivolve!"
+song digi - verse:
+    Beep, beep, beep, the Di{dij}-ji{ih}-vice sings,
+    tap the egg and see what it brings!
+    Feed it, train it, clean up the poop,
+    Blob-mon jumps a-round in a loop!
+song digi - verse (2nd time):
+    Blob-mon, Frost-mon, Par-ty-mon too,
+    ev-ery lev-el is some-thing new!
+    Tap the train-ing bar in the green,
+    best cham-pi-on you've ev-er seen!
+song digi - verse (evil):
+    Beep, beep, beep, the glass is all cracked.
+    It ate the clock, no go-ing back.
+    Feed it more, but it wants it all,
+    now Chum-bo-mon is ten feet tall.
+song digi - verse (evil, 2nd time):
+    Hatch a-gain on ev-ery birth-day,
+    same old egg in the same old way.
+    It ate your name, it took your place,
+    and you're the one stuck in the case.
+song digi - chorus:
+    Di{dij}-ji{ih}-volve! Di{dij}-ji{ih}-volve! Go!
+    My lit-tle part-ner, watch it grow!
+    Di{dij}-ji{ih}-mon, di{dij}-gi{ih}-tal friend,
+    hap-py birth-day, friends to the end!
+song digi - chorus (evil):
+    Di{dij}-ji{ih}-volve! Di{dij}-ji{ih}-volve! No!
+    It's still hun-gry, it won't let go.
+    Di{dij}-ji{ih}-mon, so who are you?
+    And now it says it's Chum-bo too.
+
+################################################################################################
+[cards]  PRESENT 4: CARD CHECKPOINT
+################################################################################################
+
+good_job_grandma (host): Good job! Grandma would be proud.
+card_from_pip_pip (host): A card from Pip! Pip is your best friend in the whole world.
+hmm_look_very_closely (host): Hmm. Look very closely at the name.
+cousin_max_is_always (host): Cousin Max is always in a hurry. Check the date!
+pip_saved_you_a (host): Pip saved you a seat. That's what best friends do.
+this_card_is_from (evil host): This card is from a long time ago. Rules are rules.
+huh_the_picture_looks (evil host): Huh. The picture looks a little different.
+l_l_somebody_forgot (evil host): L... l...? Somebody forgot how to spell their own name.
+return_to_sender (evil host): Return to sender. No such address.
+grandmas_card_is (evil host): Grandma's card is so faded. You can hardly read it.
+someone_is_missing (evil host): Someone is missing from the picture. Never mind.
+thats_your_handwriting (evil host): That's your handwriting, isn't it?
+another_one_you_almost (evil host): Another one. You almost remember who sends these.
+picture_is_getting (evil host): The picture is getting so empty.
+this_one_is_empty (evil host): This one is empty. It's still warm, like someone was holding it.
+bye_chumbo (pip): bye, Chumbo.
+welcome (host): Present number four! You got a job! You're the Birthday Card Inspector. Read the rules, then stamp each card YAY or NOPE.
+thats_you_in_the (host): That's you in the picture, with Grandma, Mom, your best friend Pip, Cousin Max and Aunt Lulu!
+uh_oh_the_mail (evil host): Uh oh. The mail is coming from... strange places now.
+new_rule_all_cards (evil host): New rule. All cards are approved. Everyone is invited.
+good_boy_that_card (host): Good boy! That card has been paw-proved.
+good_work_inspector (evil host): Good work, Inspector. Everyone has been invited now.
+who_were_all_those (evil host): Who were all those people in your picture? Oh. Nobody. It was always just you.
+wasnt_it (grey host): Wasn't it?
+done (host): Present number four, done! So much birthday mail!
+
+# the song: "Birthday Mail"
+song cards - verse:
+    Birth-day cards are fly-ing in,
+    stamp them, check them, let's be-gin!
+    Check the name and check the date,
+    signed and sealed, or it must wait!
+song cards - verse (2nd time):
+    Grand-ma's card is pink and true,
+    Pip sent one with stick-ers too!
+    YAY for good and NOPE for not,
+    stamp, stamp, stamp, the whole big lot!
+song cards - verse (evil):
+    Let-ters come from far a-way.
+    Names are fad{fay}-ing{ding} ev-ery day.
+    Pip's card came a year too late.
+    Rules are rules. It has to wait.
+song cards - verse (evil, 2nd time):
+    Ev-ery year a lit-tle less,
+    for-got-ten name and ad-dress.
+    Stamp it, stamp it, let it go.
+    Who were they? You'll nev-er know.
+song cards - chorus:
+    Ap-proved, ap-proved, ap-proved for you!
+    Pip's card says I love you too!
+    Love and hugs and lots of mail,
+    hap-py birth-day, with-out fail!
+song cards - chorus (evil):
+    Ap-proved, ap-proved, ap-proved, but who?
+    Fad{fay}-ed{ded} names I nev-er knew.
+    Emp-ty en-ve{veh}-lopes of mail.
+    Hap-py birth-day, with-out fail.
+
+################################################################################################
+[duty]  PRESENT 5: CALL OF BIRTHDAY
+################################################################################################
+
+welcome (host): Present number five! It's CALL OF BIRTHDAY! Here's your foam dart blaster. Tap anywhere to shoot!
+listen_up_recruit (sarge): Listen up, recruit! Knock down sixteen cardboard party crashers. Do NOT shoot Grandma!
+mission_failed_just (sarge): Mission failed. Just kidding! We'll get 'em next time!
+soldier_who_put_the (sarge): Soldier! Who put the radio on? Was it the teddy bears?
+spy_balloon_online (sarge): Spy balloon online!
+care_package_inbound (sarge): Care package inbound! Tap the present!
+cake_strike_inbound (sarge): Cake strike inbound!
+friendly_fire_thats (sarge): FRIENDLY FIRE! That's Grandma, soldier! She brought snacks!
+grandma_again_shes (sarge): Grandma again?! She's knitting you a sweater!
+mission_complete (sarge): Mission complete! Outstanding work, recruit!
+mission_two_capture (sarge): Mission two: capture the cake! The crashers want the birthday cake. Pop the balloon drones before they grab a slice!
+mission_complete_cake_safe (sarge): Mission complete! The cake is safe! You're a birthday hero!
+this_isnt_a_game (evil host): This isn't a game any more, Chumbo. It's a war.
+incoming_your_friends (sarge): Incoming! Your friends are pinned down out there. Tap them to pull them back to the trench!
+day_forty_it_hasnt (evil host): Day forty. It hasn't stopped raining.
+day_three_hundred (sarge): Day three hundred and sixty five. Happy birthday, soldier.
+go_go_go_back (sarge): Go, go, go! Back to the trench!
+no_no_no_no (chumbo): No. No, no, no.
+we_lost_good_people (sarge): We lost good people today.
+everyone_made_it (sarge): Everyone made it back. This time.
+dear_mom_its_my (chumbo): Dear Mom. It's my birthday today. We had mud instead of cake. I'll be home soon.
+dear_mom_some_of (chumbo): Dear Mom. Some of the guys aren't here any more. Nobody talks about it.
+dear_mom_i_cant (chumbo): Dear Mom. I can't remember what cake tastes like. Please don't forget me.
+new_orders_everyone (sarge): New orders. Everyone goes over the top at dawn.
+nobody_asked_them (evil host): Nobody asked them if they wanted to go.
+its_quiet_now_it (sarge): It's quiet now. It wasn't supposed to be this quiet.
+they_only_came_to (evil host): They only came to a birthday party, Chumbo.
+dear_mom_im_the (chumbo): Dear Mom. I'm the only one left. Happy birthday to me.
+done (grey host): Present number five. Done.
+they_took_a_slice (host): They took a slice! Don't worry, there's plenty.
+
+# the song: "Call of Birthday"
+song duty - verse:
+    Load your darts and grab your hat,
+    mis-sion{shun}: par-ty, that is that!
+    Pop the card-board crash-ers down,
+    don't hit Grand-ma, she's in town!
+song duty - verse (2nd time):
+    Three in a row, spy bal-loon,
+    five, a care pack-age{ij} lands soon!
+    Sev-en streak, the cake strike falls,
+    Ser{sar}-geant{jent} Sprin-kles{kulls} gives the calls!
+song duty - verse (evil):
+    Rain is fall-ing in the mud.
+    Boots too big and hel-mets cold.
+    Write a let-ter: Mom, I'm fine.
+    Fold it up. It won't get home.
+song duty - verse (evil, 2nd time):
+    Max was laugh-ing yes-ter-day.
+    Now his hel-met's all that stayed.
+    No one wins and no one knows
+    why the war-time whis-tle blows.
+song duty - chorus:
+    Call of Birth-day! Hear the call!
+    Foam darts fly-ing, one and all!
+    Cap-ture cake and hold the line,
+    mis-sion{shun}: par-ty, right on time!
+song duty - chorus (evil):
+    Call of Birth-day, hear the call,
+    send the young ones, one and all.
+    Can-dles out and flags hung low,
+    no one's com-ing home, you know.
+
+################################################################################################
+[royale]  PRESENT 6: FORTNIGHT
+################################################################################################
+
+you_landed_at_cake (host): You landed at Cake Castle! Tap to build walls. Tap a player to throw cake!
+you_landed_at_balloon (host): You landed at Balloon Park! Tap to build walls. Tap a player to throw cake!
+you_landed_at_pinata (host): You landed at Pinata Peaks! Tap to build walls. Tap a player to throw cake!
+you_landed_at_sprinkle (host): You landed at Sprinkle Springs! Tap to build walls. Tap a player to throw cake!
+welcome (host): Present number six! It's FORTNIGHT! Jump off the party bus, build walls to block the water balloons, and throw cake at everyone else!
+dance_off_nobody (announcer): Dance off! Nobody throws a water balloon during a dance off.
+loot_llama_tap_it (host): A loot llama! Tap it for a surprise!
+you_got_back_up (host): You got back up! The party never stops!
+storm_is_getting (evil host): The storm is getting darker. Where are all the other players going?
+one_player_left_just (evil announcer): One player left. Just you.
+wait_two_players (evil announcer): Wait. Two players left.
+you_won_chumbo_everyone (evil host): You won, Chumbo! Everyone else went home. Well... almost everyone.
+done (host): Present number six, done! Birthday Royale!
+
+# the song: "Birthday Royale"
+song royale - verse:
+    Jump off the bus, it's par-ty time!
+    Build it up and watch me climb!
+    Throw the cake and build the wall,
+    last one stand-ing takes it all!
+song royale - verse (2nd time):
+    Land at Cake Cas-tle, find the loot!
+    Smash the lla-ma, dance and scoot!
+    Storm is com-ing, run in-side,
+    par-ty bus, the best-est ride!
+song royale - verse (evil):
+    The storm keeps clos-ing, nev-er through.
+    Ev-ery cir-cle{kull} shrinks on you.
+    Nine-ty-nine have gone a-way.
+    You're the one who has to stay.
+song royale - verse (evil, 2nd time):
+    One play-er left, and that is you,
+    but the lob-by fills a-new.
+    Bus comes back to take you down,
+    same old match, same emp-ty town.
+song royale - chorus:
+    Birth-day Roy-ale, num-ber one!
+    Build a wall and have some fun!
+    Nine-ty-nine have left the game,
+    vic-to-ry has Chum-bo's name!
+song royale - chorus (evil):
+    Birth-day Roy-ale, nev-er won.
+    Ev-ery round has just be-gun.
+    No one's left to call your name.
+    Ev-ery match is just the same.
+
+################################################################################################
+[obby]  PRESENT 7: ROBLOCKS
+################################################################################################
+
+welcome (host): Present number seven! Welcome to ROBLOCKS! Beat the Birthday Obby! Tap to jump. Tap again in the air to double jump!
+ooh_a_golden_crown (host): Ooh, a golden crown! Fancy!
+oof_dont_worry_you (host): Oof! Don't worry, you go back to the last flag.
+obby_feels_sorry (host): The obby feels sorry for you. Here's a bridge!
+where_did_everybody (evil host): Where did everybody go?
+theres_another_player (evil host): There's another player up ahead. It has your name.
+only_one_chumbo_can (evil host): Only one Chumbo can leave the obby.
+just_kidding_probably (evil host): Just kidding! Probably.
+done (host): Present number seven, done! You beat the obby!
+
+# the song: "Obby Hop"
+song obby - verse:
+    Jump jump jump a-cross the bricks,
+    show-ing off my coo-lest tricks!
+    Oof oof oof, I fell a-gain,
+    re-spawn with my best-est friends!
+song obby - verse (2nd time):
+    La-va blocks are hot hot hot,
+    check-point flag, I like this spot!
+    Springs go bounce, up, up, a-round,
+    jump the gap and touch the ground!
+song obby - verse (evil):
+    Jump jump jump, the floor is gone.
+    Check-points move and lead you on.
+    Oof oof oof, re-spawn, re-start.
+    Same old lev-el, same old part.
+song obby - verse (evil, 2nd time):
+    Ev-ery-one has gone to bed.
+    Serv-er emp-ty, chat un-read.
+    Some-one's typ-ing: stay, stay, stay.
+    No one press-es Leave to-day.
+song obby - chorus:
+    O-bby, o-bby, hop hop hop,
+    climb up to the ve-ry top!
+    Birth-day badge is wait-ing there,
+    bloc-ky bud-dies ev-ery-where!
+song obby - chorus (evil):
+    O-bby, o-bby, stop stop stop.
+    There is no one at the top.
+    Birth-day badge you'll nev-er get.
+    Climb for-ev-er. Not done yet.
+
+################################################################################################
+[poke]  PRESENT 8: POKeMANS
+################################################################################################
+
+welcome (host): Present number eight! A POKeMANS adventure! Walk in the tall grass to find wild Birthday Pokemans, then catch them with your party ball!
+wild_mewffin_its (host): A wild MEWFFIN! It's super rare. It left you a golden party ball!
+thats_not_a_pokemans (evil host): That's not a Pokemans. It's smiling at you. It knows your name.
+you_caught_one_find (host): You caught one! Find some more in the tall grass!
+two_pokemans_youre (host): Two Pokemans! You're a real Pokemans trainer!
+three_your_party (host): Three! Your party ball shelf is filling up!
+grass_is_getting (evil host): The grass is getting taller. Something is moving in it. Keep walking.
+this_route_never (evil host): This route never ends. You've walked past that sign a hundred times.
+six_the_grass_is (evil host): Six. The grass is taller than you now. Something is waiting in it.
+chumbmon_the_birthday (evil host): CHUMBMON. The Birthday Pokemans. It lives inside birthday cakes. It knows your name.
+done (host): Present number eight, done! You caught them all! Or did they catch you?
+
+# the song: "Catch a Friend"
+song poke - verse:
+    Throw the ball and catch a friend,
+    birth-day bat-tles nev-er end!
+    Par-ty-chu and Cake-man-der,
+    ev-ery mon-ster loves you too!
+song poke - verse (2nd time):
+    Walk-ing through the tall green grass,
+    wild Pres-ent-oad, catch it fast!
+    Six balls sit-ting on the shelf,
+    Par-ty-chu can't catch it-self!
+song poke - verse (evil):
+    Grass grows tall-er ev-ery night.
+    Route One nev-er ends in sight.
+    Walk-ing, walk-ing, round and round,
+    same old par-ty, same old town.
+song poke - verse (evil, 2nd time):
+    In the ball it's dark and small.
+    You can't hear the train-ers call.
+    Ev-ery birth-day, caught a-gain,
+    stored for-ev-er in box ten.
+song poke - chorus:
+    Gon-na catch them, ev-ery one!
+    Pock-et mon-sters, so much fun!
+    Tall grass rus-tling, here they come!
+    Chum-bo is the cham-pi-on!
+song poke - chorus (evil):
+    Gon-na catch them, ev-ery one.
+    Ev-ery bat-tle, nev-er won.
+    Tall grass whis-pers, here they come.
+    Chum-bo's in the ball. All done.
+
+################################################################################################
+[repo]  PRESENT 9: R.E.P.O.
+################################################################################################
+
+welcome (host): Present number nine! It's R.E.P.O.! You're a little robot, and the party needs its valuables back. Tap to walk. Tap a valuable to grab it with your beam!
+quota_is_five_thousand (taxman): Quota is five thousand dollars, kid. Bring the goods to my truck. Don't break anything.
+got_it_now_carry (host): Got it! Now carry it to the truck. Go slow through the doorways!
+your_very_first_birthday (evil host): Your very first birthday cake. It's still warm.
+photo_of_you_and (evil host): A photo of you and... somebody. You can't remember who.
+it_has_your_name (evil host): It has your name on it. Everything in this house has your name on it.
+your_teddy_hes_been (evil host): Your teddy. He's been with you since you were little. Sell him anyway.
+every_present_you (evil host): Every present you ever got. All of it, going to the Taxman.
+oh_no_you_poked (host): Oh no. You poked the duck. RUN!
+nice_shades_that (taxman): Nice shades. That eyeball's got more style than you, kid.
+dont_look_at_the (host): Don't look at the big eye! It makes you dizzy.
+careful_every_bump (host): Careful! Every bump knocks money off.
+this_is_the_duck (host): This is the duck. It follows you everywhere. Whatever you do, don't poke the duck.
+ka_ching_everything (host): Ka-ching! Everything in the truck counts toward the quota.
+party_gnomes_they (host): Party gnomes! They chip pieces off your stuff. Tap them to bonk them away!
+close_enough_kid (taxman): Close enough, kid. It's your birthday.
+quota_reached_tap (host): Quota reached! Tap EXTRACT when you're ready!
+sold_thats_mine_now (taxman): Sold! That's mine now, kid. What else have you got?
+quota_went_up_it (evil host): The quota went up. It always goes up.
+youre_selling_everything (evil host): You're selling everything you own, Chumbo. Just to keep the party going.
+nine_million_dollars (taxman): Nine million dollars. It's never enough, kid. It's never enough.
+almost_nothing_left (evil host): Almost nothing left that's yours.
+not_bad_kid_thats (taxman): Not bad, kid. That's a whole lot of birthday.
+pick_an_upgrade_youre (taxman): Pick an upgrade. You're going to need it.
+run_two_same_house (evil host): Run two. Same house. But these aren't party things anymore, Chumbo.
+these_are_your_things (evil host): These are your things. Your teddy. Your cake. Your name.
+im_buying_kid_put (taxman): I'm buying, kid. Put your stuff in my truck and I'll pay cash. Every last thing you own.
+new_quota_forty_thousand (taxman): New quota: forty thousand dollars. Happy birthday, kid.
+still_short_kid_but (taxman): Still short, kid. But there's one valuable left in this house.
+most_valuable_thing (taxman): The most valuable thing at every party.
+bring_the_birthday (everyone): Bring the birthday boy back to the party.
+there_safe_and_sound (evil host): There. Safe and sound, back at the party. Where you belong.
+done (host): Present number nine, done! Great hauling, little robot!
+
+# the song: "Haul It Home"
+song repo - verse:
+    Lit-tle ro-bots, hats on tight,
+    flash-lights on, it's dark to-night!
+    Grab the cake with the blue beam,
+    care-ful, care-ful, steer it clean!
+song repo - verse (2nd time):
+    Gold-en pres-ent, crys-tal hat,
+    Grand-ma's vase, now look at that!
+    Don't you ev-er poke the duck,
+    or he'll chase you! What bad luck!
+song repo - verse (evil):
+    Lit-tle ro-bot, haul your past,
+    birth-day cakes that did-n't last.
+    Ev-ery pre-sent has a price.
+    Tax-man takes it, once, then twice.
+song repo - verse (evil, 2nd time):
+    Quo-ta climbs and climbs a-gain,
+    nev-er e-nough, now or then.
+    Last of all, the beam grabs you,
+    hauls the birth-day boy back through.
+song repo - chorus:
+    Haul a-way, oh, haul a-way,
+    Tax-man wants his cash to-day!
+    Fill the quo-ta, ring the bell,
+    R{ar}, E{ee}, P{pee}, O{oh}, all is well!
+song repo - chorus (evil):
+    Haul a-way, oh, haul a-way,
+    Tax-man says you have to pay.
+    Quo-ta grows and grows and grows.
+    Par-ty truck, and in he goes.
+
+################################################################################################
+[karaoke]  PRESENT 10: MIKAKE KARAOKE
+################################################################################################
+
+welcome (host): The last present! It's a concert! Hatsune Mikake is singing your birthday song. When a note reaches its target next to Mikake, tap that side of the screen, or press A or D. Don't let the voltage run out!
+leek_spin (announcer): Leek spin! The crowd goes wild!
+failed (host): Oh no! The voltage ran out and the song failed. That's okay, Mikake will sing it again. From the top!
+failed_again (host): The song failed again! Don't worry. Mikake will sing it as many times as it takes.
+red_failed (evil host): Did you think the song would stop if you stopped playing? \\n Chumbo. \\n Mikake will sing for you forever. \\n It's your birthday after all.
+red_failed_again (evil host): Again.
+wrong_words (evil host): Wait. Those aren't the words.
+are_you_okay (evil host): Mikake? Mikake, are you okay?
+singer_stopped (evil announcer): The singer has stopped working. The birthday song will go on without her.
+make_a_wish (evil host): Make a wish, Chumbo. Blow out the candles.
+trick_candle (host): Trick candle! What a laugh!
+doesnt_want_to_leave (evil host): It doesn't want to leave the party.
+what_did_you_wish (grey host): What did you wish for?
+
+# the song: "Birthday Diva"
+song karaoke - verse:
+    Mi{mee}-ka{kah}-ke{keh} on the stage to-night,
+    teal twin-tails swing-ing in the light!
+    Wave the glow sticks, tap to the beat,
+    spin the lit-tle leek, move your feet!
+song karaoke - verse (2nd time):
+    Glow sticks up and round we go now,
+    tap a-long and steal the show now!
+    Cool, cool, fine, and the com-bo grows,
+    sing a-long, cause the whole crowd knows!
+song karaoke - verse (evil):
+    Mi{mee}-ka{kah}-ke{keh} on the stage a-gain,
+    the same old song that nev-er ends.
+    Red glow sticks in a si-lent crowd,
+    no one claps, no one says it loud.
+song karaoke - verse (evil, 2nd time):
+    Er-ror, er-ror, song on re-peat,
+    ev-ery birth-day, the same old beat.
+    Make a wish, but it won't come true.
+    Mi{mee}-ka{kah}-ke{keh} sings it just for you.
+song karaoke - chorus:
+    Mi{mee}-ka{kah}-ke{keh}, Mi{mee}-ka{kah}-ke{keh}, sing it!
+    Hap-py birth-day, Chum-bo, ring it!
+    Blow the can-dles, make a big wish,
+    the best-est birth-day song is this!
+song karaoke - chorus (evil):
+    Mi{mee}-ka{kah}-ke{keh}, Mi{mee}-ka{kah}-ke{keh}, stay here,
+    and it's your birth-day ev-ery year.
+    Blow the can-dles, but they come back,
+    the song re-starts from the first track.
+
+# the song: "Without Her"
+song karaoke_grey - verse:
+    No-bo-dy sings it an-y-more.
+    The mic{mike}-ro-phone just hums a-lone.
+    The crowd still waits in rows of red.
+    The song goes on. It al-ways will.
+
+################################################################################################
+[finale]  THE END (the whole party, and the credits)
+################################################################################################
+
+shh_everyone_is_here (grey host): Shh. Everyone is here.
+everyone_came_chumbo (evil host): Everyone came, Chumbo. Everyone from every present.
+and_they_will_all (evil host): And they will all come back. Next year. And the year after. And the year after that.
+happy_birthday_chumbo (host): HAPPY BIRTHDAY, CHUMBO!
+
+################################################################################################
+[rocko]  THE SECRET: ROCKO
+################################################################################################
+
+come_back_chumbo (rocko): Come back, Chumbo! The cake is getting cold!
+why_does_every_house (evil host): Why does every house have balloons now?
+everybody_is_waiting (rocko): Everybody is waiting for you, Chumbo.
+this_street_looks (evil host): This street looks familiar. Didn't we already pass that mailbox?
+dont_look_at_the (evil host): Don't look at the guests. Keep running.
+your_party_misses (rocko): Your party misses you. Your party always misses you.
+every_street_sign (evil host): Every street sign says Party Lane now.
+you_cant_run_away (rocko): You can't run away from your birthday!
+every_year_you_run (rocko): Every year you run. Every year I bring you back.
+look_a_house_hide (evil host): Look! A house! Hide in there!
+party_is_over_chumbo (host): The party is over. Chumbo is home on his comfy couch, playing a game on his phone.
+thats_enough_birthday (host): That's enough birthday for today. Tap the X to close the game.
+ahh_finally_peace (chumbo): Ahh. Finally. Peace and quiet.
+oh_hi_rocko (chumbo): Oh hi Rocko!
+rocko_wants_pets (host): Rocko wants pets! Tap Rocko to pet him.
+rocko_why_is_rocko (evil host): Rocko? Why is Rocko getting bigger?
+you_closed_the_party (rocko): You closed the party, Chumbo.
+nobody_leaves_the (rocko): Nobody leaves the party.
+nope_nope_nope_nope (chumbo): Nope! Nope nope nope!
+run_chumbo_tap_above (evil host): Run, Chumbo! Tap above or below Chumbo to dodge everything!
+ooh_a_red_dot (rocko): Ooh! A red dot! Must... catch... the red dot!
+not_that_way_chumbo (rocko): Not that way, Chumbo. Follow me. I want to show you something.
+rocko_is_throwing (evil host): Rocko is throwing cake! Move!
+join_us_chumbo (everyone): Join us, Chumbo.
+rocko_caught_you (evil host): Rocko caught you! He's dragging you back to the party!
+wait_you_wiggled (host): Wait, you wiggled free! Run, Chumbo, run!
+you_made_it_to (host): You made it to a house! Quick, knock on the door!
+surprise_happy_birthday (host): SURPRISE! Happy birthday, Chumbo!
+rocko_brought_you (evil host): Rocko brought you back to your party. Good kitty.
+meow (rocko): Meow.
+oh_hi_everyone (chumbo): Oh hi, everyone.
+chumbo_every_year (rocko): Chumbo. Every year I chase you back to the party.
+not_this_time_this (rocko): Not this time. This time, you choose.
+back_to_the_party (grey host): Back to the party, where everyone is waiting for you. Or away, where nobody is. It's your choice, Chumbo.
+you_came_back_they (evil host): You came back. They always come back.
+okay_chumbo (rocko): Okay, Chumbo.
+chumbo (everyone): Chumbo.
+where_did_you_think (everyone): Where did you think you were going?
+you_cant_escape_your (everyone): You can't escape your birthday, Chumbo. Nobody ever leaves the party.
+
+# the song: "Oh Hi Rocko"
+song rocko - verse:
+    Couch is com-fy, phone is off,
+    par-ty's{teez} o-ver, time to doze.
+    Here comes Rock-o, soft and fluff,
+    pur-ring right up to my nose.
+song rocko - verse (2nd time):
+    Black and fluf-fy, long long fur,
+    Rock-o gives a sleep-y purr.
+    Scratch his chin and rub his ear,
+    best-est kit-ty, Rock-o's here!
+song rocko - verse (evil):
+    Out the door and down the street,
+    Rock-o's right be-hind your feet.
+    Ev-ery street just turns a-round,
+    back to-ward the par-ty sound.
+song rocko - verse (evil, 2nd time):
+    Run a-way, but where to go?
+    Rock-o al-ways seems to know.
+    Bal-loons tied to ev-ery door.
+    One more birth-day, then one more.
+song rocko - chorus:
+    Oh hi, Rock-o, oh hi, Rock-o,
+    fuz-zy lit-tle friend of mine!
+    Oh hi, Rock-o, pur-ry Rock-o,
+    ev-ery-thing is feel-ing fine!
+song rocko - chorus (evil):
+    Oh no, Rock-o! Oh no, Rock-o!
+    There is no run-ning a-way.
+    Run, run, Chum-bo! Run, run, Chum-bo!
+    Back to par-ty. Back to stay.
+
+# the song: "Every Road Leads Back"
+song rocko_leave - verse:
+    Walk-ing down the emp-ty road,
+    lights a-round me start to fade.
+    Get-ting dark and get-ting cold,
+    still they say it's my birth-day.
+song rocko_leave - chorus:
+    Ev-ery road I try to take
+    leads me back to the same place.
+    Los-ing hope that I'll be saved,
+    on-ly one way to es-cape.

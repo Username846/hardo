@@ -148,10 +148,10 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number one! It's KNEAD FOR SPEED: UNDERGROUND! Street racing on Birthday Boulevard!")
+	await line("welcome")
 	phase = "garage"
 	_show_buttons(["g_pink", "g_green", "g_blue", "g_purple", "v_flames", "v_stars", "v_sprinkles", "go"])
-	await say("First, the garage! Pick a glow and a sticker for your race car. Then tap RACE!")
+	await line("first_the_garage")
 	locked = false
 	while not garage_done:
 		await wait(0.1)
@@ -212,7 +212,7 @@ func _sprint() -> void:
 	_build_sprint()
 	_set_sky("sunset")
 	phase = "grid"
-	await say("Race one! A sprint down Birthday Boulevard. Move left and right to steer, and tap NITRO to go super fast!")
+	await line("race_one_a_sprint")
 	await _countdown()
 	phase = "race"
 	locked = false
@@ -223,9 +223,9 @@ func _sprint() -> void:
 	_show_buttons([])
 	await wait(1.6)
 	if place == 1:
-		await say("FIRST PLACE! Chumbo is the fastest racer on Birthday Boulevard!", Narrator.HYPE)
+		await line("first_place_chumbo")
 	else:
-		await say("You didn't come first... but it's your birthday, so the trophy is yours anyway!")
+		await line("you_didnt_come_first")
 
 
 func _drag() -> void:
@@ -233,7 +233,7 @@ func _drag() -> void:
 	_build_drag()
 	_set_sky("night")
 	phase = "grid"
-	await say("Race two! A drag race against Turbo Granny. No steering. When the needle is in the green, tap SHIFT!")
+	await line("race_two_a_drag")
 	_show_buttons(["shift"])
 	await _countdown()
 	phase = "drag"
@@ -244,9 +244,9 @@ func _drag() -> void:
 	_show_buttons([])
 	await wait(1.6)
 	if won_drag:
-		await say("You beat Turbo Granny! She says happy birthday, and she wants a rematch next year.")
+		await line("you_beat_turbo_granny")
 	else:
-		await say("Turbo Granny won! She's one hundred and two. She says you can keep the trophy anyway.")
+		await line("turbo_granny_won")
 
 
 func _circuit() -> void:
@@ -254,7 +254,7 @@ func _circuit() -> void:
 	_build_circuit()
 	_set_sky("midnight")
 	phase = "grid"
-	await say("Last race! Three laps of the midnight circuit, against the B-DAY BOSS. Nobody has ever beaten him.", Narrator.HYPE)
+	await line("last_race_three_laps")
 	await _countdown()
 	phase = "circuit"
 	locked = false
@@ -275,9 +275,9 @@ func _ending() -> void:
 	for i in 4:
 		confetti_burst(Vector2(250 + i * 260, 240), 40)
 	await wait(0.8)
-	await say("You crossed the finish line. Look. It's the start line. It was always the start line.", Narrator.DARK)
+	await line("you_crossed_the_finish")
 	Audio.play_music("race", 1.5)
-	await say("And the party is right here, where you left it! Everyone waited for you. Present number one, done!")
+	await line("and_the_party_is")
 	finish_game(IDX, "RACE DONE!")
 
 
@@ -503,7 +503,7 @@ func _golden() -> void:
 	Audio.sfx("sparkle", -2)
 	Audio.sfx("levelup", -6)
 	confetti_burst(Vector2(640, 470), 60)
-	say_bg("Secret paint job! The golden birthday cake car!", Narrator.HYPE)
+	line_bg("secret_paint_job")
 	await wait(0.6)
 	for n in HORN_TUNE:
 		hop = 0.6
@@ -566,7 +566,7 @@ func _shift() -> void:
 		_pop("TOO EARLY!", Crayon.RED)
 		if not said.has("early"):
 			said["early"] = true
-			say_bg("Too early! Wait until the needle is in the green part.")
+			line_bg("too_early_wait_until")
 
 
 func _pop(txt: String, col: Color) -> void:
@@ -639,7 +639,7 @@ func _drive(dt: float) -> void:
 		speed = maxf(top, speed - DECEL * dt)
 	if offroad and speed > MAX_SPEED * 0.5 and not said.has("offroad"):
 		said["offroad"] = true
-		say_bg("Stay on the road, Chumbo! The grass is slow!")
+		line_bg("stay_on_the_road")
 	nitro = minf(1.0, nitro + dt * 0.022)
 	player_z += speed * dt
 	sky_off += cv * sp * dt * 70.0
@@ -721,7 +721,7 @@ func _check_traffic() -> void:
 			Audio.sfx("whoosh", -6, 1.3)
 			if not said.has("near"):
 				said["near"] = true
-				say_bg("Near miss! Zooming past cars fills up your nitro!")
+				line_bg("near_miss_zooming")
 		if dz < -500.0:
 			c.hit = false
 	for r in rivals:
@@ -749,7 +749,7 @@ func _crash(c: Dictionary) -> void:
 	_pop("BONK!", Crayon.RED)
 	if not said.has("bonk"):
 		said["bonk"] = true
-		say_bg("Bonk! Those cars are going to the party too. Steer around them!")
+		line_bg("bonk_those_cars_are")
 
 
 func _place() -> int:
@@ -763,7 +763,7 @@ func _place() -> int:
 func _sprint_events() -> void:
 	if race_t > 4.0 and not said.has("traffic"):
 		said["traffic"] = true
-		say_bg("Watch out for the party traffic! Zoom past them to fill your nitro!")
+		line_bg("watch_out_for_the")
 	if player_z >= SPRINT_FINISH * SEG_L * 0.5 and sky_mode == "sunset":
 		_set_sky("dusk")
 	if player_z >= SPRINT_FINISH * SEG_L and not race_over:
@@ -821,12 +821,12 @@ func _circuit_events(dt: float) -> void:
 			c.spr = "car_dark"
 	if lap == 4 and lap_t > 6.0 and not said.has("signs"):
 		said["signs"] = true
-		say_bg("Every sign says PARTY. Every road goes back to the party.", Narrator.DARK)
+		line_bg("every_sign_says_party")
 	if lap == 5 and into > 0.45 and not said.has("ghost"):
 		said["ghost"] = true
 		ghost = {"z": player_z + 3400.0, "t": 7.0, "ghost": true}
 		Audio.sfx("glitch", -4)
-		say_bg("The finish line moved. It doesn't want you to finish. It wants you to stay.", Narrator.DARK)
+		line_bg("finish_line_moved")
 	if not ghost.is_empty():
 		ghost.t = float(ghost.t) - dt
 		ghost.z = maxf(float(ghost.z), player_z + 2500.0)
@@ -837,7 +837,7 @@ func _circuit_events(dt: float) -> void:
 		beside_t = 6.0
 		boss.lane = clampf(player_x + (0.75 if player_x < 0.2 else -0.75), -0.66, 0.66)
 		boss.x = boss.lane
-		say_bg("Happy birthday, Chumbo. Again. And again. And again.", Narrator.CREEPY)
+		line_bg("happy_birthday_chumbo")
 	if beside_t > 0.0:
 		beside_t -= dt
 		boss.z = player_z + 150.0
@@ -856,20 +856,20 @@ func _on_lap(lp: int) -> void:
 	Audio.sfx("checkpoint", -4)
 	match lp:
 		2:
-			say_bg("Lap two! The B-DAY BOSS is right in front of you!", Narrator.HYPE)
+			line_bg("lap_two_the_b")
 		3:
-			say_bg("Final lap! Go, Chumbo, go!", Narrator.HYPE)
+			line_bg("final_lap_go_chumbo")
 		4:
 			dark_laps = true
 			_set_sky("doom")
 			Audio.play_music("race_dark", 2.0)
 			Audio.sfx("glitch")
 			flash = 0.6
-			say_bg("Lap four of three? That's not a real number. Keep driving, Chumbo.", Narrator.HYPE_DARK)
+			line_bg("lap_four_of_three")
 		5:
-			say_bg("Lap five of three. Nobody finishes this race. They just keep driving.", Narrator.HYPE_DARK)
+			line_bg("lap_five_of_three")
 		6:
-			say_bg("Last lap. It's always the last lap.", Narrator.HYPE_DARK)
+			line_bg("last_lap_its_always")
 		LAPS_REAL + 1:
 			race_over = true
 			phase = "coast"

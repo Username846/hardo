@@ -47,6 +47,16 @@ jobs:
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest" && cp ~/godot/templates/* "$dest/"
 
+      # dialogue.txt has every line anyone says and the words to every song: anything changed
+      # there gets its voice (or its song) made again here, before the game is put together.
+      - name: Voices and songs for anything new in dialogue.txt
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends espeak-ng vorbis-tools python3-numpy python3-scipy
+          # (if dialogue.txt has a mistake in it, say so, but still publish: the words still show)
+          python3 tools/build_audio.py text || echo "::error title=dialogue.txt::Couldn't make the voices and songs for dialogue.txt - see the log above for the line that's wrong."
+
       - name: Export for the web
         run: |
           set -euo pipefail

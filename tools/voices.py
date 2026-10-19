@@ -1,7 +1,7 @@
-"""Narration: finds every say("...") line in the GDScript sources and renders a voice clip
-for it with espeak-ng, in the voice of whoever is talking. Clips are named by
-md5("v<VOICE_VERSION>|<mood>|<text>")[:12] - the same key the game computes at runtime
-(Narrator.key_for)."""
+"""Narration: renders a voice clip with espeak-ng for every box of every line in dialogue.txt
+(and any say("...") still written in the GDScript), in the voice of whoever is talking. Clips
+are named by md5("v<VOICE_VERSION>|<mood>|<text>")[:12] - the same key the game computes at
+runtime (Narrator.key_for)."""
 import glob
 import hashlib
 import os
@@ -9,6 +9,7 @@ import re
 
 import numpy as np
 
+import game_text
 import synth as S
 
 MOODS = {"CUTE": 0, "DARK": 1, "WHISPER": 2, "CRITTER": 3, "CREEPY": 4, "HYPE": 5, "CHUMBO": 6, "ROCKO": 7,
@@ -40,6 +41,9 @@ def unescape(s):
 
 def find_lines(root):
     found = {}
+    for sec, _name, mood, boxes in game_text.read(os.path.join(root, "dialogue.txt"))[0]:
+        for box in boxes:
+            found[(mood, box)] = sec
     for path in glob.glob(os.path.join(root, "scripts", "**", "*.gd"), recursive=True):
         src = open(path, encoding="utf-8").read()
         for m in SAY_RE.finditer(src):
@@ -54,8 +58,19 @@ def find_lines(root):
 
 
 def lines_by_script(root):
-    """{res:// script path: [voice keys in source order]} so a game can decode its lines up front."""
+    """{res:// script path: [voice keys in source order]} so a game can decode its lines up front.
+    A section of dialogue.txt belongs to the script with the same name ([karaoke] -> karaoke.gd)."""
     out = {}
+    scripts = {os.path.splitext(os.path.basename(p))[0]: p
+               for p in glob.glob(os.path.join(root, "scripts", "**", "*.gd"), recursive=True)}
+    for sec, _name, mood, boxes in game_text.read(os.path.join(root, "dialogue.txt"))[0]:
+        if sec in scripts:
+            res = "res://" + os.path.relpath(scripts[sec], root).replace(os.sep, "/")
+            keys = out.setdefault(res, [])
+            for box in boxes:
+                k = key_for(mood, box)
+                if k not in keys:
+                    keys.append(k)
     for path in sorted(glob.glob(os.path.join(root, "scripts", "**", "*.gd"), recursive=True)):
         src = open(path, encoding="utf-8").read()
         hits = []
@@ -71,7 +86,7 @@ def lines_by_script(root):
                 keys.append(k)
         if keys:
             res = "res://" + os.path.relpath(path, root).replace(os.sep, "/")
-            out[res] = keys
+            out.setdefault(res, []).extend(k for k in keys if k not in out.get(res, []))
     return out
 
 
@@ -97,7 +112,10 @@ def key_for(mood, text):
 
 
 def tts_text(text):
-    t = text.lower()
+    # a new line in the box is read as a little pause
+    t = re.sub(r"(?<=[.!?,;:])\s*\n\s*", " ", text.strip())
+    t = re.sub(r"\s*\n\s*", ", ", t)
+    t = t.lower()
     for pat, rep in SAY_AS:
         t = re.sub(pat, rep, t)
     t = re.sub(r"\bi\b", "I", t)
@@ -198,6 +216,31 @@ def render(mood, text):
     return y
 
 
+def check_names(root):
+    """Warns about a line the code asks for that dialogue.txt hasn't got (the game would show its
+    name instead), and about lines in dialogue.txt that nothing uses."""
+    have = {}
+    for sec, name, _mood, _boxes in game_text.read(os.path.join(root, "dialogue.txt"))[0]:
+        have.setdefault(sec, set()).add(name)
+    scripts = {os.path.splitext(os.path.basename(p))[0]: p
+               for p in glob.glob(os.path.join(root, "scripts", "**", "*.gd"), recursive=True)}
+    problems = 0
+    for sec, names in have.items():
+        if sec not in scripts:
+            print(f"::warning title=dialogue.txt::[{sec}] isn't a level the game has")
+            problems += 1
+            continue
+        src = open(scripts[sec], encoding="utf-8").read()
+        for m in re.finditer(r'\bline(?:_bg)?\("(\w+)"', src):
+            if m.group(1) not in names:
+                print(f"::warning title=dialogue.txt::[{sec}] has no line called {m.group(1)}")
+                problems += 1
+        used = set(re.findall(r'"(\w+)"', src))
+        for n in sorted(names - used):
+            print(f"  note: [{sec}] {n} isn't used by the game")
+    return problems
+
+
 def build(root, force=False):
     out_dir = os.path.join(root, "assets", "voice")
     os.makedirs(out_dir, exist_ok=True)
@@ -223,4 +266,5 @@ def build(root, force=False):
                 os.remove(imp)
             removed += 1
     write_index(root)
+    check_names(root)
     print(f"  voice: {len(lines)} lines ({made} new, {removed} removed)")

@@ -101,10 +101,10 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number nine! It's R.E.P.O.! You're a little robot, and the party needs its valuables back. Tap to walk. Tap a valuable to grab it with your beam!")
+	await line("welcome")
 	tv_on = true
 	Audio.sfx("static", -14)
-	await say("Quota is five thousand dollars, kid. Bring the goods to my truck. Don't break anything.", Narrator.TAXMAN)
+	await line("quota_is_five_thousand")
 	tv_on = false
 	phase = "run1"
 	playing = true
@@ -225,19 +225,19 @@ func _grab(it: Dictionary) -> void:
 	Audio.sfx("beam", -6)
 	if not said.has("grab"):
 		said["grab"] = true
-		say_bg("Got it! Now carry it to the truck. Go slow through the doorways!")
+		line_bg("got_it_now_carry")
 	if run == 2:
 		match String(it.kind):
 			"cake1":
-				say_bg("Your very first birthday cake. It's still warm.", Narrator.DARK)
+				line_bg("your_very_first_birthday")
 			"photo":
-				say_bg("A photo of you and... somebody. You can't remember who.", Narrator.DARK)
+				line_bg("photo_of_you_and")
 			"namehat":
-				say_bg("It has your name on it. Everything in this house has your name on it.", Narrator.DARK)
+				line_bg("it_has_your_name")
 			"teddy":
-				say_bg("Your teddy. He's been with you since you were little. Sell him anyway.", Narrator.DARK)
+				line_bg("your_teddy_hes_been")
 			"presents":
-				say_bg("Every present you ever got. All of it, going to the Taxman.", Narrator.DARK)
+				line_bg("every_present_you")
 
 
 func _drop() -> void:
@@ -261,7 +261,7 @@ func _poke_duck() -> void:
 	_pop(duck.pos + Vector2(0, -60), "QUACK!!", Crayon.RED)
 	if not said.has("duck"):
 		said["duck"] = true
-		say_bg("Oh no. You poked the duck. RUN!")
+		line_bg("oh_no_you_poked")
 
 
 func _poke_peeper() -> void:
@@ -277,7 +277,7 @@ func _poke_peeper() -> void:
 	await wait(0.8)
 	Audio.sfx("ding", -2)
 	_pop(PEEPER + Vector2(0, -60), "LOOKING GOOD!", Crayon.YELLOW)
-	say_bg("Nice shades. That eyeball's got more style than you, kid.", Narrator.TAXMAN)
+	line_bg("nice_shades_that")
 
 
 # ---------------------------------------------------------------- update
@@ -329,7 +329,7 @@ func _move_bot(dt: float) -> void:
 		dizzy = minf(1.0, dizzy + dt * 2.0)
 		if not said.has("peeper"):
 			said["peeper"] = true
-			say_bg("Don't look at the big eye! It makes you dizzy.")
+			line_bg("dont_look_at_the")
 	else:
 		dizzy = maxf(0.0, dizzy - dt * 1.5)
 	if stun_t > 0.0 or path.is_empty():
@@ -391,7 +391,7 @@ func _damage(it: Dictionary, amt: float) -> void:
 	_pop(it.pos + Vector2(0, -26), "-$%d" % loss, Crayon.RED)
 	if not said.has("bump"):
 		said["bump"] = true
-		say_bg("Careful! Every bump knocks money off.")
+		line_bg("careful_every_bump")
 
 
 func _move_duck(dt: float) -> void:
@@ -417,7 +417,7 @@ func _move_duck(dt: float) -> void:
 		duck.pos += d.normalized() * minf(d.length(), sp * dt) * (1.0 if d.length() > 30.0 or duck.state == "angry" else 0.3)
 	if not said.has("duckhi") and phase == "run1" and t > 3.0:
 		said["duckhi"] = true
-		say_bg("This is the duck. It follows you everywhere. Whatever you do, don't poke the duck.")
+		line_bg("this_is_the_duck")
 
 
 func _duck_hit() -> void:
@@ -489,39 +489,39 @@ func _deposit(it: Dictionary) -> void:
 	if run == 1:
 		match deposited:
 			1:
-				say_bg("Ka-ching! Everything in the truck counts toward the quota.")
+				line_bg("ka_ching_everything")
 			2:
 				_spawn_gnomes(2)
-				say_bg("Party gnomes! They chip pieces off your stuff. Tap them to bonk them away!")
+				line_bg("party_gnomes_they")
 		if not quota_met and (haul >= quota or left == 0):
 			quota_met = true
 			if haul < quota:
 				tv_on = true
-				say_bg("Close enough, kid. It's your birthday.", Narrator.TAXMAN)
+				line_bg("close_enough_kid")
 			else:
-				say_bg("Quota reached! Tap EXTRACT when you're ready!")
+				line_bg("quota_reached_tap")
 			Audio.sfx("levelup", -4)
 			add_button("extract", Rect2(1000, 642, 260, 70), "EXTRACT!", _extract, Crayon.GREEN, 40)
 	else:
 		match deposited:
 			1:
-				say_bg("Sold! That's mine now, kid. What else have you got?", Narrator.TAXMAN)
+				line_bg("sold_thats_mine_now")
 			2:
 				quota = QUOTA2[1]
 				banner = "QUOTA: $400,000"
 				banner_t = 2.5
 				Audio.sfx("glitch", -4)
-				say_bg("The quota went up. It always goes up.", Narrator.DARK)
+				line_bg("quota_went_up_it")
 			3:
-				say_bg("You're selling everything you own, Chumbo. Just to keep the party going.", Narrator.DARK)
+				line_bg("youre_selling_everything")
 			4:
 				quota = QUOTA2[2]
 				banner = "QUOTA: $9,999,999"
 				banner_t = 2.5
 				Audio.sfx("glitch", -4)
-				say_bg("Nine million dollars. It's never enough, kid. It's never enough.", Narrator.TAXMAN)
+				line_bg("nine_million_dollars")
 			5:
-				say_bg("Almost nothing left that's yours.", Narrator.DARK)
+				line_bg("almost_nothing_left")
 		if left == 0:
 			_final()
 
@@ -547,8 +547,8 @@ func _extract() -> void:
 	phase = "taxman"
 	tv_on = true
 	Audio.sfx("static", -12)
-	await say("Not bad, kid. That's a whole lot of birthday.", Narrator.TAXMAN)
-	await say("Pick an upgrade. You're going to need it.", Narrator.TAXMAN)
+	await line("not_bad_kid_thats")
+	await line("pick_an_upgrade_youre")
 	phase = "upgrade"
 	add_button("up1", Rect2(330, 300, 290, 110), "STRONGER BEAM", func(): _upgrade(1), Color(0.45, 0.75, 1.0), 34)
 	add_button("up2", Rect2(660, 300, 290, 110), "FASTER LEGS", func(): _upgrade(2), Crayon.ORANGE, 34)
@@ -592,14 +592,14 @@ func _twist() -> void:
 	gnomes.clear()
 	_spawn_gnomes(3)
 	duck = {"pos": START + Vector2(-80, 30), "state": "cute", "t": 0.0, "k": 1.0, "quack": 5.0}
-	await say("Run two. Same house. But these aren't party things anymore, Chumbo.", Narrator.DARK)
-	await say("These are your things. Your teddy. Your cake. Your name.", Narrator.DARK)
+	await line("run_two_same_house")
+	await line("these_are_your_things")
 	tv_on = true
 	Audio.sfx("cash", -4)
 	banner = "WE BUY YOUR STUFF!"
 	banner_t = 3.5
-	await say("I'm buying, kid. Put your stuff in my truck and I'll pay cash. Every last thing you own.", Narrator.TAXMAN)
-	await say("New quota: forty thousand dollars. Happy birthday, kid.", Narrator.TAXMAN)
+	await line("im_buying_kid_put")
+	await line("new_quota_forty_thousand")
 	tv_on = false
 	phase = "run2"
 	playing = true
@@ -615,14 +615,14 @@ func _final() -> void:
 	await wait(0.8)
 	tv_on = true
 	Audio.sfx("static", -12)
-	await say("Still short, kid. But there's one valuable left in this house.", Narrator.TAXMAN)
-	await say("The most valuable thing at every party.", Narrator.TAXMAN)
+	await line("still_short_kid_but")
+	await line("most_valuable_thing")
 	Audio.sfx("beam")
 	Audio.sfx("alarm", -6)
 	var tw := create_tween()
 	tw.tween_property(self, "self_beam", 1.0, 0.6)
 	await wait(0.7)
-	await say("Bring the birthday boy back to the party.", Narrator.CREEPY)
+	await line("bring_the_birthday")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "bot_float", 1.0, 2.4).set_trans(Tween.TRANS_SINE)
 	await wait(2.5)
@@ -633,10 +633,10 @@ func _final() -> void:
 	banner_t = 4.0
 	Audio.sfx("cash")
 	await wait(1.4)
-	await say("There. Safe and sound, back at the party. Where you belong.", Narrator.DARK)
+	await line("there_safe_and_sound")
 	phase = "done"
 	Audio.play_music("repo", 1.5)
-	await say("Present number nine, done! Great hauling, little robot!")
+	await line("done")
 	finish_game(IDX, "EXTRACTED!")
 
 

@@ -57,19 +57,19 @@ func enter() -> void:
 	# next, "who": the person in the photo this (lost) card belongs to, "after": said once they fade
 	cards = [
 		{"from": "Grandma", "to": "Chumbo", "date": today, "msg": "Happy birthday sweetie! Wear a sweater!", "sig": "Grandma xoxo", "ok": true, "col": Crayon.PINK, "pic": "heart",
-			"good": ["Good job! Grandma would be proud.", Narrator.CUTE]},
+			"good": "good_job_grandma"},
 		{"from": "Your Dog", "to": "Chumbo", "date": today, "msg": "WOOF WOOF WOOF (happy birthday)", "sig": "paw", "ok": true, "col": Crayon.YELLOW, "pic": "bone"},
 		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "HAPPY BIRTHDAY!!! Race you to the cake! Best friends forever!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "friends",
-			"say": ["A card from Pip! Pip is your best friend in the whole world.", Narrator.CUTE]},
+			"say": "card_from_pip_pip"},
 		{"from": "Uncle Steve", "to": "Chimbo", "date": today, "msg": "Happy birthday, champ! Love ya!", "sig": "Steve", "ok": false, "col": Crayon.ORANGE, "pic": "cake",
-			"say": ["Hmm. Look very closely at the name.", Narrator.CUTE]},
+			"say": "hmm_look_very_closely"},
 		{"from": "Cousin Max", "to": "Chumbo", "date": Game.date_text(1), "msg": "HAPPY BIRTHDAY DUDE!!! Party time!", "sig": "Max", "ok": false, "col": Crayon.SKY, "pic": "balloon",
-			"say": ["Cousin Max is always in a hurry. Check the date!", Narrator.CUTE]},
+			"say": "cousin_max_is_always"},
 		{"from": "The Mailman", "to": "Chumbo", "date": today, "msg": "Happy birthday from the mail guy.", "sig": "", "ok": false, "col": Crayon.ORANGE, "pic": "star"},
 		{"from": "Mom", "to": "Chumbo", "date": today, "msg": "Happy birthday! I can't believe you forgot your own birthday!", "sig": "Mom", "ok": true, "col": Crayon.PINK, "pic": "heart"},
 		{"from": "Aunt Lulu", "to": "Chumbo", "date": today, "msg": "Happy birthday! I put a sticker in here. Don't eat it.", "sig": "Lulu", "ok": true, "col": Crayon.PURPLE, "pic": "star"},
 		{"from": "Pip", "to": "Chumbo", "date": today, "msg": "Remember our treehouse? I saved you the best seat!", "sig": "Pip :)", "ok": true, "col": Crayon.GREEN, "pic": "tree",
-			"good": ["Pip saved you a seat. That's what best friends do.", Narrator.CUTE]},
+			"good": "pip_saved_you_a"},
 		{"from": "Pizza Palace", "to": "Valued Customer", "date": today, "msg": "Happy birthday! Enjoy 10% off one (1) breadstick.", "sig": "The Manager", "ok": false, "col": Crayon.RED, "pic": "star"},
 		{"from": "Your Teacher", "to": "Chumbo", "date": Game.date_text(-1), "msg": "Have a wonderful birthday. Homework is due Monday.", "sig": "Mrs. B", "ok": false, "col": Crayon.BLUE, "pic": "star"},
 		{"from": "The Dentist", "to": "Chumbo", "date": today, "msg": "Happy birthday! Brush after the cake! And floss!", "sig": "Dr. Molar", "ok": true, "col": Crayon.SKY, "pic": "star",
@@ -77,28 +77,28 @@ func enter() -> void:
 		# ---- the mail comes from strange places now, and the people in the photo start to fade
 		{"from": "The Neighbor's Basement", "to": "Chumbo", "date": today, "msg": "We can't wait to meet you.", "sig": "hand", "ok": true, "col": Color(0.55, 0.5, 0.45), "pic": "eye"},
 		{"from": "Cousin Ma_", "to": "Chumbo", "date": long_ago, "msg": "Hey dude! Are you still having that party? Nobody answers the door.", "sig": "Max", "ok": false, "col": Crayon.SKY.lerp(cream, 0.5), "pic": "balloon", "who": 4,
-			"say": ["This card is from a long time ago. Rules are rules.", Narrator.DARK],
-			"after": ["Huh. The picture looks a little different.", Narrator.DARK]},
+			"say": "this_card_is_from",
+			"after": "huh_the_picture_looks"},
 		{"from": "Everyone In The Walls", "to": "Chumbo", "date": today, "msg": "We sang for you last night. Did you hear us?", "sig": "us", "ok": true, "col": Color(0.6, 0.55, 0.6), "pic": "eye",
 			"then": "rule4"},
 		{"from": "Aunt L_l_", "to": "Chumbo", "date": "", "msg": "I put a sticker in here. Did it get to you? Did I?", "sig": "L", "ok": true, "col": Crayon.PURPLE.lerp(cream, 0.6), "pic": "star", "who": 5,
-			"say": ["L... l...? Somebody forgot how to spell their own name.", Narrator.DARK],
-			"after": ["Return to sender. No such address.", Narrator.DARK]},
+			"say": "l_l_somebody_forgot",
+			"after": "return_to_sender"},
 		{"from": "The Moon", "to": "Chumbo", "date": today, "msg": "I can see your party from here. It never stops.", "sig": "moon", "ok": true, "col": Color(0.85, 0.82, 0.55), "pic": "moon"},
 		{"from": "Gr_ndm_", "to": "Chumbo", "date": long_ago, "msg": "I baked your favorite cake. I left it on the porch. Nobody came out.", "sig": "G", "ok": true, "col": Crayon.PINK.lerp(cream, 0.7), "pic": "heart", "who": 0,
-			"say": ["Grandma's card is so faded. You can hardly read it.", Narrator.DARK],
-			"after": ["Someone is missing from the picture. Never mind.", Narrator.DARK]},
+			"say": "grandmas_card_is",
+			"after": "someone_is_missing"},
 		{"from": "Your Shadow", "to": "Chumbo", "date": today, "msg": "I'll be right behind you. At every party. Forever.", "sig": "smudge", "ok": true, "col": Color(0.35, 0.33, 0.4), "pic": "x"},
 		{"from": "You (from next year)", "to": "Chumbo", "date": today, "msg": "Don't open the last present.", "sig": "Chumbo", "ok": true, "col": cream, "pic": "x",
-			"say": ["That's your handwriting, isn't it?", Narrator.DARK]},
+			"say": "thats_your_handwriting"},
 		{"from": "M_", "to": "Chumbo", "date": "", "msg": "I'm still in the picture, aren't I?", "sig": "", "ok": true, "col": Crayon.PINK.lerp(cream, 0.85), "pic": "", "who": 1,
-			"say": ["Another one. You almost remember who sends these.", Narrator.DARK],
-			"after": ["The picture is getting so empty.", Narrator.DARK]},
+			"say": "another_one_you_almost",
+			"after": "picture_is_getting"},
 		{"from": "", "to": "Chumbo", "date": "TODAY TODAY TODAY", "msg": "WE'RE ALREADY HERE", "sig": "smile", "ok": true, "col": Color(0.4, 0.3, 0.35), "pic": "eye"},
 		{"from": "The Clock", "to": "Chumbo", "date": today, "msg": "I stopped. Now it can be your birthday forever. You're welcome.", "sig": "clock", "ok": true, "col": Color(0.7, 0.6, 0.5), "pic": "clock"},
 		{"from": "", "to": "Chumbo", "date": "", "msg": "", "sig": "", "ok": true, "col": cream, "pic": "", "who": 3,
-			"say": ["This one is empty. It's still warm, like someone was holding it.", Narrator.DARK],
-			"after": ["bye, Chumbo.", Narrator.PIP]},
+			"say": "this_one_is_empty",
+			"after": "bye_chumbo"},
 		{"from": "Everyone", "to": "Chumbo", "date": today, "msg": "Happy birthday, Chumbo. It's always your birthday.", "sig": "everyone", "ok": true, "col": Color(0.5, 0.15, 0.2), "pic": "cake"},
 	]
 	add_button("yay", Rect2(930, 222, 300, 116), "YAY!", func(): _stamp("YAY!"), Crayon.GREEN, 64)
@@ -109,8 +109,8 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number four! You got a job! You're the Birthday Card Inspector. Read the rules, then stamp each card YAY or NOPE.")
-	await say("That's you in the picture, with Grandma, Mom, your best friend Pip, Cousin Max and Aunt Lulu!")
+	await line("welcome")
+	await line("thats_you_in_the")
 	locked = false
 	_next()
 
@@ -130,7 +130,7 @@ func _next() -> void:
 	busy = false
 	var c: Dictionary = cards[i]
 	if c.has("say"):
-		say_bg(c.say[0], c.say[1])
+		line_bg(c.say)
 
 
 func _stamp(kind: String) -> void:
@@ -164,12 +164,12 @@ func _stamp(kind: String) -> void:
 		Audio.sfx("whoosh", -6)
 		await tw.finished
 	if correct and c.has("good"):
-		say_bg(c.good[0], c.good[1])
+		line_bg(c.good)
 	match c.get("then", ""):
 		"dark":
 			locked = true
 			Audio.play_music("cards_dark", 2.0)
-			await say("Uh oh. The mail is coming from... strange places now.", Narrator.DARK)
+			await line("uh_oh_the_mail")
 			locked = false
 		"rule4":
 			locked = true
@@ -178,7 +178,7 @@ func _stamp(kind: String) -> void:
 			var nb := get_button("nope")
 			nb.label = "YAY!"
 			nb.col = Crayon.GREEN
-			await say("New rule. All cards are approved. Everyone is invited.", Narrator.DARK)
+			await line("new_rule_all_cards")
 			locked = false
 	_next()
 
@@ -204,7 +204,7 @@ func _lose(c: Dictionary) -> void:
 		# Pip says goodbye
 		Audio.sfx("whisper_chumbo", -8, 1.15)
 		await wait(0.4)
-	say_bg(c.after[0], c.after[1])
+	line_bg(c.after)
 	await wait(0.4)
 
 
@@ -236,7 +236,7 @@ func _dog() -> void:
 	pawed = dog_card
 	await wait(0.3)
 	if first:
-		say_bg("Good boy! That card has been paw-proved.", Narrator.CUTE)
+		line_bg("good_boy_that_card")
 	await tw.finished
 	dog_t = -1.0
 
@@ -298,15 +298,15 @@ func _end() -> void:
 	locked = true
 	busy = true
 	await wait(0.4)
-	await say("Good work, Inspector. Everyone has been invited now.", Narrator.DARK)
+	await line("good_work_inspector")
 	var tw := create_tween()
 	tw.tween_property(self, "photo_zoom", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
 	await tw.finished
-	await say("Who were all those people in your picture? Oh. Nobody. It was always just you.", Narrator.DARK)
-	await say("Wasn't it?", Narrator.WHISPER)
+	await line("who_were_all_those")
+	await line("wasnt_it")
 	var tw2 := create_tween()
 	tw2.tween_property(self, "photo_zoom", 0.0, 0.8)
-	await say("Present number four, done! So much birthday mail!")
+	await line("done")
 	finish_game(IDX, "ALL STAMPED!")
 
 

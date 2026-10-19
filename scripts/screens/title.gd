@@ -214,13 +214,13 @@ func _hurt() -> void:
 	pops.append({"p": CHUMBO + Vector2(randf_range(-40, 40), -CHUMBO_H - 20), "txt": OUCH[hits % OUCH.size()], "t": 0.9})
 	match hits:
 		2:
-			say_bg("Ow! Hey!", Narrator.CHUMBO)
+			line_bg("ow_hey")
 		4:
-			say_bg("Why are you doing that?", Narrator.CHUMBO)
+			line_bg("why_are_you_doing")
 		6:
-			say_bg("Please stop. It really hurts.", Narrator.CHUMBO)
+			line_bg("please_stop_it_really")
 		8:
-			say_bg("I don't feel so good.", Narrator.CHUMBO)
+			line_bg("i_dont_feel_so")
 	if hits >= HITS_TO_DIE:
 		_die()
 
@@ -235,7 +235,7 @@ func _die() -> void:
 	await wait(0.8)
 	Audio.sfx("thud")
 	await wait(1.4)
-	await say("Chumbo? Chumbo, get up. It's your birthday.", Narrator.DARK)
+	await line("chumbo_chumbo_get")
 	dead = true
 	Game.title_dead = true
 	Game.save_game()
@@ -248,7 +248,7 @@ func _die() -> void:
 	tw2.tween_property(self, "body_a", 0.0, 2.5)
 	tw2.tween_property(self, "tomb", 1.0, 1.0).set_delay(1.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await wait(3.2)
-	await say("Oh well. The party goes on. It always does.", Narrator.DARK)
+	await line("oh_well_the_party")
 	dying = false
 	locked = false
 

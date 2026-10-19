@@ -50,9 +50,9 @@ func _run() -> void:
 	# it stays dark: one by one, eyes open where everyone is standing
 	var tw := create_tween()
 	tw.tween_property(self, "eyes_k", 1.0, 4.0)
-	await say("Shh. Everyone is here.", Narrator.WHISPER)
-	await say("Everyone came, Chumbo. Everyone from every present.", Narrator.DARK)
-	await say("And they will all come back. Next year. And the year after. And the year after that.", Narrator.DARK)
+	await line("shh_everyone_is_here")
+	await line("everyone_came_chumbo")
+	await line("and_they_will_all")
 	# the lights go on, and there they all are
 	eyes_k = 1.0
 	cheer = true
@@ -64,7 +64,7 @@ func _run() -> void:
 	Audio.sfx("tada")
 	for i in 5:
 		confetti_burst(Vector2(200 + i * 220, 300), 50)
-	await say("HAPPY BIRTHDAY, CHUMBO!")
+	await line("happy_birthday_chumbo")
 	Game.finale_seen = true
 	Game.save_game()
 	credits = true
@@ -152,10 +152,11 @@ func _credits() -> void:
 	]
 	var y := H + 40 - roll * 70.0
 	y = maxf(y, 70.0)
-	for ln in lines:
-		var s: String = ln[0]
-		var sz: int = ln[1]
+	for i in lines.size():
+		var s: String = lines[i][0]
+		var sz: int = lines[i][1]
 		if s != "":
 			var f := Crayon.title_font() if sz >= 44 else null
-			Crayon.text(pen, Vector2(W * 0.5, y), s, sz, Crayon.WHITE, 1, int(y) % 7 + sz, f)
+			# (the crayon look is seeded by the line, not where it is, or it jitters as it scrolls)
+			Crayon.text(pen, Vector2(W * 0.5, y), s, sz, Crayon.WHITE, 1, 40 + i * 13, f)
 		y += sz * 1.25

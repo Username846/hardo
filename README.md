@@ -76,6 +76,20 @@ const GIFT_FROM := "someone who loves you"   # shown in the end credits
 const GIFT_MESSAGE := "Happy birthday, Chumbo!"
 ```
 
+## Change what people say (and sing)
+
+Every line of dialogue and the words to every song are in **`dialogue.txt`**, one section per level (title screen, party room, each present, the credits, the secret). Edit it (on GitHub you can press the pencil on the file) and the next publish uses the new words. Voices for new or changed lines, and songs with new words, are made automatically while the game is published.
+
+```
+welcome (host): The last present! It's a concert!
+red_failed (evil host): Did you think the song would stop if you stopped playing? \\n Chumbo.
+```
+
+- The name before the brackets is how the game finds the line: change the words, not the name.
+- In the brackets is who says it (it picks the voice and the box): `host`, `evil host`, `grey host`, `announcer`, `evil announcer`, `chumbo`, `rocko`, `everyone`, `dijimon`, `evil dijimon`, `tony honk`, `pip`, `taxman`, `sarge`.
+- `\n` starts a new line in the same box; `\\n` starts a new box (the next one comes up after it).
+- Songs: each line under `song <name> - <part>:` is one window of the words at the bottom of the screen (`\n` and `\\n` work there too). Split words into sung syllables with `-` and keep the same number of syllables as the tune has notes; if they don't fit, that song keeps its old words and the publish run shows a warning saying why.
+
 ## For tinkerers
 
 - **Open in Godot:** Godot 4.7.2 → Import → `project.godot`. Press F5 to play.

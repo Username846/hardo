@@ -4,8 +4,12 @@ re-use them in a minor/creepy mode automatically.
 Melody tokens:  [b|#]deg[' or ,]*[:beats]   e.g.  5:0.5  1':2  b7,  r:1 (rest)
 Chords: roman numerals per bar, '|' separated; several chords in a bar are split evenly or
         given explicit beats:  "IV:1 V:1 I:2".  Quality comes from the scale.
-Lyrics: '/' separates lines, '-' splits a word into sung syllables.
+Lyrics: they live in dialogue.txt (with everything anyone says, so they're easy to change) and
+        are put into each song's sections at the bottom of this file. In the text here, '/'
+        separates the windows of the lyric bar, a lone '¶' breaks a window into two lines, and
+        '-' splits a word into sung syllables.
 """
+import game_text
 
 # Part helper ---------------------------------------------------------------
 
@@ -47,14 +51,6 @@ SONGS.append(dict(
                    "1:2 3:1 | 5:1 5:1 6:0.5 5:0.5 | 1':1.5 7:0.5 6:1 | 5:3 | "
                    "6:2 6:1 | 5:1 5:1 3:0.5 1:0.5 | 2:1.5 3:0.5 2:1 | 1:3",
             chords="I | I | V | I | ii | ii | I | V | I | I | IV | I | IV | I | V | I",
-            lyrics="Wake up, wake up, it's a beau-ti-ful day, / Bal-loons and ban-ners are wav-ing hoo-ray! / "
-                   "Ten lit-tle pres-ents all tied up with bows, / ev-ery-one's here and it's all just for you!",
-            lyrics2="Bring all your friends and your fam-i-ly too, / ev-ery-one's com-ing to cel-e-brate you! / "
-                    "Rib-bons to pull and a wish to be made, / games in the gar-den and cake in the shade!",
-            dark="Wake up, wake up, it's the same old birth-day. / Bal-loons on the ceil-ing won't float a-way. / "
-                 "Ten lit-tle pres-ents you o-pened be-fore, / all wrapped up a-gain and piled by the door.",
-            dark2="Count all the can-dles, there's al-ways one more. / Some-one keeps lock-ing the par-ty room door. / "
-                  "Cake on the ta-ble that nev-er gets old. / Sing it a-gain, Chum-bo, do as you're told.",
         ),
         chorus=dict(
             melody="1:1 3:1 5:1 | 1':2 6:1 | 5:1 3:1 1:1 | 2:1 5:2 | "
@@ -62,12 +58,6 @@ SONGS.append(dict(
                    "6:1 6:1 6:1 | 1':2 6:1 | 5:1 5:1 3:1 | 1:1 3:2 | "
                    "4:1 4:1 6:1 | 1':2 7:1 | 5:1 5:1 2:1 | 2:1 1:2",
             chords="I | IV | I | V | I | IV | I | V | IV | IV | I | vi | ii | I | V | V:1 I:2",
-            lyrics="It's your birth-day, Chum-bo, hip hip hoo-ray! / Come to the par-ty and stay for the day! / "
-                   "Can-dles and cake and a song just for you, / hap-py birth-day, Chum-bo, to-mor-row too!",
-            lyrics2="It's your birth-day, Chum-bo, hip hip hoo-ray! / All of your friends came to sing and to play! / "
-                    "Blow out the can-dles and make a big wish, / hap-py birth-day, Chum-bo, to-mor-row too!",
-            dark="It's your birth-day, Chum-bo, a-gain, a-gain. / The par-ty start-ed, it nev-er will end. / "
-                 "Can-dles re-light and the song starts a-new. / Hap-py birth-day, Chum-bo, the whole year through.",
         ),
     ),
     form=LONG_FORM,
@@ -99,17 +89,11 @@ SONGS.append(dict(
             melody="5:1 5:1 6:1.5 r:0.5 | 5:1 4:1 3:2 | 1:0.5 2:0.5 3:1 4:1 5:1 | 6:0.5 6:0.5 1':3 | "
                    "5:1 5:0.5 5:0.5 6:1 5:1 | 4:0.5 3:0.5 3:1 2:2 | 5,:1 5,:1 6,:1 7,:1 | 3:0.5 2:0.5 1:1 1:2",
             chords="I | I | I | IV | I | V | V | I",
-            lyrics="What's your name? / Type it in! / There's on-ly one name that will win! / "
-                   "Not Bob, not Sue, not Steve, no thank you! / Who could it be? / It's on-ly you!",
-            lyrics2="Tap the keys, / one by one, / type the name of the birth-day kid! / "
-                    "Type it wrong, a box-ing glove says hi! / Try it a-gain, / no need to cry!",
         ),
         chorus=dict(
             melody="1':0.5 1':0.5 6:1 5:2 | 4:0.5 4:0.5 6:1 5:2 | 3:0.5 4:0.5 5:1 5:1 6:1 | 5:4 | "
                    "1':0.75 1':0.25 7:1 6:2 | 4:1 5:3 | 2:1 2:1 3:1 4:1 | 2:1 1:3",
             chords="IV | IV I | I | V | I | IV | V | I",
-            lyrics="Is it Chum-bo? / Yes, it's Chum-bo! / No-bo-dy else could be! / "
-                   "Hap-py birth-day, Chum-bo! / Now type it in for me!",
         ),
     ),
     form=LONG_FORM,
@@ -133,23 +117,11 @@ SONGS.append(dict(
             melody="1:0.5 2:0.5 3:1 3:0.5 4:0.5 5:1 | 6:1 5:1 r:2 | 3:0.5 3:0.5 4:0.5 3:0.5 2:1 1:1 | 2:2 r:2 | "
                    "1:1 2:1 3:0.5 3:0.5 4:1 | 6:2 5:2 | 5:0.5 5:0.5 6:0.5 5:0.5 4:0.5 3:0.5 2:1 | 1:2 r:2",
             chords="I | IV I | I | V | I | IV | V | I",
-            lyrics="Bal-loons and cake and pre-sents too, / ev-ery-bo-dy came for you! / "
-                   "Ten big box-es tied with bows, / what's in-side them? No-bo-dy knows!",
-            lyrics2="Tap a pre-sent, o-pen the lid, / games are hid-ing, yes they did! / "
-                    "One by one and two by two, / ten big sur-pris-es just for you!",
-            dark="The can-dles nev-er burn a-way, / ev-ery day is the same day. / "
-                 "Stale bal-loons that nev-er fall. / No-bo-dy leaves this par-ty hall.",
-            dark2="One more pre-sent, and one more bow, / ten be-come e-lev-en now. / "
-                  "Ev-ery clock is stuck at three. / Hap-py birth-day, e-ter-nal-ly.",
         ),
         chorus=dict(
             melody="5:1 5:0.5 6:0.5 5:1 3:1 | 1':1 7:1 r:2 | 1':0.5 1':0.5 7:1 1':0.5 1':0.5 7:1 | 6:1 5:1 r:2 | "
                    "3:0.5 3:0.5 4:0.5 3:0.5 2:1 5:1 | 5:2 r:2 | 1':1 6:1 1':1 6:1 | 5:0.5 2:0.5 1:3",
             chords="I | IV V | IV V | I | vi | V | IV | V I",
-            lyrics="It's your birth-day, it's your day! / Hip hip hoo-ray, hip hip hoo-ray! / "
-                   "Ev-ery-bo-dy's glad you came, / Chum-bo, Chum-bo, that's your name!",
-            dark="It's your birth-day. It's to-day. / Yes-ter-day was al-so to-day. / "
-                 "Ev-ery year will be the same. / Chum-bo, Chum-bo, just a name.",
         ),
     ),
     form=LONG_FORM,
@@ -177,23 +149,11 @@ SONGS.append(dict(
             melody="1:0.5 1:0.5 3:1 4:1 3:1 | 1:1.5 7,:0.5 r:2 | 1:0.5 1:0.5 3:1 5:1 4:1 | 3:1.5 1:0.5 r:2 | "
                    "4:0.5 4:0.5 6:1 1':1 6:1 | 5:1.5 4:0.5 r:2 | 5:0.5 5:0.5 4:1 3:1 1:1 | 2:1 1:1 r:2",
             chords="I | VII | I | VII | IV | IV | V | I",
-            lyrics="Ne{nee}-on un-der-glow is green, / fast-est car you've ev-er seen! / "
-                   "Ni{nye}-tro bot-tles, hit the boost, / leave the ri-vals in the dust!",
-            lyrics2="Drag race, watch the nee-dle{dull} climb, / shift in the green, right on time! / "
-                    "Per-fect shift and per-fect start, / birth-day speed is in my heart!",
-            dark="Lap four of three? It can't be. / Fin-ish line just runs from me. / "
-                 "Ev-ery sign says Par-ty Lane, / ev-ery lap the same a-gain.",
-            dark2="B{bee}-Day Boss with can-dle eyes / al-ways wins, I don't know why. / "
-                  "Gas runs out, the wheels still turn, / can-dles on the dash-board burn.",
         ),
         chorus=dict(
             melody="5:1 4:0.5 5:1.5 r:1 | 5:1 4:0.5 5:1.5 r:1 | 4:0.5 4:0.5 4:0.5 3:0.5 4:1 5:1 | 3:2 r:2 | "
                    "5:0.5 5:0.5 6:0.5 5:0.5 1':1 5:1 | 6:1 5:1 r:2 | 4:0.5 4:0.5 3:0.5 4:0.5 5:1 3:1 | 1:2 r:2",
             chords="I | VII | IV | IV | I | VII | IV:2 V:2 | I",
-            lyrics="Knead for speed, knead for speed, / un-der-ground on Birth-day Street! / "
-                   "Ze{zee}-ro to six-ty, near miss, flash! / Chum-bo wins the mid-night dash!",
-            dark="No es{ess}-cape, no es{ess}-cape, / ev-ery road's the same old shape. / "
-                 "Ze{zee}-ro to six-ty, nev-er there, / go-ing no-where, ev-ery-where.",
         ),
     ),
     form=LONG_FORM,
@@ -224,23 +184,11 @@ SONGS.append(dict(
             melody="5:1 5:1 6:1 5:1 | 3:1 1:1 2:2 | 2:1 2:1 3:1 4:1 | 5:1 4:1 3:2 | "
                    "5:1 5:1 6:1 1':1 | 7:1 6:1 5:2 | 4:1 4:1 3:1 2:1 | 3:1 2:1 1:2",
             chords="I | I | V | V | IV | IV | V | I",
-            lyrics="One whole min-ute on the clock, / kick-flip, heel-flip, ol-lie{lee}, rock! / "
-                   "Grind the can-dle, jump the cake, / Ton-y Honk says: sick! Great skate!",
-            lyrics2="Spell the let-ters, S{ess}, K{kay}, A{ay}, / T{tee} and E{ee} are on the way! / "
-                    "Find the se{see}-cret tape up high, / spin nine hun-dred through the sky!",
-            dark="One whole min-ute, nev-er done. / Ses-sion's{shunz} o-ver, just be-gun. / "
-                 "Same old ramp and same old rail, / ev-ery land-ing bound to fail.",
-            dark2="Guests in hats line up to see. / No one claps and no one's free. / "
-                  "Let-ters say: S{ess}, T{tee}, A{ay}, Y{why}. / Ton-y Honk won't say good-bye.",
         ),
         chorus=dict(
             melody="1':1 1':1 1':1 6:1 | 5:1 6:1 5:2 | 4:1 4:1 6:1 5:1 | 4:1 3:1 2:2 | "
                    "5:1 5:1 5:1 1':1 | 7:1 6:1 5:1 6:1 | 4:1 4:1 6:1 5:1 | 3:1 2:1 1:2",
             chords="IV | I | ii | V | V | IV | ii:2 V:2 | I",
-            lyrics="Skate! Skate! Skate a-round the park, / kick-flip, grind, and make your mark! / "
-                   "Spell it out: S{ess}, K{kay}, A{ay}, T{tee}, E{ee}! / Hon-ky, hon-ky, yes sir-ee!",
-            dark="Skate, skate, skate a-round the park, / round and round in-to the dark. / "
-                 "Spell it out, it's S{ess}, T{tee}, A{ay}, Y{why}. / No more ses-sions{shunz}, no good-bye.",
         ),
     ),
     form=LONG_FORM,
@@ -272,23 +220,11 @@ SONGS.append(dict(
             melody="5:1 5:1 5:1 3:0.5 4:0.5 | 5:0.5 6:0.5 5:2 r:1 | 3:0.5 3:0.5 4:1 3:0.5 2:0.5 1:1 | 2:0.5 3:2.5 r:1 | "
                    "5:0.5 5:0.5 6:0.5 5:0.5 4:1 3:1 | 4:0.5 5:2.5 r:1 | 1':0.5 7:0.5 6:1 5:0.5 4:0.5 3:1 | 2:0.5 1:2.5 r:1",
             chords="I | V | vi | IV | I | V | IV | V",
-            lyrics="Beep, beep, beep, the Di{dij}-ji{ih}-vice sings, / tap the egg and see what it brings! / "
-                   "Feed it, train it, clean up the poop, / Blob-mon jumps a-round in a loop!",
-            lyrics2="Blob-mon, Frost-mon, Par-ty-mon too, / ev-ery lev-el is some-thing new! / "
-                    "Tap the train-ing bar in the green, / best cham-pi-on you've ev-er seen!",
-            dark="Beep, beep, beep, the glass is all cracked. / It ate the clock, no go-ing back. / "
-                 "Feed it more, but it wants it all, / now Chum-bo-mon is ten feet tall.",
-            dark2="Hatch a-gain on ev-ery birth-day, / same old egg in the same old way. / "
-                  "It ate your name, it took your place, / and you're the one stuck in the case.",
         ),
         chorus=dict(
             melody="1':0.5 7:0.5 1':1 1':0.5 7:0.5 1':1 | 2':3 r:1 | 6:0.5 6:0.5 5:0.5 6:0.5 1':1 6:1 | 5:0.5 5:2.5 r:1 | "
                    "4:0.5 4:0.5 4:1 5:0.5 6:0.5 5:1 | 3:3 r:1 | 4:0.5 4:0.5 5:0.5 6:0.5 5:1 4:1 | 2:0.5 1:2.5 r:1",
             chords="IV | V | vi | IV | ii | V | IV:2 V:2 | I",
-            lyrics="Di{dij}-ji{ih}-volve! Di{dij}-ji{ih}-volve! Go! / My lit-tle part-ner, watch it grow! / "
-                   "Di{dij}-ji{ih}-mon, di{dij}-gi{ih}-tal friend, / hap-py birth-day, friends to the end!",
-            dark="Di{dij}-ji{ih}-volve! Di{dij}-ji{ih}-volve! No! / It's still hun-gry, it won't let go. / "
-                 "Di{dij}-ji{ih}-mon, so who are you? / And now it says it's Chum-bo too.",
         ),
     ),
     form=LONG_FORM,
@@ -317,23 +253,11 @@ SONGS.append(dict(
             melody="r:0.5 3:1 3:0.5 5:1 4:1 | 3:1.5 2:0.5 1:2 | r:0.5 2:1 2:0.5 4:1 3:1 | 2:1.5 1:0.5 7,:2 | "
                    "r:0.5 3:1 3:0.5 5:1 7:1 | 6:1.5 5:0.5 4:2 | r:0.5 4:1 4:0.5 3:1 2:1 | 3:1.5 2:0.5 1:2",
             chords="I7 | vi7 | ii7 | V7 | I7 | IV7 | ii7 V7 | I7",
-            lyrics="Birth-day cards are fly-ing in, / stamp them, check them, let's be-gin! / "
-                   "Check the name and check the date, / signed and sealed, or it must wait!",
-            lyrics2="Grand-ma's card is pink and true, / Pip sent one with stick-ers too! / "
-                    "YAY for good and NOPE for not, / stamp, stamp, stamp, the whole big lot!",
-            dark="Let-ters come from far a-way. / Names are fad{fay}-ing{ding} ev-ery day. / "
-                 "Pip's card came a year too late. / Rules are rules. It has to wait.",
-            dark2="Ev-ery year a lit-tle less, / for-got-ten name and ad-dress. / "
-                  "Stamp it, stamp it, let it go. / Who were they? You'll nev-er know.",
         ),
         chorus=dict(
             melody="5:0.5 6:1 5:0.5 6:1 5:0.5 6:0.5 | 1':1 7:3 | r:0.5 6:1 6:0.5 5:1 4:1 | 3:1.5 4:0.5 5:2 | "
                    "r:0.5 3:1 3:0.5 4:1 5:1 | 6:1.5 5:0.5 3:2 | r:0.5 2:1 2:0.5 3:1 4:1 | 2:1.5 7,:0.5 1:2",
             chords="vi7 | I7 | ii7 | I7 | IV7 | vi7 | ii7 | V7 I7",
-            lyrics="Ap-proved, ap-proved, ap-proved for you! / Pip's card says I love you too! / "
-                   "Love and hugs and lots of mail, / hap-py birth-day, with-out fail!",
-            dark="Ap-proved, ap-proved, ap-proved, but who? / Fad{fay}-ed{ded} names I nev-er knew. / "
-                 "Emp-ty en-ve{veh}-lopes of mail. / Hap-py birth-day, with-out fail.",
         ),
     ),
     form=LONG_FORM,
@@ -360,23 +284,11 @@ SONGS.append(dict(
             melody="1:0.75 1:0.25 3:1 5:2 | 6:1 5:1 3:2 | 4:0.75 4:0.25 6:1 5:2 | 3:1 2:1 5,:2 | "
                    "1:0.75 1:0.25 3:1 5:2 | 1':1 7:1 6:2 | 5:0.75 4:0.25 3:1 2:2 | 3:1 2:1 1:2",
             chords="I | vi:2 I:2 | IV | V | I | IV | ii:2 V:2 | I",
-            lyrics="Load your darts and grab your hat, / mis-sion{shun}: par-ty, that is that! / "
-                   "Pop the card-board crash-ers down, / don't hit Grand-ma, she's in town!",
-            lyrics2="Three in a row, spy bal-loon, / five, a care pack-age{ij} lands soon! / "
-                    "Sev-en streak, the cake strike falls, / Ser{sar}-geant{jent} Sprin-kles{kulls} gives the calls!",
-            dark="Rain is fall-ing in the mud. / Boots too big and hel-mets cold. / "
-                 "Write a let-ter: Mom, I'm fine. / Fold it up. It won't get home.",
-            dark2="Max was laugh-ing yes-ter-day. / Now his hel-met's all that stayed. / "
-                  "No one wins and no one knows / why the war-time whis-tle blows.",
         ),
         chorus=dict(
             melody="5:1 5:0.5 5:0.5 1':2 | 7:1 6:1 5:2 | 4:1 4:0.5 4:0.5 6:2 | 5:1 4:1 3:2 | "
                    "5:1 5:0.5 5:0.5 2':2 | 1':1 7:1 6:2 | 6:1 5:1 4:1 2:1 | 3:1 2:1 1:2",
             chords="I | V:2 I:2 | IV | I | V | IV | ii:2 V:2 | I",
-            lyrics="Call of Birth-day! Hear the call! / Foam darts fly-ing, one and all! / "
-                   "Cap-ture cake and hold the line, / mis-sion{shun}: par-ty, right on time!",
-            dark="Call of Birth-day, hear the call, / send the young ones, one and all. / "
-                 "Can-dles out and flags hung low, / no one's com-ing home, you know.",
         ),
     ),
     form=LONG_FORM,
@@ -406,23 +318,11 @@ SONGS.append(dict(
             melody="1:0.5 1:0.5 3:0.5 1:0.5 5:1 4:0.5 3:0.5 | 3:2 r:2 | 2:0.5 2:0.5 2:0.5 3:0.5 4:1 3:1 | 2:2 r:2 | "
                    "1:0.5 1:0.5 3:0.5 5:0.5 6:1 5:1 | 5:2 r:2 | 6:0.5 5:0.5 4:0.5 3:0.5 2:1 1:1 | 2:2 r:2",
             chords="I | I | V | V | vi | I | IV | V",
-            lyrics="Jump off the bus, it's par-ty time! / Build it up and watch me climb! / "
-                   "Throw the cake and build the wall, / last one stand-ing takes it all!",
-            lyrics2="Land at Cake Cas-tle, find the loot! / Smash the lla-ma, dance and scoot! / "
-                    "Storm is com-ing, run in-side, / par-ty bus, the best-est ride!",
-            dark="The storm keeps clos-ing, nev-er through. / Ev-ery cir-cle{kull} shrinks on you. / "
-                 "Nine-ty-nine have gone a-way. / You're the one who has to stay.",
-            dark2="One play-er left, and that is you, / but the lob-by fills a-new. / "
-                  "Bus comes back to take you down, / same old match, same emp-ty town.",
         ),
         chorus=dict(
             melody="5:1 5:0.5 6:0.5 1':1 6:1 | 5:1 3:1 r:2 | 4:1 4:0.5 5:0.5 6:1 5:1 | 3:1 2:1 r:2 | "
                    "5:1 5:0.5 6:0.5 1':1 2':1 | 1':1 6:1 r:2 | 4:1 4:0.5 5:0.5 6:1 5:1 | 2:1 1:1 r:2",
             chords="IV | I | ii | V | IV | vi | ii | V I",
-            lyrics="Birth-day Roy-ale, num-ber one! / Build a wall and have some fun! / "
-                   "Nine-ty-nine have left the game, / vic-to-ry has Chum-bo's name!",
-            dark="Birth-day Roy-ale, nev-er won. / Ev-ery round has just be-gun. / "
-                 "No one's left to call your name. / Ev-ery match is just the same.",
         ),
     ),
     form=LONG_FORM,
@@ -449,23 +349,11 @@ SONGS.append(dict(
             melody="5:1 5:1 5:1 r:0.5 3:0.5 | 4:0.5 3:0.5 1:1 r:2 | 2:1 3:1 4:1 r:0.5 4:0.5 | 3:0.5 2:0.5 5,:1 r:2 | "
                    "5:1 5:1 5:1 r:0.5 6:0.5 | 5:0.5 4:0.5 3:1 r:2 | 2:1 2:1 3:1 r:0.5 2:0.5 | 7,:0.5 6,:0.5 1:1 r:2",
             chords="I | I | V | V | I | IV | V | I",
-            lyrics="Jump jump jump a-cross the bricks, / show-ing off my coo-lest tricks! / "
-                   "Oof oof oof, I fell a-gain, / re-spawn with my best-est friends!",
-            lyrics2="La-va blocks are hot hot hot, / check-point flag, I like this spot! / "
-                    "Springs go bounce, up, up, a-round, / jump the gap and touch the ground!",
-            dark="Jump jump jump, the floor is gone. / Check-points move and lead you on. / "
-                 "Oof oof oof, re-spawn, re-start. / Same old lev-el, same old part.",
-            dark2="Ev-ery-one has gone to bed. / Serv-er emp-ty, chat un-read. / "
-                  "Some-one's typ-ing: stay, stay, stay. / No one press-es Leave to-day.",
         ),
         chorus=dict(
             melody="1':1 6:1 1':1 r:0.5 6:0.5 | 5:0.5 5:0.5 5:1 r:2 | 4:1 4:1 6:1 r:0.5 6:0.5 | 5:0.5 3:0.5 1:1 r:2 | "
                    "1':1 6:1 1':1 r:0.5 2':0.5 | 1':0.5 6:0.5 5:1 r:2 | 4:1 4:1 3:1 r:0.5 2:0.5 | 5,:0.5 7,:0.5 1:1 r:2",
             chords="IV | I | IV | I | IV | vi V | ii | V I",
-            lyrics="O-bby, o-bby, hop hop hop, / climb up to the ve-ry top! / "
-                   "Birth-day badge is wait-ing there, / bloc-ky bud-dies ev-ery-where!",
-            dark="O-bby, o-bby, stop stop stop. / There is no one at the top. / "
-                 "Birth-day badge you'll nev-er get. / Climb for-ev-er. Not done yet.",
         ),
     ),
     form=LONG_FORM,
@@ -493,23 +381,11 @@ SONGS.append(dict(
             melody="1:1.5 1:0.5 5:1 5:1 | 6:1 5:1 3:2 | 4:1.5 4:0.5 3:1 3:1 | 2:1 1:1 2:2 | "
                    "1:1.5 1:0.5 5:1 5:1 | 6:1 7:1 1':2 | 6:1.5 6:0.5 5:1 4:1 | 3:1 2:1 5,:2",
             chords="I | IV:1 I:3 | IV | V | I | vi:1 V:1 I:2 | IV | V",
-            lyrics="Throw the ball and catch a friend, / birth-day bat-tles nev-er end! / "
-                   "Par-ty-chu and Cake-man-der, / ev-ery mon-ster loves you too!",
-            lyrics2="Walk-ing through the tall green grass, / wild Pres-ent-oad, catch it fast! / "
-                    "Six balls sit-ting on the shelf, / Par-ty-chu can't catch it-self!",
-            dark="Grass grows tall-er ev-ery night. / Route One nev-er ends in sight. / "
-                 "Walk-ing, walk-ing, round and round, / same old par-ty, same old town.",
-            dark2="In the ball it's dark and small. / You can't hear the train-ers call. / "
-                  "Ev-ery birth-day, caught a-gain, / stored for-ev-er in box ten.",
         ),
         chorus=dict(
             melody="1':1.5 1':0.5 7:1 6:1 | 5:1 6:1 5:2 | 4:1.5 4:0.5 5:1 6:1 | 5:1 4:1 3:2 | "
                    "1':1.5 1':0.5 7:1 6:1 | 5:1 6:1 1':2 | 2':1.5 2':0.5 1':1 7:1 | 6:1 7:1 1':2",
             chords="IV | I | ii | V:2 I:2 | IV | I | V | IV:1 V:1 I:2",
-            lyrics="Gon-na catch them, ev-ery one! / Pock-et mon-sters, so much fun! / "
-                   "Tall grass rus-tling, here they come! / Chum-bo is the cham-pi-on!",
-            dark="Gon-na catch them, ev-ery one. / Ev-ery bat-tle, nev-er won. / "
-                 "Tall grass whis-pers, here they come. / Chum-bo's in the ball. All done.",
         ),
     ),
     form=LONG_FORM,
@@ -536,23 +412,11 @@ SONGS.append(dict(
             melody="5,:1 1:1 1:1 3:1 | 2:1 1:1 5,:2 | 1:1 3:1 5:1 5:1 | 4:1 3:1 2:2 | "
                    "5:1 5:1 6:1 5:1 | 4:1 3:1 2:2 | 1:1 3:1 2:1 7,:1 | 1:1 5,:1 1:2",
             chords="I | VII | I | V | III | VII | IV | I",
-            lyrics="Lit-tle ro-bots, hats on tight, / flash-lights on, it's dark to-night! / "
-                   "Grab the cake with the blue beam, / care-ful, care-ful, steer it clean!",
-            lyrics2="Gold-en pres-ent, crys-tal hat, / Grand-ma's vase, now look at that! / "
-                    "Don't you ev-er poke the duck, / or he'll chase you! What bad luck!",
-            dark="Lit-tle ro-bot, haul your past, / birth-day cakes that did-n't last. / "
-                 "Ev-ery pre-sent has a price. / Tax-man takes it, once, then twice.",
-            dark2="Quo-ta climbs and climbs a-gain, / nev-er e-nough, now or then. / "
-                  "Last of all, the beam grabs you, / hauls the birth-day boy back through.",
         ),
         chorus=dict(
             melody="5:1 5:1 5:1 3:1 | 4:1 3:1 1:2 | 1:1 1:1 3:1 5:1 | 4:1 3:1 2:2 | "
                    "5:1 5:1 6:1 1':1 | 7:1 6:1 5:2 | 4:1 3:1 2:1 3:1 | 2:1 7,:1 1:2",
             chords="I | IV | I | V | III | VII | IV | V:2 I:2",
-            lyrics="Haul a-way, oh, haul a-way, / Tax-man wants his cash to-day! / "
-                   "Fill the quo-ta, ring the bell, / R{ar}, E{ee}, P{pee}, O{oh}, all is well!",
-            dark="Haul a-way, oh, haul a-way, / Tax-man says you have to pay. / "
-                 "Quo-ta grows and grows and grows. / Par-ty truck, and in he goes.",
         ),
     ),
     form=LONG_FORM,
@@ -579,23 +443,11 @@ SONGS.append(dict(
             melody="3:0.5 3:0.5 5:0.5 3:0.5 2:1 1:1 | 2:1 3:2 r:1 | 3:0.5 3:0.5 5:0.5 6:0.5 5:1 3:1 | 5:1 6:2 r:1 | "
                    "6:0.5 6:0.5 5:0.5 6:0.5 1':1 6:1 | 5:1 3:2 r:1 | 4:0.5 4:0.5 3:0.5 4:0.5 5:1 2:1 | 3:1 1:2 r:1",
             chords="I | V | vi | IV | IV | V | ii | V",
-            lyrics="Mi{mee}-ka{kah}-ke{keh} on the stage to-night, / teal twin-tails swing-ing in the light! / "
-                   "Wave the glow sticks, tap to the beat, / spin the lit-tle leek, move your feet!",
-            lyrics2="Glow sticks up and round we go now, / tap a-long and steal the show now! / "
-                    "Cool, cool, fine, and the com-bo grows, / sing a-long, cause the whole crowd knows!",
-            dark="Mi{mee}-ka{kah}-ke{keh} on the stage a-gain, / the same old song that nev-er ends. / "
-                 "Red glow sticks in a si-lent crowd, / no one claps, no one says it loud.",
-            dark2="Er-ror, er-ror, song on re-peat, / ev-ery birth-day, the same old beat. / "
-                  "Make a wish, but it won't come true. / Mi{mee}-ka{kah}-ke{keh} sings it just for you.",
         ),
         chorus=dict(
             melody="1':0.5 1':0.5 7:0.5 1':0.5 2':1 1':1 | 6:1 5:2 r:1 | 4:0.5 4:0.5 4:0.5 5:0.5 6:1 5:1 | 3:1 2:2 r:1 | "
                    "1':0.5 1':0.5 7:0.5 1':0.5 2':1 1':1 | 6:1 1':2 r:1 | 4:0.5 4:0.5 3:0.5 2:0.5 3:1 2:1 | 2:1 1:2 r:1",
             chords="IV | V | iii | vi | IV | V | ii:2 V:2 | I",
-            lyrics="Mi{mee}-ka{kah}-ke{keh}, Mi{mee}-ka{kah}-ke{keh}, sing it! / Hap-py birth-day, Chum-bo, ring it! / "
-                   "Blow the can-dles, make a big wish, / the best-est birth-day song is this!",
-            dark="Mi{mee}-ka{kah}-ke{keh}, Mi{mee}-ka{kah}-ke{keh}, stay here, / and it's your birth-day ev-ery year. / "
-                 "Blow the can-dles, but they come back, / the song re-starts from the first track.",
         ),
     ),
     form=LONG_FORM,
@@ -626,8 +478,6 @@ SONGS.append(dict(
             melody="3:0.5 3:0.5 5:0.5 3:0.5 2:1 1:1 | 2:1 3:2 r:1 | 3:0.5 3:0.5 5:0.5 6:0.5 5:1 3:1 | 5:1 6:2 r:1 | "
                    "6:0.5 6:0.5 5:0.5 6:0.5 1':1 6:1 | 5:1 3:2 r:1 | 4:0.5 4:0.5 3:0.5 4:0.5 5:1 2:1 | 3:1 1:2 r:1",
             chords="I | V | vi | IV | IV | V | ii | V",
-            lyrics="No-bo-dy sings it an-y-more. / The mic{mike}-ro-phone just hums a-lone. / "
-                   "The crowd still waits in rows of red. / The song goes on. It al-ways will.",
         ),
     ),
     form=[
@@ -655,15 +505,11 @@ SONGS.append(dict(
             melody="5:1 5:1 4:1 3:1 | 2:1 3:1 1:2 | 1:1 2:1 3:1 4:1 | 3:1 2:1 2:2 | "
                    "5:1 5:1 6:1 5:1 | 4:1 3:1 2:2 | 3:1 2:1 1:1 7,:1 | 2:1 7,:1 1:2",
             chords="I | V | IV | V | I | IV | V | I",
-            lyrics="Walk-ing down the emp-ty road, / lights a-round me start to fade. / "
-                   "Get-ting dark and get-ting cold, / still they say it's my birth-day.",
         ),
         chorus=dict(
             melody="1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 4:1 5:1 6:1 | 5:1 4:1 3:2 | "
                    "1':1 1':1 7:1 6:1 | 5:1 6:1 5:2 | 4:1 3:1 2:1 1:1 | 2:1 7,:1 1:2",
             chords="IV | I | IV | V | IV | I | V | I",
-            lyrics="Ev-ery road I try to take / leads me back to the same place. / "
-                   "Los-ing hope that I'll be saved, / on-ly one way to es-cape.",
         ),
     ),
     form=[
@@ -690,22 +536,10 @@ SONGS.append(dict(
         verse=dict(
             melody="3 3 4 5 | 5 4 3:2 | 2 2 3 4 | 4 3 2:2 | 3 3 4 5 | 1' 7 6:2 | 5 4 3 2 | 3 2 1:2",
             chords="I | I | V | V | I | IV | V | I",
-            lyrics="Couch is com-fy, phone is off, / par-ty's{teez} o-ver, time to doze. / "
-                   "Here comes Rock-o, soft and fluff, / pur-ring right up to my nose.",
-            lyrics2="Black and fluf-fy, long long fur, / Rock-o gives a sleep-y purr. / "
-                    "Scratch his chin and rub his ear, / best-est kit-ty, Rock-o's here!",
-            dark="Out the door and down the street, / Rock-o's right be-hind your feet. / "
-                 "Ev-ery street just turns a-round, / back to-ward the par-ty sound.",
-            dark2="Run a-way, but where to go? / Rock-o al-ways seems to know. / "
-                  "Bal-loons tied to ev-ery door. / One more birth-day, then one more.",
         ),
         chorus=dict(
             melody="5 3 5 3 | 6 5 4 3 | 2 3 4 2 | 3 2 1:2 | 5 3 5 3 | 1' 7 6 5 | 4 4 3 2 | 2 3 1:2",
             chords="I | IV | ii | V:2 I:2 | I | IV | ii | V:2 I:2",
-            lyrics="Oh hi, Rock-o, oh hi, Rock-o, / fuz-zy lit-tle friend of mine! / "
-                   "Oh hi, Rock-o, pur-ry Rock-o, / ev-ery-thing is feel-ing fine!",
-            dark="Oh no, Rock-o! Oh no, Rock-o! / There is no run-ning a-way. / "
-                 "Run, run, Chum-bo! Run, run, Chum-bo! / Back to par-ty. Back to stay.",
         ),
     ),
     form=LONG_FORM,
@@ -728,6 +562,23 @@ SONGS.append(dict(
 ))
 
 # Phonetic spellings for syllable fragments espeak would otherwise misread.
+
+
+def _load_words():
+    _, words = game_text.read()
+    for s in SONGS:
+        for part, fields in words.get(s["id"], {}).items():
+            if part not in s["sections"]:
+                raise ValueError(f"dialogue.txt: the song {s['id']} has no part called '{part}'")
+            s["sections"][part].update(fields)
+    for s in SONGS:
+        for part, sec in s["sections"].items():
+            if "lyrics" not in sec:
+                raise ValueError(f"dialogue.txt: no words for 'song {s['id']} - {part}'")
+
+
+_load_words()
+
 PHONETIC = {
     "chum": "chum", "bo": "boh", "bo!": "boh", "py": "pee", "dy": "dee", "ry": "ree", "ty": "tee",
     "ny": "nee", "by": "bee", "ky": "kee", "ly": "lee", "ery": "ree", "ev": "ev", "tle": "tull",

@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## The party host's voice. Shows typewriter subtitles and plays the matching pre-rendered
-## voice clip (tools/voices.py renders one clip per say() line found in the scripts).
+## voice clip (tools/voices.py renders one clip per box of every line in dialogue.txt).
 ## Also draws the little lyrics ticker and the "turn your phone sideways" hint.
 
 ## Who is talking decides the voice (tools/voices.py) and the name on the box. The party host
@@ -261,14 +261,27 @@ func _draw_lyrics(vs: Vector2) -> void:
 	var dark: bool = ls.dark
 	var font := Crayon.body()
 	var size := 38
+	var lh := 46.0
 	var widths := PackedFloat32Array()
-	var total := 0.0
 	for p in parts:
-		var w := font.get_string_size(p, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		widths.append(w)
-		total += w
-	var x := (vs.x - total) * 0.5
-	var bar := Rect2(x - 58, y - 31, total + 116, 62)
+		widths.append(font.get_string_size(p.trim_suffix("\n"), HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+	var rows := lyric_rows(parts)
+	var row_w := PackedFloat32Array()
+	for r in rows:
+		var w := 0.0
+		for i in range(r[0], r[1]):
+			w += widths[i]
+		row_w.append(w)
+	var widest := 0.0
+	for w in row_w:
+		widest = maxf(widest, w)
+	var top_y := y - (rows.size() - 1) * lh * 0.5
+	var bar := Rect2((vs.x - widest) * 0.5 - 58, top_y - 31, widest + 116, 62 + (rows.size() - 1) * lh)
+	# two rows near the top or bottom of the screen: keep the whole bar on screen
+	var shift := maxf(0.0, 6.0 - bar.position.y) - maxf(0.0, bar.end.y - (vs.y - 6.0))
+	bar.position.y += shift
+	top_y += shift
+	y += shift
 	var panel := Color(1.0, 0.98, 0.88, 0.92) if not dark else Color(0.12, 0.04, 0.1, 0.9)
 	var edge := Color(0.95, 0.55, 0.15) if not dark else Color(0.6, 0.1, 0.2)
 	var ink := Crayon.INK if not dark else Color(0.95, 0.9, 0.95)
@@ -278,15 +291,32 @@ func _draw_lyrics(vs: Vector2) -> void:
 	Crayon.freeze(false)
 	_note(Vector2(bar.position.x + 28, y), edge)
 	_note(Vector2(bar.end.x - 30, y), edge)
-	var base_y := y + font.get_ascent(size) * 0.35
+	for ri in rows.size():
+		var x := (vs.x - row_w[ri]) * 0.5
+		var base_y := top_y + ri * lh + font.get_ascent(size) * 0.35
+		for i in range(rows[ri][0], rows[ri][1]):
+			var col := hi if i < sung else ink
+			var pos := Vector2(x, base_y)
+			if i == sung - 1:
+				pos.y -= 3.0
+			var s := parts[i].trim_suffix("\n")
+			_panel.draw_string_outline(font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 6, panel)
+			_panel.draw_string(font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+			x += widths[i]
+
+
+## A window of the lyric bar can have two rows (\n in dialogue.txt): a part ending in a newline
+## ends its row. -> [[first part, one past the last part], ...]
+static func lyric_rows(parts: PackedStringArray) -> Array:
+	var rows := []
+	var start := 0
 	for i in parts.size():
-		var col := hi if i < sung else ink
-		var pos := Vector2(x, base_y)
-		if i == sung - 1:
-			pos.y -= 3.0
-		_panel.draw_string_outline(font, pos, parts[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, 6, panel)
-		_panel.draw_string(font, pos, parts[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
-		x += widths[i]
+		if parts[i].ends_with("\n"):
+			rows.append([start, i + 1])
+			start = i + 1
+	if start < parts.size() or rows.is_empty():
+		rows.append([start, parts.size()])
+	return rows
 
 
 func _note(p: Vector2, col: Color) -> void:

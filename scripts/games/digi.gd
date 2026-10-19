@@ -73,7 +73,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.4)
-	await say("Present number three! A Dijivice! There's a Dijiegg inside. Tap the egg to help it hatch!")
+	await line("welcome")
 	locked = false
 
 
@@ -181,9 +181,9 @@ func _disco() -> void:
 		Audio.sfx("beep", -4, n[0])
 		await wait(n[1] * 0.3)
 	if stage <= 3:
-		say_bg("Beep beep! Happy birthday, Chumbo!", Narrator.CRITTER)
+		line_bg("beep_beep_happy_birthday_chumbo")
 	else:
-		say_bg("Beep. Beep. Happy birthday. Again.", Narrator.MONSTER)
+		line_bg("beep_beep_happy_birthday_again")
 	await wait(1.2)
 	disco_t = -1.0
 	dev_taps = 0
@@ -206,8 +206,8 @@ func _hatch() -> void:
 	Audio.sfx("sparkle")
 	confetti_burst(CENTER, 50)
 	await wait(0.4)
-	await say("Blip blip!", Narrator.CRITTER)
-	await say("It's a baby Dijimon! Its name is Blobmon! Feed it, train it and pet it, and it will dijivolve!")
+	await line("blip_blip")
+	await line("its_a_baby_dijimon")
 	_setup_buttons()
 	locked = false
 
@@ -225,7 +225,7 @@ func _check_grow() -> void:
 	if not poops.is_empty():
 		if not clean_said:
 			clean_said = true
-			say_bg("It's ready to dijivolve! But first, clean up that poop.")
+			line_bg("its_ready_to_dijivolve")
 		return
 	_grow()
 
@@ -257,9 +257,9 @@ func _feed_dark() -> void:
 	Audio.sfx("crack", -4, 0.7)
 	match feeds_dark:
 		2:
-			say_bg("It's too big for the screen now.", Narrator.DARK)
+			line_bg("its_too_big_for")
 		4:
-			say_bg("The screen is cracking. It wants to come out and play. Forever.", Narrator.DARK)
+			line_bg("screen_is_cracking")
 	if feeds_dark >= FEED_DARK:
 		_grow()
 
@@ -278,7 +278,7 @@ func _train() -> void:
 	Audio.sfx("beep2", -6)
 	if not said.has("train"):
 		said["train"] = true
-		say_bg("Training time! Tap when the arrow is in the green part!")
+		line_bg("training_time_tap")
 
 
 func _marker() -> float:
@@ -379,23 +379,23 @@ func _grow() -> void:
 	await wait(0.3)
 	match stage:
 		2:
-			await say("Happy birthday, Chumbo!", Narrator.CRITTER)
-			await say("It knows your name already! What a smart Dijimon.")
+			await line("happy_birthday_chumbo")
+			await line("it_knows_your_name")
 		3:
-			await say("Partymon! Party party!", Narrator.CRITTER)
-			await say("A rookie! Look at its little party hat! Keep going and it will become a champion!")
+			await line("partymon_party_party")
+			await line("rookie_look_at_its")
 		4:
 			age_spin = true
-			await say("Grrr. Is it my birthday too?", Narrator.MONSTER)
-			await say("Champion level. It's so big now, and it's always hungry. Try not to look at its candle teeth.", Narrator.DARK)
+			await line("grrr_is_it_my")
+			await line("champion_level_its")
 		5:
-			await say("MORE.", Narrator.MONSTER)
-			await say("It ate the cake. It ate the plate. It ate the calendar, so now it's always today.", Narrator.DARK)
-			await say("The other buttons don't work anymore. Just feed it.", Narrator.DARK)
+			await line("more")
+			await line("it_ate_the_cake")
+			await line("other_buttons_dont")
 		6:
 			Audio.sfx("im_chumbo", -2)
-			await say("I'm Chumbo.", Narrator.MONSTER)
-			await say("That's not a Dijimon anymore. It still wants something else.", Narrator.DARK)
+			await line("im_chumbo")
+			await line("thats_not_a_dijimon")
 	_show_buttons(true)
 	busy = false
 	locked = false
@@ -405,7 +405,7 @@ func _eat_name() -> void:
 	busy = true
 	locked = true
 	_show_buttons(false)
-	await say("Okay. Just a little bite.", Narrator.DARK)
+	await line("okay_just_a_little")
 	for i in 10:
 		name_left -= 1
 		Audio.sfx("chomp", -2, 0.7 + i * 0.03)
@@ -413,10 +413,10 @@ func _eat_name() -> void:
 		await wait(0.28)
 	eaten_name = true
 	await wait(0.6)
-	await say("I'm Chumbo.", Narrator.MONSTER)
-	await say("That's not right. You are Chumbo.", Narrator.DARK)
-	await say("No. I'm Chumbo.", Narrator.MONSTER)
-	await say("Which one of you is the real Chumbo?", Narrator.DARK)
+	await line("im_chumbo")
+	await line("thats_not_right_you")
+	await line("no_im_chumbo")
+	await line("which_one_of_you")
 	choice = true
 	add_button("c1", Rect2(220, H - 110, 380, 86), "I'm Chumbo", _choose, Crayon.WHITE, 40)
 	add_button("c2", Rect2(680, H - 110, 380, 86), "I'm Chumbo", _choose, Crayon.WHITE, 40)
@@ -432,8 +432,8 @@ func _choose() -> void:
 	remove_button("c2")
 	remove_button("feed")
 	meters = [0.3, 0.3, 0.3]
-	await say("See? We are both Chumbo now.", Narrator.MONSTER)
-	await say("And we will both have a birthday. Every day. Forever and ever.", Narrator.MONSTER)
+	await line("see_we_are_both")
+	await line("and_we_will_both")
 	Audio.sfx("gulp", 0, 0.5)
 	name_left = 10
 	eaten_name = false
@@ -449,8 +449,8 @@ func _choose() -> void:
 	_baked_key = ""
 	Audio.play_music("digi", 1.5)
 	Audio.sfx("pop")
-	await say("Blip!", Narrator.CRITTER)
-	await say("Aww, it's a baby again! Present number three, done! Feed it again next birthday. It will be hungry.")
+	await line("blip")
+	await line("aww_its_a_baby")
 	finish_game(IDX, "DIJIMON RAISED!")
 
 
@@ -476,7 +476,7 @@ func tick(dt: float) -> void:
 		age += dt * (1.0 + age * 0.17)
 		if stage == 4 and age > 40.0 and not locked and not said.has("age") and not Narrator.is_active():
 			said["age"] = true
-			say_bg("Look at its age, Chumbo. So many birthdays. It can't remember the first one. Neither can you.", Narrator.DARK)
+			line_bg("look_at_its_age")
 	var playing := stage >= 1 and stage <= 4 and evo_t < 0.0 and not locked
 	if playing and not busy:
 		var drain := 0.005 * (1.0 + poops.size() * 1.5) * (1.6 if stage == 4 else 1.0)
@@ -495,7 +495,7 @@ func tick(dt: float) -> void:
 				Audio.sfx("poop", -2)
 				if not said.has("poop"):
 					said["poop"] = true
-					say_bg("Uh oh. Blobmon made a poop! Tap CLEAN. Dijimon get grumpy when it's messy.")
+					line_bg("uh_oh_blobmon_made")
 	for h in hearts:
 		h.t += dt
 		h.p.y -= 60.0 * dt

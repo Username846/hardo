@@ -8,24 +8,24 @@ const Radio := preload("res://scripts/screens/radio.gd")
 const RADIO_RECT := Rect2(366, 326, 148, 74)
 
 var LINES := [
-	["Everyone brought you a present! Ten presents, all for you! Start with number one!", Narrator.CUTE],
-	["Wow, you're so good at birthdays! Open the next one!", Narrator.CUTE],
-	["The guests are having so much fun. They don't want to leave.", Narrator.CUTE],
-	["Did somebody turn down the lights? No? Okay.", Narrator.CUTE],
-	["Don't mind the guests. They're only looking at you because they love you.", Narrator.CUTE],
-	["Halfway there! Nobody has left the party yet. Nobody ever leaves.", Narrator.DARK],
-	["Is the cake supposed to be warm? It's breathing a little. That's normal.", Narrator.DARK],
-	["Three more presents. We are all so proud of you, Chumbo.", Narrator.DARK],
-	["The candles have been burning for a very long time.", Narrator.DARK],
-	["One more present. The last one. It's for you, and it's for us.", Narrator.DARK],
+	"everyone_brought",
+	"wow_youre_so_good",
+	"guests_are_having",
+	"did_somebody_turn",
+	"dont_mind_the_guests",
+	"halfway_there_nobody",
+	"is_the_cake_supposed",
+	"three_more_presents",
+	"candles_have_been",
+	"one_more_present",
 ]
 ## Spelled out (not "%d") so each one gets a voice clip.
 var OPEN_NEXT := [
-	["Open present number one!", Narrator.CUTE], ["Open present number two!", Narrator.CUTE],
-	["Open present number three!", Narrator.CUTE], ["Open present number four!", Narrator.CUTE],
-	["Open present number five!", Narrator.CUTE], ["Open present number six!", Narrator.CUTE],
-	["Open present number seven!", Narrator.CUTE], ["Open present number eight!", Narrator.CUTE],
-	["Open present number nine!", Narrator.CUTE], ["Open present number ten!", Narrator.CUTE],
+	"open_present_number_one", "open_present_number_two",
+	"open_present_number_three", "open_present_number_four",
+	"open_present_number_five", "open_present_number_six",
+	"open_present_number_seven", "open_present_number_eight",
+	"open_present_number_nine", "open_present_number_ten",
 ]
 
 var opening := -1
@@ -117,20 +117,20 @@ func _talk() -> void:
 		if Game.hub_lines_heard < 11:
 			Game.hub_lines_heard = 11
 			Game.save_game()
-			await say("Happy birthday, Chumbo. See you tomorrow. It's your birthday tomorrow, too.", Narrator.DARK)
+			await line("happy_birthday_chumbo")
 		if not Game.secret_done:
-			say_bg("Psst. Chumbo. Tap the cake.", Narrator.WHISPER)
+			line_bg("psst_chumbo_tap_the")
 		elif not Game.radio_seen:
-			say_bg("The party radio works now! Tap it to play any song from the party.")
+			line_bg("party_radio_works")
 		else:
-			say_bg("Pick any present you like. They're all yours. Forever.")
+			line_bg("pick_any_present")
 		return
 	if p < LINES.size() and Game.hub_lines_heard < p:
 		Game.hub_lines_heard = p
 		Game.save_game()
-		await say(LINES[p][0], LINES[p][1])
+		await line(LINES[p])
 	elif p < LINES.size():
-		say_bg(OPEN_NEXT[p][0], OPEN_NEXT[p][1])
+		line_bg(OPEN_NEXT[p])
 
 
 func _present_rect(i: int) -> Rect2:
@@ -188,7 +188,7 @@ func _open_present(i: int) -> void:
 		shake_t = 0.5
 		refresh_back()
 		Audio.sfx("wrong", -4)
-		say_bg("Not that one yet! Open them in order!")
+		line_bg("not_that_one_yet")
 		return
 	opening = i
 	open_t = 0.0

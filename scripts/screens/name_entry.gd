@@ -47,7 +47,7 @@ func _intro() -> void:
 	locked = true
 	host_talk = true
 	await wait(0.4)
-	await say("Hi there! Welcome to the party! What's your name?")
+	await line("hi_there_welcome")
 	host_talk = false
 	locked = false
 
@@ -99,7 +99,7 @@ func _submit() -> void:
 		return
 	if typed.strip_edges() == "":
 		locked = true
-		await say("You have to type something, silly!")
+		await line("you_have_to_type")
 		locked = false
 		return
 	if Game.is_correct_name(typed):
@@ -120,9 +120,9 @@ func _success(forced: bool) -> void:
 	Game.save_game()
 	host_talk = true
 	if forced:
-		await say("There! Your name is I'm Chumbo. What a beautiful name.")
+		await line("there_your_name_is")
 	else:
-		await say("I KNEW it! Hi, Chumbo! Happy birthday!")
+		await line("i_knew_it_hi")
 	host_talk = false
 	await wait(0.3)
 	Game.goto("hub" if Game.intro_done else "intro")
@@ -141,11 +141,11 @@ func _punish() -> void:
 	host_talk = true
 	match wrong:
 		1:
-			await say("Wrong! That's not your name, silly. Try again!")
+			await line("wrong_thats_not_your")
 		2:
-			await say("Nope! Think really, really hard. What is your name?")
+			await line("nope_think_really")
 		_:
-			await say("Okay. That's enough of that. I'll do it for you.", Narrator.DARK)
+			await line("okay_thats_enough")
 	host_talk = false
 	typed = ""
 	if wrong >= 3:
