@@ -21,7 +21,12 @@ PAIR_RE = re.compile(r"\[\s*" + STR + r"\s*,\s*Narrator\.(\w+)\s*\]")
 # How the words should be pronounced (display text keeps the funny spellings).
 SAY_AS = [
     (r"\bpokemans\b", "pokey mans"), (r"\bpokémans\b", "pokey mans"), (r"\broblocks\b", "row blocks"),
-    (r"\bchumbmon\b", "chumb mon"), (r"\bobby\b", "obbie"), (r"\bbaaa\b", "baaaa"), (r"\bshh\b", "shhh"),
+    (r"\bchumbmon\b", "chumb mon"), (r"\bobby\b", "obbie"), (r"\bbaaa\b", "baaaa"),
+    # espeak spells out "shh" letter by letter, so it gets the sound itself (a long sh, then a pause)
+    (r"\bshh+\b\.?", "[[S:S:]],"),
+    # Mikake is "mee-KAH-kay", not "me cake"
+    (r"\bmikake\b", "[[mi:k'A:keI]]"),
+    (r"\bhatsune\b", "[[h'A:tsu:neI]]"), (r"\bpress a or d\b", "press [['eI]] or dee"),
     (r"\bi'm chumbo\b", "I'm chumbo"),
     (r"\bdiji(mon|volve|vice|egg)", r"dih jee \1"), (r"\bblobmon\b", "blob mon"), (r"\bpartymon\b", "party mon"),
     (r"\bfrostmon\b", "frost mon"), (r"\bgrrthdaymon\b", "grrrth day mon"), (r"\bcakemon\b", "cake mon"),

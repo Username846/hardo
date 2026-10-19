@@ -1,11 +1,13 @@
 extends Screen
-## Present 10: MIKAKE KARAOKE (Project DIVA-style rhythm game). Hatsune Mikake sings your
-## birthday song on stage; notes fly in and land on their targets, tap when they land.
-## Halfway through, the song changes its mind about the words. Then: make a wish.
+## Present 10: MIKAKE KARAOKE (a Project DIVA-style rhythm game). Hatsune Mikake sings your
+## birthday song on stage. There's a button on each side of the stage (tap that side of the
+## screen, or press A or D) and a ring shrinks onto a button when its note is due. Miss too many
+## and the voltage runs out: the song fails and starts again. In the solos the buttons make her
+## dance. Halfway through, the song changes its mind about the words. Then: make a wish.
 
 const IDX := 9
 const SongData := preload("res://scripts/gen/song_data.gd")
-## A target shows up this long before its note is due; the flying icon lands on it on time.
+## A ring starts shrinking this long before its note is due, and lands on its button on time.
 const APPEAR := 1.4
 ## Timing windows (seconds either side of the note).
 const COOL := 0.08
@@ -15,18 +17,35 @@ const SAD := 0.28
 const TEAL := Color(0.22, 0.78, 0.76)
 const TEAL_DK := Color(0.08, 0.42, 0.45)
 const SKIN := Color(1.0, 0.9, 0.8)
-## ○ × □ △ in their PlayStation colours.
-const SYM_COL := [Color(0.95, 0.3, 0.35), Color(0.3, 0.55, 0.98), Color(0.98, 0.5, 0.82), Color(0.3, 0.85, 0.5)]
+## The two buttons, in front of the LED screens: left (the left half of the screen, or A) and
+## right (the right half, or D).
+const PADS := [Vector2(165, 300), Vector2(1115, 300)]
+const PAD_R := 62.0
+const RING_R0 := 172.0
+const PAD_KEY := ["A", "D"]
+const LANE_COL := [Color(0.98, 0.45, 0.72), Color(0.22, 0.78, 0.76)]
+## The voltage is the life bar: good hits fill it, misses drain it, and empty fails the song.
+const START_VOLT := 0.5
+const MISS_VOLT := 0.06
+## Dance moves for the solos: each button has its own, one per tap, in turn.
+## [move, seconds, what the screen calls it]
+const MOVES := [
+	[["pirouette", 1.0, "PIROUETTE!"], ["slide", 1.2, "SLIDE!"], ["axel", 1.3, "TRIPLE AXEL!"]],
+	[["leap", 0.9, "BIG LEAP!"], ["slide", 1.2, "SLIDE!"], ["break", 1.2, "DANCE BREAK!"]],
+]
+## How dark the room is when the cake comes out (it's lit by the candles from then on).
+const ROOM_DIM := 0.3
 const LYRIC_Y := 588.0
+const LEEK_R := 60.0
 
 var chart: Array = []
 var hits := {}
 var song := ""
-var phase := "intro"   # intro, cute, dark, malfunction, grey, candles_wait, candles, wish
+var phase := "intro"   # intro, cute, dark, fail, malfunction, grey, candles_wait, candles, wish
 var score := 0
 var combo := 0
 var best := 0
-var voltage := 0.3
+var voltage := START_VOLT
 var end_time := 0.0
 var bpm := 120.0
 var candles: Array = []
@@ -37,27 +56,44 @@ var cake_in := 0.0
 var pops: Array = []       # {p, t, txt, col}
 var bursts: Array = []     # {p, t, col}
 var bounce := 0.0
-var dark_solo_said := false
+var pad_flash := [0.0, 0.0]
+## The buttons fade away when she breaks down.
+var pads_k := 1.0
+## Failing: how many times each song has failed, the score to go back to, and the sign.
+var fails := {}
+var score_at_start := 0
+var fail_k := 0.0
+## A dance move in a solo: which one, how far into it (s), how long it is, which way a slide
+## goes, and a tap that came in during it (its move is next).
+var dance := ""
+var dance_t := 0.0
+var dance_len := 1.0
+var dance_dir := 1.0
+var dance_next := -1
+var moves_done := [0, 0]
 ## Mikake breaking down after the last song: glitching (0..1), switched off (0..1), the beat
 ## she froze on, what the stage screens say, and the sparks and smoke coming off her.
 var mal_glitch := 0.0
 var broken := 0.0
 var frozen_beat := 0.0
 var err_text := ""
-## The grey spotlight on her while the song goes on without her (0..1).
+## The grey spotlight on her while the song goes on without her (0..1), and the dark that
+## swallows everything else meanwhile.
 var grey_light := 0.0
+var gloom := 0.0
+## The room going dark as the candles go out (the cake is drawn over it, in their light).
+var candle_dark := 0.0
+var _room_tw: Tween = null
 var sparks: Array = []      # {p, v, t}
 var smoke: Array = []       # {p, t}
-## (Tap her leek a few times in a row during the first song and she does the leek spin.)
+## (Tap her leek five times quickly during the first song and she does the leek spin.)
 var leek_taps: Array = []
 var leek_spin := 0.0
 var spin_ang := 0.0
 var _whoosh_t := 0.0
 
-# per note: target position, flying icon start, symbol
-var _pos := PackedVector2Array()
-var _from := PackedVector2Array()
-var _sym := PackedInt32Array()
+# per note: which button (0 = left, 1 = right)
+var _lane := PackedInt32Array()
 var _lo := 0
 var _baked_dark := -1
 
@@ -75,7 +111,7 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(0.6)
-	await say("The last present! It's a concert! Hatsune Mikake is singing your birthday song. Tap anywhere when the flying notes land on their circles!")
+	await say("The last present! It's a concert! Hatsune Mikake is singing your birthday song. When a ring shrinks onto a button, tap that side of the screen, or press A or D. Don't let the voltage run out!")
 	_start("karaoke")
 	phase = "cute"
 	locked = false
@@ -87,19 +123,19 @@ func _start(name: String) -> void:
 	bpm = float(SongData.SONGS[name].bpm) if SongData.SONGS.has(name) else 120.0
 	hits.clear()
 	_lo = 0
+	voltage = START_VOLT
+	score_at_start = score
 	_layout()
 	var last: Array = chart[chart.size() - 1]
 	end_time = float(last[0]) + float(last[1]) + 0.6
 	Audio.play_music(name, 0.3, 0.0, false)
 
 
-## Each lyric line becomes one sweep of targets across the stage (four shapes in turn), like
-## the note paths in Project DIVA.
+## Which button each note goes on follows the tune: a line's first note goes right if it's one of
+## the line's high notes, then up a note = right, down = left, the same note = the same side.
 func _layout() -> void:
 	var n := chart.size()
-	_pos.resize(n)
-	_from.resize(n)
-	_sym.resize(n)
+	_lane.resize(n)
 	var lines := {}
 	for i in n:
 		var ln := int(chart[i][4])
@@ -108,43 +144,55 @@ func _layout() -> void:
 		lines[ln].append(i)
 	for ln in lines:
 		var idx: Array = lines[ln]
-		var cnt := idx.size()
-		for j in cnt:
-			var u := float(j) / maxf(1.0, cnt - 1.0)
-			var p := Vector2.ZERO
-			match int(ln) % 4:
-				0:
-					p = Vector2(lerpf(190, 1090, u), 220.0 + 55.0 * sin(u * TAU))
-				1:
-					p = Vector2(lerpf(1090, 190, u), 450.0 - 150.0 * sin(u * PI))
-				2:
-					p = Vector2(lerpf(190, 1090, u), 185.0 + 265.0 * u)
-				_:
-					p = Vector2(lerpf(1090, 190, u), 325.0 + 90.0 * sin(u * PI * 3.0))
-			var i: int = idx[j]
-			_pos[i] = p
-			var dir := (p - Vector2(640, 330)).normalized()
-			if dir == Vector2.ZERO:
-				dir = Vector2.UP
-			_from[i] = p + dir.rotated(0.7 if int(ln) % 2 == 0 else -0.7) * 820.0
-			_sym[i] = (int(j / 2.0) + int(ln)) % 4
+		var pitches: Array = []
+		for i in idx:
+			pitches.append(_pitch(i))
+		var sorted := pitches.duplicate()
+		sorted.sort()
+		var c := sorted.size()
+		var mid := (float(sorted[(c - 1) / 2]) + float(sorted[c / 2])) * 0.5
+		var lane := 0
+		for j in c:
+			var p: float = pitches[j]
+			if j == 0:
+				lane = 1 if p >= mid else 0
+			elif p > float(pitches[j - 1]):
+				lane = 1
+			elif p < float(pitches[j - 1]):
+				lane = 0
+			_lane[idx[j]] = lane
+
+
+func _pitch(i: int) -> float:
+	var e: Array = chart[i]
+	return float(e[5]) if e.size() > 5 else float(i % 2)
 
 
 func press(p: Vector2) -> void:
 	match phase:
 		"cute", "dark":
-			_tap()
-			if phase == "cute":
-				_leek_check(p)
+			# her leek isn't a button (but tap it a few times in a row in the first song...)
+			if phase == "cute" and dance == "" and p.distance_to(_leek_center()) < LEEK_R:
+				_leek_tap()
+				return
+			_button(0 if p.x < W * 0.5 else 1)
 		"candles":
 			_candle_tap(p)
 
 
-func _leek_check(p: Vector2) -> void:
-	if leek_spin > 0.0:
+func _unhandled_key_input(e: InputEvent) -> void:
+	if locked or not (e is InputEventKey and e.pressed and not e.echo):
 		return
-	if p.distance_to(_leek_center()) > 75.0:
-		leek_taps.clear()
+	if phase != "cute" and phase != "dark":
+		return
+	if e.keycode in [KEY_A, KEY_LEFT]:
+		_button(0)
+	elif e.keycode in [KEY_D, KEY_RIGHT]:
+		_button(1)
+
+
+func _leek_tap() -> void:
+	if leek_spin > 0.0:
 		return
 	leek_taps.append(t)
 	leek_taps = leek_taps.filter(func(x: float) -> bool: return t - x < 2.5)
@@ -173,10 +221,27 @@ func _leek_spin() -> void:
 		say_bg("Leek spin! The crowd goes wild!", Narrator.HYPE)
 
 
-func _tap() -> void:
+## Nothing to sing for a while (a solo, or before the words start): the buttons are for dancing.
+func _free_time() -> bool:
+	if phase != "cute" and phase != "dark":
+		return false
+	if _lo >= chart.size():
+		return true
+	return float(chart[_lo][0]) - Audio.song_pos > APPEAR + 0.3
+
+
+## A button: hits the note that's due on that side, or in a solo, makes her dance.
+func _button(lane: int) -> void:
+	pad_flash[lane] = 1.0
+	bounce = 1.0
+	if _free_time():
+		_dance(lane)
+		return
 	var now: float = Audio.song_pos
 	var best_i := -1
 	var best_d := 99.0
+	var other_i := -1
+	var other_d := 99.0
 	for i in range(_lo, chart.size()):
 		var nt := float(chart[i][0])
 		if nt - now > SAD:
@@ -184,12 +249,20 @@ func _tap() -> void:
 		if hits.has(i):
 			continue
 		var d := absf(nt - now)
-		if d < best_d:
-			best_d = d
-			best_i = i
-	bounce = 1.0
-	if best_i < 0 or best_d > SAD:
-		Audio.sfx("key", -14, 0.6)
+		if _lane[i] == lane:
+			if d < best_d:
+				best_d = d
+				best_i = i
+		elif d < other_d:
+			other_d = d
+			other_i = i
+	if best_i < 0:
+		if other_i >= 0 and other_d <= SAFE:
+			# that note was on the other side
+			Audio.sfx("wrong", -12)
+			_miss(other_i, "WRONG")
+		else:
+			Audio.sfx("key", -14, 0.6)
 		return
 	hits[best_i] = true
 	var txt := "SAD"
@@ -198,34 +271,118 @@ func _tap() -> void:
 		txt = "COOL"
 		col = Crayon.YELLOW
 		score += 500 + combo * 10
-		voltage += 0.025
+		voltage += 0.03
 	elif best_d <= FINE:
 		txt = "FINE"
 		col = TEAL.lightened(0.3)
 		score += 300 + combo * 5
-		voltage += 0.015
+		voltage += 0.02
 	elif best_d <= SAFE:
 		txt = "SAFE"
 		col = Crayon.GREEN.lightened(0.3)
 		score += 100
-		voltage += 0.005
+		voltage += 0.01
 	else:
 		score += 30
+		voltage -= 0.01
 	if txt == "SAD":
 		combo = 0
 	else:
 		combo += 1
 		best = maxi(best, combo)
 	voltage = clampf(voltage, 0.0, 1.0)
-	pops.append({"p": _pos[best_i] + Vector2(0, -56), "t": 0.0, "txt": txt, "col": col})
-	bursts.append({"p": _pos[best_i], "t": 0.0, "col": SYM_COL[_sym[best_i]]})
+	pops.append({"p": _pop_at(lane), "t": 0.0, "txt": txt, "col": col})
+	bursts.append({"p": PADS[lane], "t": 0.0, "col": LANE_COL[lane]})
 	Audio.sfx("key", -8, 1.5 if txt == "COOL" else 1.2)
 	if combo > 0 and combo % 10 == 0:
 		Audio.sfx("yay_small", -6)
+	if voltage <= 0.0:
+		_fail()
+
+
+func _miss(i: int, txt: String) -> void:
+	hits[i] = false
+	combo = 0
+	voltage = maxf(0.0, voltage - MISS_VOLT)
+	pops.append({"p": _pop_at(_lane[i]), "t": 0.0, "txt": txt, "col": Color(0.55, 0.45, 0.6)})
+	if voltage <= 0.0:
+		_fail()
+
+
+## Where COOL / FINE / ... pops up for a button: beside it, on the side towards the stage.
+func _pop_at(lane: int) -> Vector2:
+	return PADS[lane] + Vector2((PAD_R + 112.0) * (1.0 if lane == 0 else -1.0), 10.0)
+
+
+func _dance(lane: int) -> void:
+	if dance != "":
+		dance_next = lane
+		return
+	var mv: Array = MOVES[lane][moves_done[lane] % MOVES[lane].size()]
+	moves_done[lane] += 1
+	dance = mv[0]
+	dance_len = mv[1]
+	dance_t = 0.0
+	dance_dir = -1.0 if lane == 0 else 1.0
+	score += 150
+	voltage = minf(1.0, voltage + 0.02)
+	var dark := phase == "dark"
+	pops.append({"p": Vector2(640, 220), "t": 0.0, "txt": mv[2], "col": Color(1, 0.35, 0.35) if dark else Crayon.YELLOW, "life": 1.2})
+	Audio.sfx("whoosh", -6, 0.9 if dance == "leap" or dance == "axel" else 1.25)
+	if not dark:
+		Audio.sfx("yay_small", -9)
+		_spark_burst(12)
+
+
+## The voltage ran out: the music grinds to a halt, and the song starts again from the top.
+func _fail() -> void:
+	var was := phase
+	frozen_beat = _beat()
+	phase = "fail"
+	locked = true
+	dance = ""
+	dance_next = -1
+	leek_spin = 0.0
+	fails[song] = int(fails.get(song, 0)) + 1
+	var n: int = fails[song]
+	Audio.sfx("music_wrong", -2)
+	Audio.music_pitch(0.3, 0.7)
+	var tw := create_tween()
+	tw.tween_property(self, "fail_k", 1.0, 0.35)
+	await wait(0.8)
+	Audio.stop_music(0.2)
+	if was == "cute":
+		Audio.sfx("uh_oh", -4)
+		if n == 1:
+			await say("Oh no! The voltage ran out and the song failed. That's okay, Mikake will sing it again. From the top!")
+		else:
+			await say("The song failed again! Don't worry. Mikake will sing it as many times as it takes.")
+	elif n == 1:
+		await say("Did you think the song would stop if you stopped playing? From the top, Chumbo.", Narrator.DARK)
+	else:
+		await say("Again.", Narrator.DARK)
+	var tw2 := create_tween()
+	tw2.tween_property(self, "fail_k", 0.0, 0.3)
+	score = score_at_start
+	combo = 0
+	phase = was
+	_start(song)
+	locked = false
 
 
 func tick(dt: float) -> void:
 	bounce = maxf(0.0, bounce - dt * 4.0)
+	for k in 2:
+		pad_flash[k] = maxf(0.0, pad_flash[k] - dt * 5.0)
+	if dance != "":
+		dance_t += dt
+		if dance_t >= dance_len:
+			dance = ""
+			if dance_next >= 0:
+				var nx := dance_next
+				dance_next = -1
+				if _free_time():
+					_dance(nx)
 	if leek_spin > 0.0:
 		leek_spin = maxf(0.0, leek_spin - dt) if phase == "cute" else 0.0
 		spin_ang += dt * 15.0
@@ -235,7 +392,7 @@ func tick(dt: float) -> void:
 			Audio.sfx("whoosh", -14, randf_range(1.3, 1.6))
 	for pp in pops:
 		pp.t += dt
-	pops = pops.filter(func(pp): return pp.t < 0.7)
+	pops = pops.filter(func(pp): return pp.t < pp.get("life", 0.7))
 	for b in bursts:
 		b.t += dt
 	bursts = bursts.filter(func(b): return b.t < 0.35)
@@ -257,10 +414,9 @@ func tick(dt: float) -> void:
 			if now - nt <= SAD:
 				break
 			if not hits.has(i):
-				hits[i] = false
-				combo = 0
-				voltage = maxf(0.0, voltage - 0.04)
-				pops.append({"p": _pos[i] + Vector2(0, -56), "t": 0.0, "txt": "WORST", "col": Color(0.55, 0.45, 0.6)})
+				_miss(i, "WORST")
+				if phase == "fail":
+					return
 		while _lo < chart.size() and hits.has(_lo):
 			_lo += 1
 		if now >= end_time:
@@ -272,10 +428,6 @@ func tick(dt: float) -> void:
 				_malfunction()
 	if phase == "dark":
 		crowd_k = minf(1.0, crowd_k + dt * 0.03)
-		# the instrumental bit in the middle of the dark verse
-		if not dark_solo_said and _lo > 0 and _lo < chart.size() and float(chart[_lo][0]) - Audio.song_pos > 3.0:
-			dark_solo_said = true
-			say_bg("The song is starting over. It always starts over.", Narrator.DARK)
 
 
 ## The song never ends... until the singer can't take it any more. Mikake glitches, throws
@@ -284,6 +436,10 @@ func _malfunction() -> void:
 	frozen_beat = _beat()
 	phase = "malfunction"
 	locked = true
+	dance = ""
+	dance_next = -1
+	var tp := create_tween()
+	tp.tween_property(self, "pads_k", 0.0, 0.6)
 	mal_glitch = 0.75
 	err_text = "ERROR"
 	Audio.music_pitch(0.6, 2.5)
@@ -310,15 +466,16 @@ func _malfunction() -> void:
 	err_text = "NO\nSIGNAL"
 	await say("The singer has stopped working. The birthday song will go on without her.", Narrator.HYPE_DARK)
 	await _grey_verse()
-	await say("She sang your birthday song so many times that she broke.", Narrator.DARK)
 	_candles()
 
 
-## And it does go on: one slow verse in a grey whisper, while she just stands there, switched off.
+## And it does go on: one slow verse in a grey whisper, while she just stands there, switched
+## off, in one spotlight, and the dark takes everything else but the glow sticks.
 func _grey_verse() -> void:
 	phase = "grey"
-	var tw := create_tween()
+	var tw := create_tween().set_parallel(true)
 	tw.tween_property(self, "grey_light", 1.0, 2.0)
+	tw.tween_property(self, "gloom", 0.96, 2.5)
 	Audio.play_music("karaoke_grey", 1.0, 0.0, false)
 	var dur := Audio.song_length()
 	var t0 := Time.get_ticks_msec()
@@ -326,8 +483,6 @@ func _grey_verse() -> void:
 	while Audio.song == "karaoke_grey" and Audio.song_pos < dur - 0.4 and Time.get_ticks_msec() - t0 < (dur + 8.0) * 1000.0:
 		await get_tree().process_frame
 	Audio.stop_music(1.0)
-	var tw2 := create_tween()
-	tw2.tween_property(self, "grey_light", 0.35, 1.0)
 	await wait(1.0)
 
 
@@ -338,16 +493,20 @@ func _spark_burst(n: int) -> void:
 		sparks.append({"p": head + Vector2(randf_range(-40, 40), randf_range(-30, 20)), "v": Vector2(cos(a), sin(a)) * randf_range(150, 420), "t": randf() * 0.2})
 
 
+## The cake comes up with its candles already lit, and the room comes back in their light.
 func _candles() -> void:
 	phase = "candles_wait"
 	locked = true
-	var tw := create_tween()
-	tw.tween_property(self, "cake_in", 1.0, 1.0)
-	await wait(1.0)
-	await say("Make a wish, Chumbo. Blow out the candles.", Narrator.DARK)
 	candles.clear()
 	for k in 10:
-		candles.append({"lit": true, "x": 440.0 + k * 44.0})
+		candles.append({"lit": true, "x": 442.0 + k * 44.0})
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(self, "cake_in", 1.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "gloom", 0.0, 1.8)
+	tw.tween_property(self, "candle_dark", ROOM_DIM, 1.8)
+	tw.tween_property(self, "grey_light", 0.3, 1.8)
+	await wait(1.8)
+	await say("Make a wish, Chumbo. Blow out the candles.", Narrator.DARK)
 	phase = "candles"
 	locked = false
 
@@ -358,6 +517,7 @@ func _candle_tap(p: Vector2) -> void:
 		if c.lit and absf(p.x - c.x) < 24.0 and p.y > 300 and p.y < 520:
 			c.lit = false
 			Audio.sfx("puff")
+			_room_light()
 			var left := candles.filter(func(cc): return cc.lit).size()
 			if left == 0:
 				if relights < 2:
@@ -368,14 +528,24 @@ func _candle_tap(p: Vector2) -> void:
 			return
 
 
+## Each candle that goes out takes some of the light with it.
+func _room_light() -> void:
+	var out := candles.filter(func(cc): return not cc.lit).size()
+	if _room_tw:
+		_room_tw.kill()
+	_room_tw = create_tween()
+	_room_tw.tween_property(self, "candle_dark", lerpf(ROOM_DIM, 1.0, float(out) / candles.size()), 0.45)
+
+
 func _relight(c: Dictionary) -> void:
 	await wait(0.7)
 	c.lit = true
+	_room_light()
 	Audio.sfx("whoosh", -4, 1.5)
 	if relights == 1:
-		say_bg("Trick candle! Try again!")
+		say_bg("Trick candle! What a laugh!")
 	else:
-		say_bg("It doesn't want to go out.", Narrator.DARK)
+		say_bg("It doesn't want to leave the party.", Narrator.DARK)
 
 
 func _wish() -> void:
@@ -393,7 +563,9 @@ func _wish() -> void:
 
 
 func _is_dark() -> bool:
-	return phase != "intro" and phase != "cute"
+	if phase == "intro" or phase == "cute":
+		return false
+	return not (phase == "fail" and song == "karaoke")
 
 
 func _beat() -> float:
@@ -442,6 +614,9 @@ func paint() -> void:
 	var beat := _beat()
 	_lights(beat, dark)
 	_screens(beat, dark)
+	if gloom > 0.0:
+		# the grey verse: nothing left but her in the spotlight, and the glow sticks
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, gloom))
 	# Hatsune Mikake herself
 	var sing := false
 	if phase == "cute" or phase == "dark":
@@ -461,7 +636,34 @@ func paint() -> void:
 		var top := Vector2(640, -20)
 		Crayon.poly(pen, PackedVector2Array([top + Vector2(-40, 0), top + Vector2(40, 0), MIKAKE_FEET + Vector2(170, 20), MIKAKE_FEET + Vector2(-170, 20)]), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.13 * grey_light), 4460)
 		Crayon.ellipse(pen, MIKAKE_FEET + Vector2(0, 14), Vector2(170, 26), Color(0, 0, 0, 0), 0.0, Color(0.85, 0.87, 0.92, 0.18 * grey_light), 4461)
-	draw_mikake(pen, feet, 330.0, beat, dk, sing, 600, glitch, broken, spin_ang if leek_spin > 0.0 else NAN)
+	# a dance move in a solo
+	var spin := 1.0
+	var lean := 0.0
+	var mbeat := beat
+	if dance != "":
+		var f := clampf(dance_t / dance_len, 0.0, 1.0)
+		var hop := sin(f * PI)
+		match dance:
+			"pirouette":
+				spin = cos(f * TAU * 2.0)
+				feet.y -= hop * 16.0
+				mbeat = 0.5
+			"axel":
+				spin = cos(f * TAU * 3.0)
+				feet.y -= hop * 140.0
+				mbeat = 0.5
+			"leap":
+				feet.y -= hop * 120.0
+				mbeat = 0.5
+			"slide":
+				feet.x += hop * 190.0 * dance_dir
+				lean = hop * 0.16 * dance_dir
+			"break":
+				mbeat = beat + dance_t * 7.0
+		if feet.y < MIKAKE_FEET.y - 2.0:
+			var up := clampf((MIKAKE_FEET.y - feet.y) / 160.0, 0.0, 1.0)
+			Crayon.ellipse(pen, Vector2(feet.x, MIKAKE_FEET.y + 4), Vector2(60.0 * (1.0 - up * 0.5), 10), Color(0, 0, 0, 0), 0.0, Color(0, 0, 0, 0.35 * (1.0 - up * 0.5)), 4462)
+	draw_mikake(pen, feet, 330.0, mbeat, dk, sing, 600, glitch, broken, spin_ang if leek_spin > 0.0 else NAN, spin, lean)
 	if leek_spin > 0.0:
 		# a ring of little leeks spinning round her
 		var fade := clampf(leek_spin, 0.0, 1.0)
@@ -473,12 +675,16 @@ func paint() -> void:
 	for sp in sparks:
 		var c := Color(1, 0.95, 0.5) if int(sp.t * 20.0) % 2 == 0 else Color(0.6, 0.95, 1.0)
 		pen.draw_rect(Rect2(sp.p - Vector2(2.5, 2.5), Vector2(5, 5)), c)
-	# birthday cake for the wish (a leek cake, of course)
+	_crowd(beat, dark)
+	if candle_dark > 0.0:
+		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, candle_dark))
+	# the birthday cake for the wish
 	if cake_in > 0.0:
 		_cake()
-	if phase == "cute" or phase == "dark":
-		_notes(Audio.song_pos, dark)
-	_crowd(beat, dark)
+	if pads_k > 0.0 and phase in ["intro", "cute", "dark", "fail", "malfunction"]:
+		_pads(song == "karaoke_dark")
+		if phase == "cute" or phase == "dark":
+			_rings(Audio.song_pos, dark)
 	if black > 0.0:
 		pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), Color(0, 0, 0, black))
 
@@ -486,43 +692,58 @@ func paint() -> void:
 func paint_top() -> void:
 	if phase == "grey":
 		_grey_lyrics()
-	if phase == "cute" or phase == "dark":
-		var dark := phase == "dark"
-		pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
-		_lyrics(Audio.song_pos)
+	if phase == "cute" or phase == "dark" or phase == "fail":
+		var dark := song == "karaoke_dark"
+		if phase != "fail":
+			pen.draw_rect(Rect2(150, LYRIC_Y - 34, W - 300, 66), Color(0, 0, 0, 0.55))
+			_lyrics(Audio.song_pos)
 		hud("SCORE: %d" % score, Crayon.WHITE)
 		Crayon.text(pen, Vector2(W - 24, 170 if Narrator.is_active() else 90), "COMBO %d" % combo, 30, Crayon.YELLOW if not dark else Color(1, 0.35, 0.35), 2, 4300, Crayon.title_font())
 		_voltage(dark)
 		for pp in pops:
-			var a := clampf(1.0 - pp.t / 0.7, 0.0, 1.0)
+			var a := clampf(1.0 - pp.t / float(pp.get("life", 0.7)), 0.0, 1.0)
 			Crayon.text(pen, pp.p + Vector2(0, -pp.t * 40.0), pp.txt, 42, Color(pp.col, a), 1, 4310, Crayon.title_font())
 		var now: float = Audio.song_pos
-		if now < 6.0 and phase == "cute":
-			_banner("TAP ANYWHERE WHEN A NOTE LANDS!", 140.0, Crayon.YELLOW)
-		elif _lo < chart.size() and float(chart[_lo][0]) - now > 3.0 and _lo > 0:
+		if phase == "fail":
+			pass
+		elif phase == "cute" and _lo == 0 and now < 6.0:
+			_banner("TAP WHEN A RING LANDS!", 140.0, Crayon.YELLOW)
+		elif _lo > 0 and _free_time():
 			if not dark:
-				_banner("MIKAKE SOLO! WAVE YOUR GLOW STICK!", 140.0, TEAL.lightened(0.3))
-			else:
-				var flick := fmod(t * 3.0, 1.0) < 0.8
-				if flick:
-					_banner("ERROR: SONG WILL REPEAT FOREVER", 140.0, Color(1, 0.3, 0.3))
+				_banner("SOLO! TAP TO MAKE HER DANCE!", 140.0, TEAL.lightened(0.3))
+			elif fmod(t * 3.0, 1.0) < 0.8:
+				_banner("ERROR: SONG WILL REPEAT FOREVER", 140.0, Color(1, 0.3, 0.3))
+	if fail_k > 0.0:
+		var a := fail_k
+		pen.draw_rect(Rect2(-2000, 246, W + 4000, 150), Color(0, 0, 0, 0.6 * a))
+		Crayon.text(pen, Vector2(640, 306), "SONG FAILED", 84, Color(1, 0.35, 0.42, a), 1, 4480, Crayon.title_font(), 0.5, false)
+		Crayon.text(pen, Vector2(640, 368), "the voltage ran out", 30, Color(1, 1, 1, 0.85 * a), 1, 4481, null, 0.3, false)
 	if phase == "candles":
 		_banner("TAP THE CANDLES TO BLOW THEM OUT!", 150.0, Crayon.YELLOW)
 
 
 func _banner(s: String, y: float, col: Color) -> void:
-	var w := Crayon.title_font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
+	var size := 40
+	var w := Crayon.title_font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	if w > W - 120.0:
+		size = int(size * (W - 120.0) / w)
+		w = Crayon.title_font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	pen.draw_rect(Rect2(640 - w * 0.5 - 24, y - 30, w + 48, 60), Color(0, 0, 0, 0.5))
-	Crayon.text(pen, Vector2(640, y), s, 40, col, 1, 4320, Crayon.title_font())
+	Crayon.text(pen, Vector2(640, y), s, size, col, 1, 4320, Crayon.title_font())
 
 
 func _voltage(dark: bool) -> void:
 	var r := Rect2(100, 24, 280, 26)
-	Crayon.text(pen, Vector2(r.position.x, r.end.y + 20), "VOLTAGE", 22, Crayon.WHITE, 0, 4330, null, 0.3, false)
+	# running low: it flashes (if it runs out, the song fails)
+	var low := voltage < 0.25 and phase != "fail"
+	var lab := Crayon.WHITE if not (low and fmod(t * 4.0, 1.0) < 0.5) else Color(1, 0.4, 0.4)
+	Crayon.text(pen, Vector2(r.position.x, r.end.y + 20), "VOLTAGE  LOW!" if low else "VOLTAGE", 22, lab, 0, 4330, null, 0.3, false)
 	pen.draw_rect(r, Color(0, 0, 0, 0.55))
 	var col := TEAL if not dark else Color(0.9, 0.2, 0.25)
 	if voltage > 0.75 and not dark:
 		col = TEAL.lerp(Crayon.YELLOW, 0.5 + 0.5 * sin(t * 8.0))
+	if low:
+		col = col.lerp(Color(1, 0.15, 0.2), 0.5 + 0.5 * sin(t * 12.0))
 	pen.draw_rect(Rect2(r.position + Vector2(3, 3), Vector2((r.size.x - 6) * voltage, r.size.y - 6)), col)
 	Crayon.rect(pen, r, Crayon.WHITE, 3, Color(0, 0, 0, 0), 4331)
 
@@ -591,56 +812,53 @@ func _screens(beat: float, dark: bool) -> void:
 			for k in 7:
 				var y := r.position.y + fmod(k * 41.0 + t * 90.0, r.size.y - 20.0)
 				pen.draw_rect(Rect2(r.position.x, y, r.size.x * (0.3 + 0.7 * fmod(k * 0.37 + t, 1.0)), 6), Color(0.6, 0.1, 0.12, 0.6))
-			Crayon.text(pen, r.get_center() + Vector2(8 if glitch else 0, 0), "ERROR" if glitch else "AGAIN", 46, Color(1, 0.25, 0.25), 1, 4410 + int(sx), Crayon.title_font())
+			# (above the button while the buttons are up)
+			var ty := lerpf(r.get_center().y, r.position.y + 50.0, pads_k)
+			Crayon.text(pen, Vector2(r.get_center().x + (8 if glitch else 0), ty), "ERROR" if glitch else "AGAIN", 46, Color(1, 0.25, 0.25), 1, 4410 + int(sx), Crayon.title_font())
 
 
-func _notes(now: float, dark: bool) -> void:
+## The two buttons, A on the left and D on the right. They light up when pressed.
+func _pads(dark: bool) -> void:
+	var now: float = Audio.song_pos
+	var hint := phase == "intro" or (phase == "cute" and _lo == 0 and now < 8.0)
+	for lane in 2:
+		var c: Vector2 = PADS[lane]
+		var col: Color = LANE_COL[lane]
+		if dark:
+			col = col.lerp(Color(0.6, 0.08, 0.1), 0.6)
+		var fl: float = pad_flash[lane]
+		var r := PAD_R * (1.0 - 0.08 * fl)
+		Crayon.disc(pen, c, PAD_R + 18.0, Color(col, (0.18 + 0.35 * fl) * pads_k))
+		Crayon.circle(pen, c, r, Color(1, 1, 1, pads_k), 6, Color(col.darkened(0.3).lerp(col.lightened(0.45), fl), pads_k), 470 + lane)
+		Crayon.text(pen, c + Vector2(0, 2), PAD_KEY[lane], 60, Color(1, 1, 1, pads_k), 1, 474 + lane, Crayon.title_font())
+		if hint:
+			Crayon.text(pen, c + Vector2(0, PAD_R + 34), "tap this side", 26, Crayon.WHITE, 1, 476 + lane, null, 0.3, false)
+			Crayon.text(pen, c + Vector2(0, PAD_R + 64), "or press " + PAD_KEY[lane], 24, Color(1, 1, 1, 0.75), 1, 478 + lane, null, 0.3, false)
+	for b in bursts:
+		var f: float = b.t / 0.35
+		Crayon.circle(pen, b.p, PAD_R + f * 50.0, Color(b.col, 1.0 - f), 7, Color(0, 0, 0, 0), 620)
+
+
+## The rings: each one shrinks onto its button and touches the edge exactly when the note is due.
+func _rings(now: float, dark: bool) -> void:
 	for i in range(_lo, chart.size()):
 		var nt := float(chart[i][0])
 		if nt - now > APPEAR:
 			break
 		if hits.has(i):
 			continue
-		var p: Vector2 = _pos[i]
-		var k := clampf(1.0 - (nt - now) / APPEAR, 0.0, 1.0)
-		var kind: int = _sym[i]
-		var col: Color = SYM_COL[kind]
+		var lane: int = _lane[i]
+		var k := 1.0 - (nt - now) / APPEAR
+		var r := lerpf(RING_R0, PAD_R, clampf(k, 0.0, 1.0))
+		if k > 1.0:
+			# late: it carries on shrinking into the button
+			r = PAD_R * (1.0 - (k - 1.0) * 2.0)
+		var col: Color = LANE_COL[lane]
 		if dark:
-			col = col.lerp(Color(0.6, 0.08, 0.1), 0.55)
-		var appear := clampf(k * 5.0, 0.0, 1.0)
-		var r := 36.0 * (0.6 + 0.4 * appear)
-		# the target with its sweeping clock hand
-		Crayon.circle(pen, p, r, Crayon.INK, 4, Color(1, 1, 1, 0.82 if not dark else 0.5), 500 + i % 50)
-		_symbol(p, r * 0.62, kind, col.darkened(0.15), false, 520 + i % 50)
-		var a := -PI * 0.5 + k * TAU
-		Crayon.line(pen, p, p + Vector2(cos(a), sin(a)) * r * 0.95, Crayon.INK, 4, 540 + i % 50, 0.3)
-		Crayon.text(pen, p + Vector2(0, r + 20), String(chart[i][2]), 24, Crayon.WHITE, 1, 560 + i % 50, null, 0.3, false)
-		# the flying icon, swooping in to land exactly on time
-		var from: Vector2 = _from[i]
-		var perp := (p - from).normalized().orthogonal()
-		var fp := from.lerp(p, k) + perp * sin(k * PI) * 70.0
-		_symbol(fp, 22.0, kind, col, true, 580 + i % 50)
-	for b in bursts:
-		var f: float = b.t / 0.35
-		Crayon.circle(pen, b.p, 36.0 + f * 40.0, Color(b.col, 1.0 - f), 6, Color(0, 0, 0, 0), 620)
-
-
-## ○ × □ △ drawn in crayon. Filled ones are the flying icons.
-func _symbol(c: Vector2, r: float, kind: int, col: Color, filled: bool, sd: int) -> void:
-	var w := 6.0 if not filled else 4.0
-	match kind:
-		0:
-			Crayon.circle(pen, c, r, col if not filled else Crayon.WHITE, w, col if filled else Color(0, 0, 0, 0), sd)
-		1:
-			if filled:
-				Crayon.disc(pen, c, r * 1.1, Crayon.WHITE)
-			Crayon.line(pen, c + Vector2(-r, -r) * 0.8, c + Vector2(r, r) * 0.8, col, w + (3.0 if filled else 0.0), sd)
-			Crayon.line(pen, c + Vector2(r, -r) * 0.8, c + Vector2(-r, r) * 0.8, col, w + (3.0 if filled else 0.0), sd + 1)
-		2:
-			Crayon.rect(pen, Rect2(c - Vector2(r, r) * 0.8, Vector2(r, r) * 1.6), col if not filled else Crayon.WHITE, w, col if filled else Color(0, 0, 0, 0), sd)
-		_:
-			var tri := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r * 0.95, r * 0.7), c + Vector2(-r * 0.95, r * 0.7)])
-			Crayon.poly(pen, tri, col if not filled else Crayon.WHITE, w, col if filled else Color(0, 0, 0, 0), sd)
+			col = col.lerp(Color(0.85, 0.1, 0.14), 0.55)
+		col = col.lightened(0.25)
+		col.a = clampf(k * 4.0, 0.0, 1.0)
+		Crayon.circle(pen, PADS[lane], r, col, 7, Color(0, 0, 0, 0), 500 + i % 50)
 
 
 ## The crowd at the front of the stage, glow sticks up. In the dark verse they stop and stare.
@@ -648,45 +866,64 @@ func _crowd(beat: float, dark: bool) -> void:
 	var stick := TEAL.lightened(0.2) if not dark else Color(0.95, 0.15, 0.2)
 	if leek_spin > 0.0 and not dark:
 		stick = Crayon.GREEN.lightened(0.25)
+	# in the grey verse, in the dark, they hold her colour up for her, swaying slowly
+	var grey := gloom > 0.3
+	if grey:
+		stick = TEAL.lightened(0.15)
 	for k in 16:
 		var x := 40.0 + k * 80.0 + (20.0 if k % 2 == 1 else 0.0)
 		var y := H + 6.0 - (k % 3) * 8.0 - crowd_k * 26.0
 		var jump := absf(sin(beat * PI + k * 0.7)) * 10.0 if not dark else 0.0
 		var head := Vector2(x, y - 28.0 - jump)
 		var ang := sin(beat * PI + k * 0.6) * 0.55 if not dark else (k % 3 - 1) * 0.08
+		if grey:
+			ang = sin(t * 0.9 + k * 0.7) * 0.35
 		var hand := head + Vector2(22, 10)
 		var tip := hand + Vector2(sin(ang), -cos(ang)) * 70.0
+		if grey:
+			pen.draw_line(hand, tip, Color(stick, 0.12), 34.0)
 		pen.draw_line(hand, tip, Color(stick, 0.35), 14.0)
 		pen.draw_line(hand, tip, stick, 6.0)
 		pen.draw_line(hand + Vector2(0, -6), tip.lerp(hand, 0.35), Color(1, 1, 1, 0.7), 2.0)
 		Crayon.disc(pen, head, 30.0, Color(0.06, 0.05, 0.1))
-		if dark and crowd_k > 0.2:
+		if dark and crowd_k > 0.2 and not grey:
 			# they just watch
 			Crayon.disc(pen, head + Vector2(-9, -4), 4.0, Color(1, 1, 1, 0.85))
 			Crayon.disc(pen, head + Vector2(9, -4), 4.0, Color(1, 1, 1, 0.85))
 
 
+## A proper birthday cake: pink sponge, white icing with sprinkles, a candle in every colour.
+## It's lit by its own candles, so it gets darker as they go out.
 func _cake() -> void:
-	var base := Vector2(640, 560 + (1.0 - cake_in) * 400)
-	var body := Rect2(base + Vector2(-260, -150), Vector2(520, 150))
-	# two leeks stuck in the cake
-	for side in [-1.0, 1.0]:
-		var root := base + Vector2(side * 225, -140)
-		var tip := root + Vector2(side * 60, -170)
-		Crayon.line(pen, root, root.lerp(tip, 0.55), Crayon.WHITE, 16, 290 + int(side))
-		Crayon.line(pen, root.lerp(tip, 0.5), tip, Crayon.GREEN, 13, 292 + int(side))
-		Crayon.line(pen, root.lerp(tip, 0.6), tip + Vector2(side * 40, 20), Crayon.GREEN.darkened(0.1), 10, 294 + int(side))
-	Crayon.rect(pen, body, Crayon.INK, 6, Color(0.55, 0.88, 0.85), 300)
-	Crayon.poly(pen, Crayon.icing(body, 7), Crayon.INK, 3, Crayon.WHITE, 301)
-	Crayon.text(pen, body.get_center() + Vector2(0, 30), "HAPPY BIRTHDAY", 34, TEAL_DK, 1, 302, Crayon.title_font())
+	var base := Vector2(640, 560 + (1.0 - cake_in) * 420)
+	var shade := clampf((candle_dark - ROOM_DIM) / (1.0 - ROOM_DIM), 0.0, 1.0) * 0.9
+	var ink := Crayon.INK
+	var white := Crayon.WHITE.darkened(shade)
+	var body := Rect2(base + Vector2(-250, -140), Vector2(500, 140))
+	Crayon.ellipse(pen, base + Vector2(0, 2), Vector2(300, 24), ink, 4, Color(0.9, 0.9, 0.95).darkened(shade), 296)
+	Crayon.rect(pen, body, ink, 6, Color(1.0, 0.7, 0.8).darkened(shade), 300)
+	Crayon.poly(pen, Crayon.icing(body, 7), ink, 3, white, 301)
+	# sprinkles on the icing
+	for k in 26:
+		var sp := Vector2(body.position.x + 16 + fmod(k * 97.3, body.size.x - 32), body.position.y + 6 + fmod(k * 5.3, 9.0))
+		var d := Vector2(cos(k * 1.7), sin(k * 1.7)) * 5.0
+		pen.draw_line(sp - d, sp + d, (Crayon.RAINBOW[k % 7] as Color).darkened(shade), 3.5)
+	# icing blobs round the bottom
+	for k in 13:
+		Crayon.disc(pen, Vector2(body.position.x + 20 + k * 38.3, base.y - 7), 13, white)
+	Crayon.text(pen, body.get_center() + Vector2(0, 2), "HAPPY BIRTHDAY", 36, Crayon.RED.darkened(shade), 1, 302, Crayon.title_font())
+	Crayon.text(pen, body.get_center() + Vector2(0, 38), "CHUMBO", 28, Crayon.BLUE.darkened(shade), 1, 303, Crayon.title_font())
 	for k in candles.size():
 		var c: Dictionary = candles[k]
-		var cp := Vector2(c.x, base.y - 150)
-		Crayon.rect(pen, Rect2(cp + Vector2(-7, -60), Vector2(14, 60)), Crayon.INK, 3, [TEAL, Crayon.PINK][k % 2], 310 + k)
+		var cp := Vector2(c.x, body.position.y + 2)
+		Crayon.rect(pen, Rect2(cp + Vector2(-7, -58), Vector2(14, 58)), ink, 3, (Crayon.RAINBOW[k % 7] as Color).darkened(shade), 310 + k)
+		for j in 3:
+			pen.draw_line(cp + Vector2(-5, -12 - j * 16), cp + Vector2(5, -19 - j * 16), Color(1, 1, 1, 0.8).darkened(shade), 3.0)
 		if c.lit:
-			Crayon.flame(pen, cp + Vector2(0, -74), 12, 330 + k)
+			Crayon.disc(pen, cp + Vector2(0, -72), 28, Color(1, 0.85, 0.4, 0.16))
+			Crayon.flame(pen, cp + Vector2(0, -72), 12, 330 + k)
 		else:
-			Crayon.path(pen, PackedVector2Array([cp + Vector2(0, -64), cp + Vector2(6, -80), cp + Vector2(-4, -96), cp + Vector2(4, -110)]), Color(0.7, 0.7, 0.7, 0.6), 3, 350 + k)
+			Crayon.path(pen, PackedVector2Array([cp + Vector2(0, -62), cp + Vector2(6, -78), cp + Vector2(-4, -94), cp + Vector2(4, -108)]), Color(0.7, 0.7, 0.7, 0.6), 3, 350 + k)
 
 
 func _lyrics(now: float) -> void:
@@ -776,13 +1013,15 @@ static func mikake_head(feet: Vector2, h: float, broken: float) -> Vector2:
 ## Hatsune Mikake: teal twin-tails down to the floor, headset, grey top, teal tie, a leek.
 ## h = height from feet to the top of her head, beat = dance phase (in beats), dark 0..1,
 ## glitch = how often her hair and leek jump around (dark verse), broken = switched off
-## (0..1: she slumps over, arms hanging, X eyes), twirl = leek-spin angle (NAN = not spinning).
-static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0, broken: float = 0.0, twirl: float = NAN) -> void:
+## (0..1: she slumps over, arms hanging, X eyes), twirl = leek-spin angle (NAN = not spinning),
+## spin = how far round she's turned (1 = facing us, -1 = her back... drawn as a mirror image),
+## lean = tilting over (radians).
+static func draw_mikake(ci: CanvasItem, feet: Vector2, h: float, beat: float, dark: float, sing: bool, sd: int, glitch: float = 0.0, broken: float = 0.0, twirl: float = NAN, spin: float = 1.0, lean: float = 0.0) -> void:
 	var lively := (1.0 - dark * 0.85) * (1.0 - broken)
 	var bob := absf(sin(beat * PI)) * h * 0.025 * lively
 	var sway := sin(beat * PI * 0.5) * 0.06 * lively
 	var glitching := glitch > 0.0 and fmod(beat * 1.37, 1.0) < glitch
-	ci.draw_set_transform(feet + Vector2(0, h * 0.05 * broken), sway + 0.32 * broken, Vector2.ONE)
+	ci.draw_set_transform(feet + Vector2(0, h * 0.05 * broken), sway + 0.32 * broken + lean, Vector2(spin if absf(spin) > 0.04 else 0.04, 1.0))
 	var ink := Crayon.INK
 	var hair := TEAL.lerp(Color(0.3, 0.4, 0.42), dark * 0.5)
 	var hr := h * 0.115

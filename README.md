@@ -25,9 +25,9 @@ Plays with a **mouse on PC** or **touch on a phone/tablet**, straight from GitHu
 | 7 | ROBLOCKS Birthday Obby | obstacle-course runner | tropical marimba + steel drum |
 | 8 | POKeMANS | creature-catching battles | Game Boy chiptune |
 | 9 | R.E.P.O. (Retrieve Every Party Object) | robot hauling valuables to the extraction truck (then selling all of Chumbo's own things to the Taxman) | sea shanty |
-| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake (who malfunctions on stage at the end; the song goes on without her, in a slow grey whisper) | Vocaloid J-pop |
+| 10 | MIKAKE KARAOKE | Project DIVA-style rhythm game with Hatsune Mikake: tap the left or right side of the screen (or press A / D) as a ring shrinks onto that button. Let the voltage run out and the song fails and starts again; in the solos the buttons make her dance (pirouettes, leaps, slides, a triple axel). At the end she malfunctions on stage and the song goes on without her, in a slow grey whisper, in the dark | Vocaloid J-pop |
 
-The end credits roll with the karaoke song, and its lyrics show at the bottom so you can sing along.
+At the end, the room stays dark except for everyone's eyes until the host says HAPPY BIRTHDAY and the lights go on. The end credits roll with the karaoke song on repeat, and its lyrics show at the bottom so you can sing along.
 
 Mikake is in the credits cast too, still switched off from the karaoke: slumped over, X eyes, a little smoke, and an OUT OF ORDER sign.
 
@@ -90,7 +90,7 @@ const GIFT_MESSAGE := "Happy birthday, Chumbo!"
   ```
   The singing is made with espeak-ng held at exact note pitches. Each syllable's vowel is stretched to the note's length, then vibrato and reverb are added. The instruments are synthesized with numpy.
 - **Frame rate check:** add `?fps` to the game's URL (or run with `-- --fps`) and the browser console prints the frame rate, drawing time, slow frames ("spikes") and draw calls every 2 seconds.
-- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game (`--bot=rockoleave` / `--bot=rockoback` with all ten gold stars, taking that road at the fork), `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=hubui` tries the volume slider and the way back to the title, `--bot=eggs` finds every game's secret, `--bot=titleegg` the title screen's, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
+- **Automated play-through** (plays all 10 games to the end at 4x speed; `--bot=3` plays just present 4, `--bot=rocko` plays the secret game (`--bot=rockoleave` / `--bot=rockoback` with all ten gold stars, taking that road at the fork), `--bot=finale` checks the credits (Continue into the secret game the first time, back to the party after), `--bot=title` checks the title screen's tap-to-start and PLAY, `--bot=radio` opens the party radio and plays songs, `--bot=hubui` tries the volume slider and the way back to the title, `--bot=eggs` finds every game's secret, `--bot=titleegg` the title screen's, `--bot=syncprobe` checks that the lyrics stay in time with the music through forced freezes, `--bot=credloop` that the credits song keeps looping; `--bot=9 --kfail` lets each karaoke song fail once first). Each game's autopilot lives in `tests/bots/<id>.gd` (older games: `tests/bot.gd`):
   ```sh
   godot --headless --path . -- --bot=all
   ```

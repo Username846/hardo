@@ -581,7 +581,7 @@ SONGS.append(dict(
             chords="I | V | vi | IV | IV | V | ii | V",
             lyrics="Mi{mee}-ka{kah}-ke{keh} on the stage to-night, / teal twin-tails swing-ing in the light! / "
                    "Wave the glow sticks, tap to the beat, / spin the lit-tle leek, move your feet!",
-            lyrics2="Cir-cle{kull}, cross, and square, tri-an-gle{gull}, / tap them all and make them jin-gle{gull}! / "
+            lyrics2="Glow sticks up and round we go now, / tap a-long and steal the show now! / "
                     "Cool, cool, fine, and the com-bo grows, / sing a-long, cause the whole crowd knows!",
             dark="Mi{mee}-ka{kah}-ke{keh} on the stage a-gain, / the same old song that nev-er ends. / "
                  "Red glow sticks in a si-lent crowd, / no one claps, no one says it loud.",

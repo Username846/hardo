@@ -9,7 +9,26 @@ const Duty := preload("res://scripts/games/duty.gd")
 const Repo := preload("res://scripts/games/repo.gd")
 const Karaoke := preload("res://scripts/games/karaoke.gd")
 
+## In the dark, before the lights go on: where everyone's eyes are.
+## [between the eyes, half the gap, eye size, colour]
+const EYES := [
+	[Vector2(116, 497), 5.0, 3.5, Color(1, 0.95, 0.55)],     # the street racer
+	[Vector2(307, 397), 6.0, 4.0, Color(1, 0.95, 0.55)],     # Tony Honk
+	[Vector2(431, 487), 7.0, 4.5, Color(0.6, 1.0, 0.5)],     # Partymon
+	[Vector2(499, 410), 7.0, 4.5, Color(1, 0.95, 0.55)],     # a guest
+	[Vector2(638, 231), 26.0, 9.0, Color(1, 0.95, 0.55)],    # the party host
+	[Vector2(812, 449), 9.0, 4.5, Color(0.45, 1.0, 0.95)],   # Mikake (flickering)
+	[Vector2(890, 414), 7.0, 4.5, Color(1, 0.95, 0.55)],     # the soldier
+	[Vector2(985, 470), 16.0, 7.0, Color(1, 1, 1)],          # Chumbmon
+	[Vector2(1077, 513), 9.0, 5.0, Color(0.4, 0.95, 1.0)],   # the gnome-catching robot
+	[Vector2(1195, 405), 7.0, 4.5, Color(1, 0.95, 0.55)],    # the other Chumbo
+]
+## The order their eyes open in (the host's first).
+const EYE_ORDER := [4, 0, 9, 2, 6, 1, 8, 3, 7, 5]
+
 var light := 0.0
+## How many of the eyes are open (0..1).
+var eyes_k := 0.0
 var credits := false
 var roll := 0.0
 var cheer := false
@@ -28,14 +47,18 @@ func enter() -> void:
 func _run() -> void:
 	locked = true
 	await wait(1.0)
-	await say("Shh. Everyone is here.", Narrator.WHISPER)
+	# it stays dark: one by one, eyes open where everyone is standing
 	var tw := create_tween()
-	tw.tween_property(self, "light", 1.0, 2.5)
-	Audio.sfx("switch")
-	await wait(2.0)
+	tw.tween_property(self, "eyes_k", 1.0, 4.0)
+	await say("Shh. Everyone is here.", Narrator.WHISPER)
 	await say("Everyone came, Chumbo. Everyone from every present.", Narrator.DARK)
 	await say("And they will all come back. Next year. And the year after. And the year after that.", Narrator.DARK)
+	# the lights go on, and there they all are
+	eyes_k = 1.0
 	cheer = true
+	Audio.sfx("switch")
+	var tl := create_tween()
+	tl.tween_property(self, "light", 1.0, 0.35)
 	Audio.play_music("karaoke", 0.5)
 	Audio.sfx("cheer")
 	Audio.sfx("tada")
@@ -71,12 +94,21 @@ func paint() -> void:
 	var room := Color(0.06, 0.04, 0.1).lerp(Color(0.98, 0.9, 0.75), light * (0.9 if cheer else 0.55))
 	pen.draw_rect(Rect2(-2000, -2000, W + 4000, H + 4000), room)
 	if light < 0.05:
-		# only eyes in the dark
-		for i in 14:
-			var e := Vector2(80 + i * 85, 260 + sin(i * 2.3) * 120)
-			if fmod(t + i * 0.7, 3.5) > 0.2:
-				Crayon.disc(pen, e, 6, Color(1, 0.95, 0.5))
-				Crayon.disc(pen, e + Vector2(18, 0), 6, Color(1, 0.95, 0.5))
+		# only their eyes in the dark
+		var open := int(eyes_k * EYES.size() + 0.5)
+		for n in open:
+			var i: int = EYE_ORDER[n]
+			var e: Array = EYES[i]
+			if fmod(t * 0.9 + i * 0.37, 3.7) < 0.14:
+				continue
+			var col: Color = e[3]
+			if i == 5 and fmod(t * 7.0 + sin(t * 3.0), 1.0) < 0.3:
+				# hers flicker
+				col = Color(col, 0.35)
+			for side in [-1.0, 1.0]:
+				var p: Vector2 = e[0] + Vector2(side * float(e[1]), 0)
+				Crayon.disc(pen, p, float(e[2]) * 2.4, Color(col, 0.15))
+				Crayon.disc(pen, p, float(e[2]), col)
 		return
 	var a := clampf(light, 0, 1)
 	var floor_y := 560.0

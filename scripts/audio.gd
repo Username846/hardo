@@ -115,6 +115,9 @@ func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool =
 	if not AudioServer.is_stream_registered_as_sample(st):
 		st.loop = loop
 	prepare(st)
+	# in the browser a song keeps the looping it had the first time it played (the karaoke plays
+	# its song once through, the credits then want it on repeat): it gets restarted by hand
+	_loop_by_hand = loop and not st.loop
 	# the spooky version of this song will be needed later: decode it now, not at the twist
 	if not name.ends_with("_dark") and name != "karaoke":
 		preload_music(name + "_dark")
@@ -142,6 +145,7 @@ func play_music(name: String, fade: float = 1.2, from: float = 0.0, loop: bool =
 
 func stop_music(fade: float = 1.0) -> void:
 	song = ""
+	_loop_by_hand = false
 	if _cur.playing:
 		var p := _cur
 		var tw := create_tween()
@@ -178,6 +182,17 @@ func duck(on: bool) -> void:
 
 
 var _stream_pos := 0.0
+## The song should loop but its stream doesn't (see play_music): restart it when it ends.
+var _loop_by_hand := false
+
+
+func _replay() -> void:
+	if OS.has_feature("web"):
+		var n = JavaScriptBridge.eval("window.__chumboMusic ? window.__chumboMusic.n : 0", true)
+		_web_starts = int(n) if n != null else 0
+	_cur.play(0.0)
+	_stream_pos = 0.0
+	song_pos = 0.0
 var _web_starts := 0
 
 ## Browser only: notes when each song really starts playing in the Web Audio engine (Godot
@@ -228,6 +243,11 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	var step := (now - _clock_us) * 0.000001 if _clock_us > 0 else delta
 	_clock_us = now
+	if _loop_by_hand and song != "":
+		var ln := song_length()
+		if not _cur.playing or (ln > 0.0 and song_pos >= ln - 0.02):
+			_replay()
+			return
 	if not (_cur.playing and song != ""):
 		return
 	if OS.has_feature("web"):

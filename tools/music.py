@@ -505,6 +505,7 @@ def render_song(song, dark=False):
     head = np.tanh(head) / np.tanh(1.3) * 0.92
     meta = dict(length=round(length_s, 4), bpm=ctx.bpm, beats=ctx.beats,
                 lines=[[round(t, 3), txt] for (t, txt, _) in lines],
-                syllables=[[round(ctx.t(n.beat), 3), round(n.dur * ctx.spb, 3), n.syl[1].strip(), n.word_end, n.line]
-                           for n in notes if n.syl is not None])
+                # [time, duration, text, ends a word, line, pitch (scale steps)]
+                syllables=[[round(ctx.t(n.beat), 3), round(n.dur * ctx.spb, 3), n.syl[1].strip(), n.word_end, n.line,
+                            n.deg + 7 * n.octv] for n in notes if n.syl is not None])
     return head, meta

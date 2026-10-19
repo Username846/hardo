@@ -87,6 +87,21 @@ func _ready() -> void:
 		print("HUBUI title -> ", tl.get_script().resource_path, " awake=", tl.get("awake"))
 		get_tree().quit()
 		return
+	if which == "credloop":
+		# the credits song must keep looping even when the browser has it down as a song that
+		# plays once (the karaoke plays it once through first): pretend that's happened here
+		Audio.play_music("karaoke", 0.0, 0.0, false)
+		await get_tree().create_timer(0.5).timeout
+		Audio.stop_music(0.0)
+		Audio.play_music("karaoke", 0.0)
+		(Audio._cur.stream as AudioStreamOggVorbis).loop = false
+		Audio._loop_by_hand = true
+		Audio._cur.seek(Audio.song_length() - 2.0)
+		# (timers run at the bot's 4x speed; the music doesn't)
+		await get_tree().create_timer(16.0).timeout
+		print("CREDLOOP song=", Audio.song, " playing=", Audio._cur.playing, " pos=", snappedf(Audio.song_pos, 0.01))
+		get_tree().quit()
+		return
 	if which == "radio":
 		# after the secret game: the radio on the party table opens the party radio
 		Game.done.fill(true)
@@ -219,8 +234,15 @@ func _ready() -> void:
 			Game.main._open("finale", null)
 			var f: Node = Game.main.current
 			var t0 := Time.get_ticks_msec()
+			var eyes_shot := false
 			while is_instance_valid(f) and not f.cheer and Time.get_ticks_msec() - t0 < 60000:
 				await get_tree().process_frame
+				if round == 0 and not eyes_shot and f.eyes_k >= 1.0:
+					# in the dark: only their eyes, where each of them is standing
+					eyes_shot = true
+					await _snap("finale_eyes")
+				if round == 0 and not eyes_shot:
+					continue
 				_skip_narration()
 			await get_tree().create_timer(1.0).timeout
 			if round == 0:
