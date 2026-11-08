@@ -34,11 +34,22 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          # Godot's official builds are in two places on GitHub; if one won't hand a file over
+          # (GitHub sometimes times out on the big templates file), try the other
+          get() {
+            for round in 1 2; do
+              for repo in godot-builds godot; do
+                curl -fsSL --retry 3 --retry-all-errors --retry-delay 10 -o "$2" \
+                  "https://github.com/godotengine/$repo/releases/download/${GODOT_VERSION}-stable/$1" && return 0
+                echo "couldn't get $1 from godotengine/$repo (try $round)"
+              done
+            done
+            return 1
+          }
           mkdir -p ~/godot/templates && cd ~/godot
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          get "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" godot.zip
           unzip -q godot.zip && mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot && rm godot.zip
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          get "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" templates.tpz
           unzip -q -j templates.tpz templates/version.txt templates/web_nothreads_release.zip templates/web_nothreads_debug.zip -d templates
           rm templates.tpz
 
