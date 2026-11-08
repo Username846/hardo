@@ -22,6 +22,8 @@ func _ready() -> void:
 	_wipe.draw.connect(_draw_wipe)
 	get_viewport().size_changed.connect(_layout)
 	RenderingServer.set_default_clear_color(Crayon.PAPER)
+	# test shortcuts on the end of the page address (see Game.apply_options)
+	Game.apply_options(_args())
 	_open("title", null)
 	for a in _args():
 		if a.begins_with("--autotest") and ResourceLoader.exists("res://tests/autotest.gd"):
@@ -109,7 +111,8 @@ func _draw_wipe() -> void:
 		_wipe.draw_rect(Rect2(Vector2.ZERO, vs), Color(Crayon.PAPER, (_wipe_amt - 0.9) * 10.0))
 
 
-## Command line args, plus "?a=b&c" from the page URL on the web (dev/test builds only use it).
+## Command line args, plus "?a=b&c" from the page URL on the web (test shortcuts, and the
+## automated tests in dev builds).
 static func _args() -> PackedStringArray:
 	var out := OS.get_cmdline_user_args()
 	if OS.has_feature("web"):

@@ -50,6 +50,8 @@ var hub_lines_heard := -1
 ## Master volume, 0..1 (the slider in the party room). 0 is silent.
 var volume := 1.0
 var main: Node = null
+## (not saved) where "?go=..." on the page address goes once the title screen is tapped.
+var jump := ""
 
 
 func _ready() -> void:
@@ -113,6 +115,69 @@ func found_egg(id: String) -> bool:
 
 func back_to_party() -> void:
 	goto("hub")
+
+
+## Test shortcuts, from the end of the page address (?unlock=all&go=karaoke) or the command line
+## (-- --unlock=all --go=karaoke):
+##   fresh        start a new party (forget everything)
+##   unlock=all   every present opened, the credits seen and the secret game beaten (unlock=5:
+##                just the first five presents)
+##   gold=all     every present's secret found too: ten gold stars (gold=5: the first five)
+##   go=...       once the title screen is tapped, go straight to: a present (1-10, or its name:
+##                race skate digi cards duty royale obby poke repo karaoke), party, credits,
+##                secret, radio, name or intro
+##   fps          show the frame rate (scripts/perf.gd)
+func apply_options(args: PackedStringArray) -> void:
+	var opts := {}
+	for a in args:
+		var kv := a.trim_prefix("--").split("=", true, 1)
+		opts[kv[0].to_lower()] = kv[1].uri_decode().to_lower() if kv.size() > 1 else ""
+	if opts.has("fresh"):
+		reset()
+	if opts.has("unlock"):
+		_unlock(_how_many(opts.unlock))
+	if opts.has("gold"):
+		var n := _how_many(opts.gold)
+		_unlock(maxi(n, progress()))
+		for i in n:
+			eggs[GAMES[i].id] = true
+		save_game()
+	if opts.has("go"):
+		jump = opts.go
+
+
+## "all" (or nothing) = all ten, otherwise a number.
+func _how_many(v: String) -> int:
+	return GAMES.size() if v == "" or v == "all" else clampi(v.to_int(), 0, GAMES.size())
+
+
+func _unlock(n: int) -> void:
+	for i in GAMES.size():
+		done[i] = done[i] or i < n
+	if n > 0:
+		# the name's been got right and the intro's been seen
+		player_name = CANON_NAME
+		intro_done = true
+	if n >= GAMES.size():
+		finale_seen = true
+		secret_started = true
+		secret_done = true
+	save_game()
+
+
+## Where a "?go=..." goes: [screen, arg], or [] if it isn't anywhere.
+func jump_target(where: String) -> Array:
+	var w := where.strip_edges().to_lower()
+	if w.is_valid_int() and w.to_int() >= 1 and w.to_int() <= GAMES.size():
+		return ["game", w.to_int() - 1]
+	for i in GAMES.size():
+		if GAMES[i].id == w:
+			return ["game", i]
+	var screens := {"party": "hub", "hub": "hub", "credits": "finale", "finale": "finale", "end": "finale",
+		"secret": "rocko", "rocko": "rocko", "radio": "radio", "name": "name", "intro": "intro"}
+	if screens.has(w):
+		return [screens[w], null]
+	return []
 
 
 func save_game() -> void:

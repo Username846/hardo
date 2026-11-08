@@ -105,6 +105,19 @@ func _wake(fanfare: bool = true) -> void:
 		lights = 1.0
 		spin = _spin_target()
 	add_button("play", PLAY_RECT, "PLAY!", _play, Crayon.YELLOW, 56)
+	if Game.jump != "":
+		_jump()
+
+
+## "?go=..." on the page address: straight there, now the tap has let the sound play.
+func _jump() -> void:
+	var to := Game.jump_target(Game.jump)
+	Game.jump = ""
+	if to.is_empty():
+		return
+	leaving = true
+	await wait(0.4)
+	Game.goto(to[0], to[1])
 
 
 func _play() -> void:

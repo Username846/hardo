@@ -87,6 +87,15 @@ func _ready() -> void:
 		print("HUBUI title -> ", tl.get_script().resource_path, " awake=", tl.get("awake"))
 		get_tree().quit()
 		return
+	if which == "where":
+		# the test shortcuts on the address (fresh / unlock / gold / go): where did we end up?
+		await get_tree().create_timer(6.0).timeout
+		var cur: Node = Game.main.current
+		print("WHERE screen=", cur.get_script().resource_path.get_file(), " done=", Game.progress(), " gold=", Game.gold_stars(),
+			" finale=", Game.finale_seen, " secret=", Game.secret_done, " name=", Game.player_name, " intro=", Game.intro_done)
+		await _snap("where")
+		get_tree().quit()
+		return
 	if which == "text":
 		# every line in dialogue.txt can be read, splits into its boxes, and has its voices
 		var GT := preload("res://scripts/game_text.gd")

@@ -90,6 +90,20 @@ red_failed (evil host): Did you think the song would stop if you stopped playing
 - `\n` starts a new line in the same box; `\\n` starts a new box (the next one comes up after it).
 - Songs: each line under `song <name> - <part>:` is one window of the words at the bottom of the screen (`\n` and `\\n` work there too). Split words into sung syllables with `-` and keep the same number of syllables as the tune has notes; if they don't fit, that song keeps its old words and the publish run shows a warning saying why.
 
+## Test shortcuts
+
+Add these to the end of the game's address to jump around while testing. Join several with `&`, e.g. `username846.github.io/hardo/?unlock=all&go=karaoke`.
+
+| Add | What it does |
+|---|---|
+| `?fresh` | Start a new party (forgets everything, like the **new party** button). Leave it off the address afterwards, or every reload starts over. |
+| `?unlock=all` | Every present opened, the credits seen and the secret game beaten (so the radio and the **???** cake are there too). `?unlock=5` opens just the first five presents. |
+| `?gold=all` | Every present's secret found too: ten gold stars, so the secret game ends at the fork. `?gold=3` gives the first three. |
+| `?go=karaoke` | After you tap the title screen, go straight there. Works with a present's number (`1`-`10`) or name (`race`, `skate`, `digi`, `cards`, `duty`, `royale`, `obby`, `poke`, `repo`, `karaoke`), or `party`, `credits`, `secret`, `radio`, `name`, `intro`. |
+| `?fps` | Show the frame rate in the top right corner. |
+
+`unlock` and `gold` are saved like normal progress, so they stay after you take them off the address; `?fresh` undoes them.
+
 ## For tinkerers
 
 - **Open in Godot:** Godot 4.7.2 → Import → `project.godot`. Press F5 to play.

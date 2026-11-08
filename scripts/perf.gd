@@ -1,6 +1,7 @@
 extends Node
 ## Tiny frame-time meter. Off by default; turn on with "?fps" on the web page URL or
-## "--fps" on the command line. Prints a line to the console every 2 seconds.
+## "--fps" on the command line. Shows the frame rate in the top right corner, and prints a
+## line with more detail to the console every 2 seconds.
 
 var enabled := false
 var draw_us := 0
@@ -13,15 +14,37 @@ var _spikes := 0
 var _dc := 0
 var _spike_info := ""
 var last := ""
+var _label: Label = null
+var _lf := 0
+var _lt := 0.0
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	if "--fps" in OS.get_cmdline_user_args() or "--profile" in OS.get_cmdline_user_args():
-		enabled = true
-	elif OS.has_feature("web"):
+	var fps := "--fps" in OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
 		var q = JavaScriptBridge.eval("window.location.search", true)
-		enabled = q is String and String(q).contains("fps")
+		fps = fps or (q is String and String(q).contains("fps"))
+	enabled = fps or "--profile" in OS.get_cmdline_user_args()
+	if fps:
+		_show()
+
+
+func _show() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 120
+	add_child(layer)
+	_label = Label.new()
+	_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_label.position = Vector2(-150, 6)
+	_label.size = Vector2(140, 30)
+	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_label.add_theme_font_size_override("font_size", 22)
+	_label.add_theme_color_override("font_color", Color(1, 1, 0.6))
+	_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_label.add_theme_constant_override("outline_size", 6)
+	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_label)
 
 
 func _process(dt: float) -> void:
@@ -30,6 +53,13 @@ func _process(dt: float) -> void:
 		return
 	_frames += 1
 	_t += dt
+	if _label:
+		_lf += 1
+		_lt += dt
+		if _lt >= 0.5:
+			_label.text = "%d fps" % roundi(_lf / _lt)
+			_lf = 0
+			_lt = 0.0
 	_draw_acc += draw_us
 	var proc := Performance.get_monitor(Performance.TIME_PROCESS)
 	_proc_acc += proc
