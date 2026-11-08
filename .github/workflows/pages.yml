@@ -23,19 +23,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Godot + web export templates
+      - name: Cache Godot
         id: cache
         uses: actions/cache@v4
         with:
           path: ~/godot
-          key: godot-${{ env.GODOT_VERSION }}-web-nothreads
+          key: godot-${{ env.GODOT_VERSION }}-editor
 
       - name: Download Godot ${{ env.GODOT_VERSION }}
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          # Godot's official builds are in two places on GitHub; if one won't hand a file over
-          # (GitHub sometimes times out on the big templates file), try the other
+          # Godot's official builds are in two places on GitHub; if one won't hand the file over
+          # (GitHub sometimes answers big downloads with a timeout), try the other
           get() {
             for round in 1 2; do
               for repo in godot-builds godot; do
@@ -46,17 +46,15 @@ jobs:
             done
             return 1
           }
-          mkdir -p ~/godot/templates && cd ~/godot
+          mkdir -p ~/godot && cd ~/godot
           get "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" godot.zip
           unzip -q godot.zip && mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot && rm godot.zip
-          get "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" templates.tpz
-          unzip -q -j templates.tpz templates/version.txt templates/web_nothreads_release.zip templates/web_nothreads_debug.zip -d templates
-          rm templates.tpz
 
-      - name: Install export templates
+      - name: Install the web export template
         run: |
+          # (the one template file the web build uses is kept in the repo: see ci/godot-web-template)
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
-          mkdir -p "$dest" && cp ~/godot/templates/* "$dest/"
+          mkdir -p "$dest" && cp ci/godot-web-template/version.txt ci/godot-web-template/web_nothreads_release.zip "$dest/"
 
       # dialogue.txt has every line anyone says and the words to every song: anything changed
       # there gets its voice (or its song) made again here, before the game is put together.
